@@ -37,6 +37,9 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         private set
     var toast by mutableStateOf<String?>(null)
         private set
+    /** Tab a notification asked for; the nav consumes it. */
+    var pendingTab by mutableStateOf<String?>(null)
+    fun requestTab(tab: String) { pendingTab = tab }
     private var toastJob: kotlinx.coroutines.Job? = null
     private val pendingLevelUps = ArrayDeque<Int>()
 

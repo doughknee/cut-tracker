@@ -10,8 +10,8 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - [x] 6. Lift screen
 - [x] 7. Route screen: holds, anchors, checkpoint sheet, CameraX, badges, weekly project
 - [x] 8. Settings and sub-screens, export/import
-- [ ] 9. Notifications, boot re-registration
-- [ ] 10. Phase 2 switch
+- [x] 9. Notifications, boot re-registration
+- [x] 10. Phase 2 switch
 - [ ] 11. Home screen widget, app icon
 - [ ] 12. Export with photos, Auto Backup, Room migration scaffold
 - [ ] 13. Release build, signed APK, README
@@ -63,3 +63,13 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - Built: Settings (Appearance live; Program, Targets and Nudges apply on Save; platform DatePickerDialog / TimePickerDialog; length re-derives the end date; Phase pills switch the calories field; Data section with Export JSON via FileProvider share sheet, Import JSON via the document picker, Reset program as a 3-tap double confirm on the row), Meals / Exercises / Checkpoints editors (inline rows, × to remove, Add, Save applies all), `Backup` DTOs with `buildBackup` / `restoreBackup`, four-step onboarding with the final copy (blocked Next with accent outline when start weight is empty, live pace hint, live end-date hint), landing on Today with "Day 1. Pick a day." and the first weigh-in logged. The nav waits for DataStore before picking the start destination and returns to onboarding after a reset.
 - Decisions: Theme and haptics apply live (the prototype switches theme instantly); everything else on Save. "Prototype: show first launch / 7pm state" rows are prototype-only demo rows and are not in the app. Reorder-by-drag is out (not in the prototype either).
 - Deferred: Export with photos (zip) is step 12.
+
+### Step 9: Notifications
+- Built: `Reminders` (channel, two daily alarms via AlarmManager: exact when allowed, otherwise `setAndAllowWhileIdle`; "Weigh in" opens the Weight tab, "Climb or off?" posts only when today's mode is still null and opens Today), `AlarmReceiver` reschedules the next day, `BootReceiver` re-registers on BOOT_COMPLETED and MY_PACKAGE_REPLACED, App reschedules whenever the nudge times change, POST_NOTIFICATIONS asked once after onboarding, notification tab deep link through the view model.
+- Decisions: inexact AlarmManager instead of WorkManager when exact alarms are denied (same behavior, no new dependency). The notification body for 7pm is the card copy.
+- Deferred: nothing.
+
+### Step 10: Phase 2
+- Built: already wired through Settings: header "Phase 2 Chest", calories 2700, Phase 2 lift blocks (dips 4, push-ups 2; floor press 4, incline DB press 3, pullover 2, ab roller 1) via `setsPhase2` / `phase2Only`, Checkpoints note "Phase 2, no fixed end", "Start Phase 2" on the final checkpoint. Added `Phase2Test` (2 tests).
+- Decisions: Phase 2 keeps the same Today script; only the Lift blocks and calories change (the handoff lists nothing else).
+- Deferred: nothing.

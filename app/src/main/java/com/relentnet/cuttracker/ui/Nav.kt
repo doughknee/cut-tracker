@@ -85,6 +85,10 @@ fun App(vm: AppViewModel) {
     val st by vm.state.collectAsStateWithLifecycle()
     val c = CutTheme.colors
     if (!st.loaded) { Box(Modifier.fillMaxSize().background(c.ground)); return }
+    LaunchedEffect(vm.pendingTab, st.settings.onboarded) {
+        val t = vm.pendingTab
+        if (t != null && st.settings.onboarded) { vm.pendingTab = null; nav.goTab(t) }
+    }
     LaunchedEffect(st.settings.onboarded) {
         if (!st.settings.onboarded && route != null && route != Routes.ONBOARDING) nav.navigate(Routes.ONBOARDING) { popUpTo(0) { inclusive = true } }
     }
