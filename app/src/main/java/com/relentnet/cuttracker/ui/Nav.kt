@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -41,6 +42,10 @@ import com.relentnet.cuttracker.ui.lift.LiftScreen
 import com.relentnet.cuttracker.ui.route.CameraScreen
 import com.relentnet.cuttracker.ui.route.CheckpointsScreen
 import com.relentnet.cuttracker.ui.route.RouteScreen
+import com.relentnet.cuttracker.ui.onboarding.OnboardingScreen
+import com.relentnet.cuttracker.ui.settings.CheckpointsEditor
+import com.relentnet.cuttracker.ui.settings.ExercisesEditor
+import com.relentnet.cuttracker.ui.settings.MealsEditor
 import com.relentnet.cuttracker.ui.settings.SettingsScreen
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
@@ -56,6 +61,10 @@ object Routes {
     const val SETTINGS = "settings"
     const val CHECKPOINTS = "checkpoints"
     const val CAMERA = "camera"
+    const val ONBOARDING = "onboarding"
+    const val MEALS = "settings/meals"
+    const val EXERCISES = "settings/exercises"
+    const val CHECKPOINT_EDITOR = "settings/checkpoints"
     val tabs = listOf(TODAY, WEIGHT, LIFT, ROUTE)
 }
 
@@ -75,10 +84,17 @@ fun App(vm: AppViewModel) {
     val route = entry?.destination?.route
     val st by vm.state.collectAsStateWithLifecycle()
     val c = CutTheme.colors
+    if (!st.loaded) { Box(Modifier.fillMaxSize().background(c.ground)); return }
+    LaunchedEffect(st.settings.onboarded) {
+        if (!st.settings.onboarded && route != null && route != Routes.ONBOARDING) nav.navigate(Routes.ONBOARDING) { popUpTo(0) { inclusive = true } }
+    }
     Box(Modifier.fillMaxSize().background(c.ground)) {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) {
-                NavHost(nav, startDestination = Routes.TODAY) {
+                NavHost(nav, startDestination = if (st.settings.onboarded) Routes.TODAY else Routes.ONBOARDING) {
+                    composable(Routes.ONBOARDING) {
+                        OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(Routes.ONBOARDING) { inclusive = true } } })
+                    }
                     composable(Routes.TODAY) {
                         TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onOpenLift = { nav.goTab(Routes.LIFT) })
                     }
@@ -87,7 +103,15 @@ fun App(vm: AppViewModel) {
                     composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }) }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
-                    composable(Routes.SETTINGS) { SettingsScreen(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.SETTINGS) {
+                        SettingsScreen(
+                            vm, onBack = { nav.popBackStack() }, onMeals = { nav.navigate(Routes.MEALS) },
+                            onExercises = { nav.navigate(Routes.EXERCISES) }, onCheckpoints = { nav.navigate(Routes.CHECKPOINT_EDITOR) },
+                        )
+                    }
+                    composable(Routes.MEALS) { MealsEditor(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.EXERCISES) { ExercisesEditor(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.CHECKPOINT_EDITOR) { CheckpointsEditor(vm, onBack = { nav.popBackStack() }) }
                 }
             }
             if (route in Routes.tabs) {

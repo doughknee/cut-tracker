@@ -1,42 +1,203 @@
 package com.relentnet.cuttracker.ui.settings
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.relentnet.cuttracker.data.Backup
+import com.relentnet.cuttracker.data.Settings
+import com.relentnet.cuttracker.data.backupJson
+import com.relentnet.cuttracker.data.buildBackup
+import com.relentnet.cuttracker.data.restoreBackup
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.components.BackHeader
 import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.Eyebrow
+import com.relentnet.cuttracker.ui.components.Field
 import com.relentnet.cuttracker.ui.components.Pill
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.SettingsRow
+import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.components.Switch
+import com.relentnet.cuttracker.ui.theme.CutTheme
+import com.relentnet.cuttracker.ui.theme.cutStyle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+private val shortDate: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
+private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 
 @Composable
-fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
+fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, onExercises: () -> Unit, onCheckpoints: () -> Unit) {
+    val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
-    val s = st.settings
+    val saved = st.settings
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Program, targets and nudges apply on Save. Appearance applies live (the prototype switches theme instantly).
+    var d by remember(saved) { mutableStateOf(saved) }
+    var len by remember(saved) { mutableStateOf(saved.lengthWeeks.toString()) }
+    var sw by remember(saved) { mutableStateOf(fmt(saved.startWeight)) }
+    var tw by remember(saved) { mutableStateOf(fmt(saved.targetWeight)) }
+    var cal by remember(saved) { mutableStateOf(saved.calories.toString()) }
+    var pro by remember(saved) { mutableStateOf(saved.protein.toString()) }
+    var resetStage by remember { mutableIntStateOf(0) }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
+                    vm.repo.restoreBackup(backupJson.decodeFromString(Backup.serializer(), text))
+                }.isSuccess
+            }
+            vm.showToast(if (ok) "Imported" else "Could not read that file")
+        }
+    }
+
+    fun export() = scope.launch {
+        val file = withContext(Dispatchers.IO) {
+            val dir = File(context.cacheDir, "export").apply { mkdirs() }
+            File(dir, "cut-tracker-${LocalDate.now()}.json").apply { writeText(backupJson.encodeToString(Backup.serializer(), vm.repo.buildBackup())) }
+        }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
+        val send = Intent(Intent.ACTION_SEND).apply { type = "application/json"; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        context.startActivity(Intent.createChooser(send, "Export Cut Tracker"))
+    }
+
+    fun save() {
+        val weeks = len.toIntOrNull()?.coerceIn(1, 52) ?: saved.lengthWeeks
+        val s = d.copy(
+            lengthWeeks = weeks,
+            startWeight = sw.toDoubleOrNull() ?: saved.startWeight,
+            targetWeight = tw.toDoubleOrNull() ?: saved.targetWeight,
+            caloriesP1 = if (d.phase == 1) cal.toIntOrNull() ?: saved.caloriesP1 else d.caloriesP1,
+            caloriesP2 = if (d.phase == 2) cal.toIntOrNull() ?: saved.caloriesP2 else d.caloriesP2,
+            protein = pro.toIntOrNull() ?: saved.protein,
+        )
+        vm.saveSettings(s) { vm.showToast("Saved"); onBack() }
+    }
+
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Today", title = "Settings", onBack = onBack)
-        Column {
-            Eyebrow("Appearance", Modifier.padding(bottom = 8.dp))
-            Card {
-                SettingsRow("Theme") {
-                    Pill("System", s.theme == "system", { vm.saveSettings(s.copy(theme = "system")) })
-                    Pill("Dark", s.theme == "dark", { vm.saveSettings(s.copy(theme = "dark")) })
-                    Pill("Light", s.theme == "light", { vm.saveSettings(s.copy(theme = "light")) })
-                }
-                SettingsRow("Haptics and confetti", last = true) {
-                    Switch(s.haptics) { vm.saveSettings(s.copy(haptics = !s.haptics)) }
+        Section("Appearance") {
+            SettingsRow("Theme") {
+                for ((k, l) in listOf("system" to "System", "dark" to "Dark", "light" to "Light")) Pill(l, saved.theme == k, { vm.saveSettings(saved.copy(theme = k)) })
+            }
+            SettingsRow("Haptics and confetti", last = true) { Switch(saved.haptics) { vm.saveSettings(saved.copy(haptics = !saved.haptics)) } }
+        }
+        Section("Program") {
+            SettingsRow("Start date") {
+                Picker(d.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)) {
+                    DatePickerDialog(context, { _, y, m, day -> d = d.copy(startDate = LocalDate.of(y, m + 1, day)) }, d.startDate.year, d.startDate.monthValue - 1, d.startDate.dayOfMonth).show()
                 }
             }
+            SettingsRow("Length") {
+                NumField(len, { len = it }, 56.dp)
+                val weeks = len.toIntOrNull() ?: saved.lengthWeeks
+                Sub("weeks · ends ${d.startDate.plusDays(weeks * 7L).format(shortDate)}")
+            }
+            SettingsRow("Start weight") { NumField(sw, { sw = it }); Sub("lb") }
+            SettingsRow("Target weight") { NumField(tw, { tw = it }); Sub("lb") }
+            SettingsRow("Phase", last = true) {
+                Pill("1 Cut", d.phase == 1, { d = d.copy(phase = 1); cal = d.caloriesP1.toString() })
+                Pill("2 Chest", d.phase == 2, { d = d.copy(phase = 2); cal = d.caloriesP2.toString() })
+            }
         }
-        BigButton("Save", onClick = onBack, modifier = Modifier.fillMaxWidth())
+        Section("Targets") {
+            SettingsRow("Calories") { NumField(cal, { cal = it }, 84.dp) }
+            SettingsRow("Protein") { NumField(pro, { pro = it }, 64.dp); Sub("g") }
+            SettingsRow("Meals", onClick = onMeals) { Sub("${saved.meals.size} items ›") }
+            SettingsRow("Exercises", onClick = onExercises) { Sub("${saved.exercises.size} items ›") }
+            SettingsRow("Checkpoints and free days", last = true, onClick = onCheckpoints) { Sub("${saved.checkpoints.size} ›") }
+        }
+        Section("Nudges") {
+            SettingsRow("Weigh-in reminder") { TimePicker(d.weighInTime) { d = d.copy(weighInTime = it) } }
+            SettingsRow("\"Climb or off?\" if unset") { TimePicker(d.pickTime) { d = d.copy(pickTime = it) } }
+            SettingsRow("Day rolls over at", last = true) { TimePicker(LocalTime.of(d.resetHour, 0)) { d = d.copy(resetHour = it.hour) } }
+        }
+        Section("Data") {
+            SettingsRow("Export JSON", onClick = { export() }) { Sub("›") }
+            SettingsRow("Import JSON", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }) { Sub("›") }
+            SettingsRow(
+                when (resetStage) { 0 -> "Reset program"; 1 -> "Tap again to wipe everything"; else -> "Last chance. Tap to reset" },
+                last = true, labelColor = c.accent,
+                onClick = {
+                    if (resetStage < 2) resetStage++ else { resetStage = 0; vm.resetProgram { vm.showToast("Program reset") } }
+                },
+            ) { Sub(if (resetStage == 0) "double confirm" else "${2 - resetStage + 1} more") }
+        }
+        BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth())
     }
 }
+
+@Composable
+fun Section(title: String, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column {
+        Eyebrow(title, Modifier.padding(bottom = 8.dp))
+        Card(Modifier.fillMaxWidth(), content = content)
+    }
+}
+
+@Composable
+fun NumField(value: String, onChange: (String) -> Unit, width: Dp = 76.dp) {
+    Field(value, onChange, Modifier.width(width), height = 36.dp, fontSize = 14, weight = 700, center = true, borderWidth = 1.dp, radius = 8.dp, padding = 6.dp, keyboard = KeyboardType.Decimal)
+}
+
+@Composable
+private fun Picker(label: String, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    val shape = RoundedCornerShape(8.dp)
+    Box(
+        Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape).clickable(onClick = onClick, role = Role.Button).padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(label, color = c.text, style = cutStyle(14, 700, 1f, tabular = true)) }
+}
+
+@Composable
+private fun TimePicker(value: LocalTime, onPick: (LocalTime) -> Unit) {
+    val context = LocalContext.current
+    Picker(value.format(timeFmt)) {
+        TimePickerDialog(context, { _, h, m -> onPick(LocalTime.of(h, m)) }, value.hour, value.minute, true).show()
+    }
+}
+
+internal fun fmt(v: Double) = if (v % 1.0 == 0.0) "%.1f".format(Locale.US, v) else v.toString()

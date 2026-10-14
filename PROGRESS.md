@@ -9,7 +9,7 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - [x] 5. Weight screen with Canvas chart
 - [x] 6. Lift screen
 - [x] 7. Route screen: holds, anchors, checkpoint sheet, CameraX, badges, weekly project
-- [ ] 8. Settings and sub-screens, export/import
+- [x] 8. Settings and sub-screens, export/import
 - [ ] 9. Notifications, boot re-registration
 - [ ] 10. Phase 2 switch
 - [ ] 11. Home screen widget, app icon
@@ -58,3 +58,8 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - Built: Route header (Day N · pct, N sends), weekly project card (3-segment bar, +150 and badge copy), hold grid (week 12 at top, states Send/Min/Freeze/Missed/Today/Future, anchors on non-free checkpoint rows colored hit/current/upcoming), tap popover with date, result + XP and a detail line (mode, items, weight, lifts), badge shelf 4 across (13 badges: First Send, 5 chain, Came Back, 6 projects; unearned dashed with +). Checkpoints route: photo-due banner (first day, then every 14 days) with Shoot, thumbnail grid with long-press delete (inline confirm), timeline rows (hit with actual avg, current with accent ring and days-to-go, passed-not-hit shows the avg against the target, free days), "Start Phase 2" on the final checkpoint once reached, Phase 2 note. CameraX capture screen (permission flow, back camera, JPEG to filesDir/photos/YYYY-MM-DD.jpg, +40 xp once per day).
 - Decisions: holds open on tap (prototype) not long-press. Photo deletion confirms inline instead of a dialog. A passed checkpoint that was not hit stays a muted dot and shows "avg · aimed target".
 - Deferred: nothing.
+
+### Step 8: Settings, editors, export/import, onboarding
+- Built: Settings (Appearance live; Program, Targets and Nudges apply on Save; platform DatePickerDialog / TimePickerDialog; length re-derives the end date; Phase pills switch the calories field; Data section with Export JSON via FileProvider share sheet, Import JSON via the document picker, Reset program as a 3-tap double confirm on the row), Meals / Exercises / Checkpoints editors (inline rows, × to remove, Add, Save applies all), `Backup` DTOs with `buildBackup` / `restoreBackup`, four-step onboarding with the final copy (blocked Next with accent outline when start weight is empty, live pace hint, live end-date hint), landing on Today with "Day 1. Pick a day." and the first weigh-in logged. The nav waits for DataStore before picking the start destination and returns to onboarding after a reset.
+- Decisions: Theme and haptics apply live (the prototype switches theme instantly); everything else on Save. "Prototype: show first launch / 7pm state" rows are prototype-only demo rows and are not in the app. Reorder-by-drag is out (not in the prototype either).
+- Deferred: Export with photos (zip) is step 12.

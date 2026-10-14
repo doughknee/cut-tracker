@@ -1,0 +1,176 @@
+package com.relentnet.cuttracker.ui.onboarding
+
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.relentnet.cuttracker.engine.ProgramEngine
+import com.relentnet.cuttracker.ui.AppViewModel
+import com.relentnet.cuttracker.ui.components.BigButton
+import com.relentnet.cuttracker.ui.components.Field
+import com.relentnet.cuttracker.ui.theme.CutTheme
+import com.relentnet.cuttracker.ui.theme.cutStyle
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+private val longDate: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.US)
+
+/** Four steps. Finishing writes the program settings, logs the first weigh-in and lands on Today. */
+@Composable
+fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
+    val c = CutTheme.colors
+    val st by vm.state.collectAsStateWithLifecycle()
+    val s = st.settings
+    val context = LocalContext.current
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    var sw by rememberSaveable { mutableStateOf("") }
+    var tw by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(s.targetWeight)) }
+    var start by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var weeks by rememberSaveable { mutableStateOf(s.lengthWeeks.toString()) }
+    var time by rememberSaveable { mutableStateOf(s.weighInTime.toString()) }
+    var swMissing by remember { mutableStateOf(false) }
+    val swFocus = remember { FocusRequester() }
+
+    fun next() {
+        when (step) {
+            1 -> if (sw.toDoubleOrNull() == null) { swMissing = true; swFocus.requestFocus(); return }
+            3 -> {
+                val startWeight = sw.toDouble()
+                val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
+                val w = weeks.toIntOrNull()?.coerceIn(1, 52) ?: 12
+                vm.saveSettings(
+                    s.copy(
+                        onboarded = true, startWeight = startWeight, targetWeight = tw.toDoubleOrNull() ?: s.targetWeight,
+                        startDate = startDate, lengthWeeks = w, weighInTime = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime),
+                    ),
+                ) {
+                    vm.repo.scope.launch { vm.repo.logWeight(startWeight); vm.showToast("Day 1. Pick a day.") }
+                    onDone()
+                }
+                return
+            }
+        }
+        step++
+    }
+
+    Column(
+        Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.systemBars).padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 20.dp).imePadding(),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (i in 0..3) Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(if (i <= step) c.accent else c.hairline))
+        }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            when (step) {
+                0 -> {
+                    Big("Twelve weeks.\nFour taps a day.")
+                    Body("Weigh in, eat the script, do the block, check it off. The app keeps score so you don't have to. Nothing here resets, ever.")
+                }
+                1 -> {
+                    Big("Where you're starting.")
+                    LaunchedEffect(Unit) { swFocus.requestFocus() }
+                    Fld("This morning, before food") {
+                        Field(sw, { sw = it; swMissing = false }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, placeholder = "181.8", radius = 12.dp, padding = 18.dp, background = c.surface, border = if (swMissing) c.accent else c.mutedBorder, focusRequester = swFocus, imeAction = ImeAction.Next, onDone = { })
+                    }
+                    Fld("Where you want to land") {
+                        Field(tw, { tw = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
+                    }
+                    val a = sw.toDoubleOrNull(); val b = tw.toDoubleOrNull(); val w = weeks.toIntOrNull() ?: 12
+                    Hint(if (a != null && b != null) "${ProgramEngine.fmt1(a - b)} lb over $w weeks is ${"%.2f".format(Locale.US, (a - b) / w)} lb a week." else "About 1 lb a week is the pace.")
+                }
+                2 -> {
+                    Big("When it runs.")
+                    val d = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
+                    Fld("Start") {
+                        PickerBox(d.toString()) { DatePickerDialog(context, { _, y, m, day -> start = LocalDate.of(y, m + 1, day).toString() }, d.year, d.monthValue - 1, d.dayOfMonth).show() }
+                    }
+                    Fld("Weeks") {
+                        Field(weeks, { weeks = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
+                    }
+                    val w = weeks.toIntOrNull() ?: 12
+                    Hint("Ends ${d.plusDays(w * 7L).format(longDate)}. ${w * 7} holds on the route.")
+                }
+                else -> {
+                    Big("One nudge a day.")
+                    val t = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime)
+                    Fld("Weigh-in reminder") {
+                        PickerBox(t.toString()) { TimePickerDialog(context, { _, h, m -> time = LocalTime.of(h, m).toString() }, t.hour, t.minute, true).show() }
+                    }
+                    Body("That's the only daily notification. A second one fires at 7pm only if you haven't picked a day.")
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BigButton("Back", onClick = { if (step > 0) step-- }, modifier = Modifier.width(120.dp).alpha(if (step > 0) 1f else 0f), secondary = true, enabled = step > 0)
+            BigButton(when (step) { 0 -> "Let's go"; 3 -> "Start the route"; else -> "Next" }, onClick = ::next, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun Big(text: String) = Text(text, color = CutTheme.colors.text, style = cutStyle(40, 800, 1f, -0.02f, display = true))
+
+@Composable
+private fun Body(text: String) = Text(text, color = CutTheme.colors.text2, style = cutStyle(15, 500, 1.45f), modifier = Modifier.widthIn(max = 340.dp))
+
+@Composable
+private fun Hint(text: String) = Text(text, color = CutTheme.colors.text2, style = cutStyle(12, 500, 1.3f, tabular = true))
+
+@Composable
+private fun Fld(label: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label.uppercase(), color = CutTheme.colors.text2, style = cutStyle(11, 700, 1f, 0.12f))
+        content()
+    }
+}
+
+@Composable
+private fun PickerBox(label: String, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        Modifier.fillMaxWidth().height(64.dp).clip(shape).background(c.surface).border(2.dp, c.mutedBorder, shape).clickable(onClick = onClick, role = Role.Button).padding(horizontal = 18.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) { Text(label, color = c.text, style = cutStyle(22, 800, 1f, tabular = true)) }
+}
