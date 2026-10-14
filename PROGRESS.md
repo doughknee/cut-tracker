@@ -8,7 +8,7 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - [x] 4. XP engine, level, Send/Min, bonus roll, level-up takeover, chain/freeze tests
 - [x] 5. Weight screen with Canvas chart
 - [x] 6. Lift screen
-- [ ] 7. Route screen: holds, anchors, checkpoint sheet, CameraX, badges, weekly project
+- [x] 7. Route screen: holds, anchors, checkpoint sheet, CameraX, badges, weekly project
 - [ ] 8. Settings and sub-screens, export/import
 - [ ] 9. Notifications, boot re-registration
 - [ ] 10. Phase 2 switch
@@ -53,3 +53,8 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - Built: block header with Week won / Not yet pill (live from stepper values or saved sets this week), 90s rest timer card (accent while running, green at zero, triple haptic), exercise cards with Last line, weight stepper (hidden for bodyweight, label in its place), reps stepper, green values and border when beating last, Save session (one LiftSet per set, +20 session, +15 per beat, +50 first Week won per week).
 - Decisions: a never-logged exercise prefills 0 lb × 10 reps and cannot "beat" anything.
 - Deferred: per-set editing (non-goal).
+
+### Step 7: Route, checkpoints, photos, badges, projects
+- Built: Route header (Day N · pct, N sends), weekly project card (3-segment bar, +150 and badge copy), hold grid (week 12 at top, states Send/Min/Freeze/Missed/Today/Future, anchors on non-free checkpoint rows colored hit/current/upcoming), tap popover with date, result + XP and a detail line (mode, items, weight, lifts), badge shelf 4 across (13 badges: First Send, 5 chain, Came Back, 6 projects; unearned dashed with +). Checkpoints route: photo-due banner (first day, then every 14 days) with Shoot, thumbnail grid with long-press delete (inline confirm), timeline rows (hit with actual avg, current with accent ring and days-to-go, passed-not-hit shows the avg against the target, free days), "Start Phase 2" on the final checkpoint once reached, Phase 2 note. CameraX capture screen (permission flow, back camera, JPEG to filesDir/photos/YYYY-MM-DD.jpg, +40 xp once per day).
+- Decisions: holds open on tap (prototype) not long-press. Photo deletion confirms inline instead of a dialog. A passed checkpoint that was not hit stays a muted dot and shows "avg · aimed target".
+- Deferred: nothing.

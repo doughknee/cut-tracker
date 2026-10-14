@@ -38,6 +38,8 @@ import androidx.navigation.compose.rememberNavController
 import com.relentnet.cuttracker.ui.components.TakeoverOverlay
 import com.relentnet.cuttracker.ui.components.ToastPill
 import com.relentnet.cuttracker.ui.lift.LiftScreen
+import com.relentnet.cuttracker.ui.route.CameraScreen
+import com.relentnet.cuttracker.ui.route.CheckpointsScreen
 import com.relentnet.cuttracker.ui.route.RouteScreen
 import com.relentnet.cuttracker.ui.settings.SettingsScreen
 import com.relentnet.cuttracker.ui.theme.CutIcons
@@ -52,6 +54,8 @@ object Routes {
     const val LIFT = "lift"
     const val ROUTE = "route"
     const val SETTINGS = "settings"
+    const val CHECKPOINTS = "checkpoints"
+    const val CAMERA = "camera"
     val tabs = listOf(TODAY, WEIGHT, LIFT, ROUTE)
 }
 
@@ -80,7 +84,9 @@ fun App(vm: AppViewModel) {
                     }
                     composable(Routes.WEIGHT) { WeightScreen(vm) }
                     composable(Routes.LIFT) { LiftScreen(vm) }
-                    composable(Routes.ROUTE) { RouteScreen(vm) }
+                    composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }) }
+                    composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }
+                    composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS) { SettingsScreen(vm, onBack = { nav.popBackStack() }) }
                 }
             }
