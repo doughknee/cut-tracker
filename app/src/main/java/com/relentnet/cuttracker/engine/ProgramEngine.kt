@@ -250,5 +250,5 @@ object ProgramEngine {
 
     fun fmt1(v: Double) = ((v * 10).roundToInt() / 10.0).toString().let { if ('.' in it) it else "$it.0" }
 
-    fun pct(dayN: Int, total: Int) = ((dayN - 1).toDouble() / total * 100).roundToInt().coerceIn(0, 100)
+    fun pct(dayN: Int, total: Int) = (dayN.toDouble() / total * 100).roundToInt().coerceIn(0, 100)
 }

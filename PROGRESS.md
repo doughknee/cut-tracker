@@ -88,3 +88,42 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - Built: R8 + resource shrinking release, signed with a new sideload key (`cut-tracker.jks` at the repo root, `keystore.properties` beside it; both gitignored, the password is only in keystore.properties). `apksigner verify` passes. README has build, release and sideload instructions.
 - Decisions: the key is a self-signed personal key with 10000-day validity; losing it means uninstall before the next install (README says so).
 - Deferred: nothing. Emulator pass follows.
+
+## Emulator pass
+
+AVD `wren4` (android-36, x86_64) booted headless in 25s. `adb root` worked, so the clock was moved with `date` to test rollover, freezes and re-entry. Emulator set to dark (prototype default); one light-theme shot taken. Every tap coordinate is in `screenshots/taps.log`.
+
+Screenshots (`screenshots/`): onboarding-1..4, today-pick, today-climb, today-breakfast, today-dinner-options, send-takeover-spin, send-takeover, today-sent, weight, weight-day2, lift, lift-off-day, lift-won, route, route-freeze, route-popover, route-paused, route-10-weeks, checkpoints, settings, settings-bottom, today-weigh-inline, today-min, today-welcome-back, today-light.
+
+Round 1 fix: Route header percent used (day - 1); the prototype uses day / total (Day 18 = 21%). Fixed, rebuilt, re-shot. No other visible differences in spacing, type, color or copy found; round 2 not needed.
+
+## DONE
+
+- APK: `app/build/outputs/apk/release/app-release.apk` (3.5 MB, R8, signed with `cut-tracker.jks`, `apksigner verify` passes). Debug: `app/build/outputs/apk/debug/app-debug.apk`.
+- Gate: `./gradlew :app:assembleDebug` and `./gradlew :app:testDebugUnitTest` (16 tests) pass at the final commit.
+
+Acceptance checks passed on the emulator:
+- Fresh install on Oct 14: Day 1 of 84, "Pick a day", V0, 0 xp, chain 0, 2 freezes.
+- Checking breakfast: Protein 48 / 165g, +10 green, XP counted up, bar animated (XP read 20 because onboarding had already logged the weigh-in, per spec).
+- Logging 181.8 then 181.2 (day 2): avg 181.5, "on pace".
+- Every Climb-day item: confetti, +50, bonus roll (rolled 0), hold green on Route, First Send badge.
+- Weigh in + protein >= 165 with the workout unchecked: Min day, dim green hold, chain 2, "Chain safe", "secured today".
+- Skipping Oct 16: blue freeze hold, chain unbroken (3), freezes read 1.
+- Skipping Oct 17 to 20: Oct 17 frozen (second), 18 to 20 grey, chain "paused at 4", welcome-back card on next open, Came Back badge earned and lit on the shelf.
+- Floor press 55 x 10 after 50 x 10: green value and border, +15, "Week won" (+50 first time), XP 235 to 320.
+- Settings length 10 weeks: Day 8 of 70, 70 holds, end date Dec 23, send and logs kept.
+- Rollover: at 04:30 after a clock move the day advanced to Day 2 / Day 4 / Day 8 as expected (03:59 vs 04:00 covered by unit test).
+- Notifications: both receivers fired by `am broadcast` posted "Weigh in" and "Climb or off?"; exact alarms scheduled for 08:30 and 19:00.
+
+Not run on the emulator:
+- Reaching 1200 xp for the V3 takeover (thresholds unit-tested; V1 level-up fired during the pass but was not captured). The level-up takeover shares the Send takeover code.
+- Airplane mode (the app has no INTERNET permission, so nothing can change).
+- Home screen widget placement (needs launcher interaction), camera capture (no real camera; permission flow and save path exercised only by code review), export share sheet and import picker (need other apps).
+
+Differences from the prototype, and why:
+- Theme and haptics apply live; everything else in Settings applies on Save (handoff asked for Save; the prototype switches theme instantly, so appearance stays live).
+- The two "Prototype:" demo rows in Settings are not in the app.
+- Widget text is the system font (Glance cannot load Archivo).
+- Inexact AlarmManager instead of WorkManager when exact alarms are denied (same behavior, no extra dependency).
+- Tapping a workout item checks it (v3 prototype) instead of opening Lift (older v2 copy in the handoff).
+- Chain is a count of Send + Min + Freeze days that never resets; "paused" shows when the last completed day was an unfrozen miss (matches the prototype's 11 to 12 behavior).
