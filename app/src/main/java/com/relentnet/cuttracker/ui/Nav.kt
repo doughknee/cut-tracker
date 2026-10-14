@@ -28,18 +28,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.relentnet.cuttracker.ui.components.TakeoverOverlay
+import com.relentnet.cuttracker.ui.components.ToastPill
 import com.relentnet.cuttracker.ui.lift.LiftScreen
 import com.relentnet.cuttracker.ui.route.RouteScreen
 import com.relentnet.cuttracker.ui.settings.SettingsScreen
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
-import com.relentnet.cuttracker.ui.theme.ThemeMode
 import com.relentnet.cuttracker.ui.theme.cutStyle
 import com.relentnet.cuttracker.ui.today.TodayScreen
 import com.relentnet.cuttracker.ui.weight.WeightScreen
@@ -63,27 +65,33 @@ private val TABS = listOf(
 )
 
 @Composable
-fun App(themeMode: ThemeMode, onThemeMode: (ThemeMode) -> Unit) {
+fun App(vm: AppViewModel) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
+    val st by vm.state.collectAsStateWithLifecycle()
     val c = CutTheme.colors
-    Column(Modifier.fillMaxSize().background(c.ground)) {
-        Box(Modifier.weight(1f)) {
-            NavHost(nav, startDestination = Routes.TODAY) {
-                composable(Routes.TODAY) { TodayScreen(onSettings = { nav.navigate(Routes.SETTINGS) }) }
-                composable(Routes.WEIGHT) { WeightScreen() }
-                composable(Routes.LIFT) { LiftScreen() }
-                composable(Routes.ROUTE) { RouteScreen() }
-                composable(Routes.SETTINGS) {
-                    SettingsScreen(themeMode = themeMode, onThemeMode = onThemeMode, onBack = { nav.popBackStack() })
+    Box(Modifier.fillMaxSize().background(c.ground)) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                NavHost(nav, startDestination = Routes.TODAY) {
+                    composable(Routes.TODAY) {
+                        TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onOpenLift = { nav.goTab(Routes.LIFT) })
+                    }
+                    composable(Routes.WEIGHT) { WeightScreen(vm) }
+                    composable(Routes.LIFT) { LiftScreen(vm) }
+                    composable(Routes.ROUTE) { RouteScreen(vm) }
+                    composable(Routes.SETTINGS) { SettingsScreen(vm, onBack = { nav.popBackStack() }) }
                 }
             }
+            if (route in Routes.tabs) {
+                val total = st.items.size
+                SendBar(progress = if (total == 0) 0f else st.totals.done.toFloat() / total, full = st.isSend)
+                BottomNav(current = route, onGo = { nav.goTab(it) })
+            }
         }
-        if (route in Routes.tabs) {
-            SendBar(progress = 0f, full = false)
-            BottomNav(current = route, onGo = { nav.goTab(it) })
-        }
+        vm.toast?.let { ToastPill(it, Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp).windowInsetsPadding(WindowInsets.navigationBars)) }
+        vm.takeover?.let { TakeoverOverlay(it, confettiOn = st.settings.haptics, onDismiss = { vm.dismissTakeover() }) }
     }
 }
 

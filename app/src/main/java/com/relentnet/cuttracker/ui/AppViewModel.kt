@@ -1,0 +1,91 @@
+package com.relentnet.cuttracker.ui
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.relentnet.cuttracker.data.AppState
+import com.relentnet.cuttracker.data.DayMode
+import com.relentnet.cuttracker.data.ProgramSpec
+import com.relentnet.cuttracker.data.Repo
+import com.relentnet.cuttracker.data.Settings
+import com.relentnet.cuttracker.data.UiEvent
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.time.LocalTime
+
+sealed interface Takeover {
+    data class Send(val bonus: Int) : Takeover
+    data class LevelUp(val level: Int) : Takeover
+}
+
+class AppViewModel(val repo: Repo) : ViewModel() {
+    val state: StateFlow<AppState> = repo.state.stateIn(viewModelScope, SharingStarted.Eagerly, AppState())
+
+    /** Wall-clock minute, for the 7pm state. */
+    val nowTime = MutableStateFlow(LocalTime.now())
+
+    var takeover by mutableStateOf<Takeover?>(null)
+        private set
+    var toast by mutableStateOf<String?>(null)
+        private set
+    private var toastJob: kotlinx.coroutines.Job? = null
+    private val pendingLevelUps = ArrayDeque<Int>()
+
+    init {
+        viewModelScope.launch {
+            repo.events.collect { e ->
+                when (e) {
+                    is UiEvent.Send -> takeover = Takeover.Send(e.bonus)
+                    is UiEvent.LevelUp -> if (takeover == null) takeover = Takeover.LevelUp(e.level) else pendingLevelUps.addLast(e.level)
+                    is UiEvent.Badge -> showToast("${e.name} badge earned")
+                    is UiEvent.Toast -> showToast(e.text)
+                }
+            }
+        }
+        viewModelScope.launch {
+            while (true) { nowTime.value = LocalTime.now(); delay(15_000) }
+        }
+    }
+
+    fun dismissTakeover() {
+        takeover = null
+        pendingLevelUps.removeFirstOrNull()?.let { lvl ->
+            viewModelScope.launch { delay(250); takeover = Takeover.LevelUp(lvl) }
+        }
+    }
+
+    fun showToast(text: String) {
+        toast = text
+        toastJob?.cancel()
+        toastJob = viewModelScope.launch { delay(1400); toast = null }
+    }
+
+    fun opened() = viewModelScope.launch { repo.opened() }
+    fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet()) = viewModelScope.launch { repo.setMode(mode, preCheck) }
+    fun toggleItem(id: String, dinnerDefault: Boolean = false) = viewModelScope.launch { repo.toggleItem(id, dinnerDefault) }
+    fun pickDinner(mealId: String, index: Int) = viewModelScope.launch { repo.pickDinner(mealId, index) }
+    fun logWeight(lb: Double) = viewModelScope.launch {
+        repo.logWeight(lb)
+        showToast("Logged ${com.relentnet.cuttracker.engine.ProgramEngine.fmt1(lb)} · +${ProgramSpec.XP_WEIGH} xp")
+    }
+    fun saveLiftSession(entries: List<Repo.LiftEntry>) = viewModelScope.launch { repo.saveLiftSession(entries) }
+    fun savePhoto(path: String) = viewModelScope.launch { repo.savePhoto(path) }
+    fun deletePhoto(date: java.time.LocalDate) = viewModelScope.launch { repo.deletePhoto(date) }
+    fun dismissWelcomeBack() = viewModelScope.launch { repo.dismissWelcomeBack() }
+    fun setPhase(phase: Int) = viewModelScope.launch { repo.setPhase(phase) }
+    fun saveSettings(s: Settings, then: () -> Unit = {}) = viewModelScope.launch { repo.saveSettings(s); then() }
+    fun resetProgram(then: () -> Unit = {}) = viewModelScope.launch { repo.resetProgram(); then() }
+
+    companion object {
+        fun factory(repo: Repo): ViewModelProvider.Factory = viewModelFactory { initializer { AppViewModel(repo) } }
+    }
+}
