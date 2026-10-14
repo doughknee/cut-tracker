@@ -1,0 +1,132 @@
+package com.relentnet.cuttracker.ui
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.relentnet.cuttracker.ui.lift.LiftScreen
+import com.relentnet.cuttracker.ui.route.RouteScreen
+import com.relentnet.cuttracker.ui.settings.SettingsScreen
+import com.relentnet.cuttracker.ui.theme.CutIcons
+import com.relentnet.cuttracker.ui.theme.CutTheme
+import com.relentnet.cuttracker.ui.theme.ThemeMode
+import com.relentnet.cuttracker.ui.theme.cutStyle
+import com.relentnet.cuttracker.ui.today.TodayScreen
+import com.relentnet.cuttracker.ui.weight.WeightScreen
+
+object Routes {
+    const val TODAY = "today"
+    const val WEIGHT = "weight"
+    const val LIFT = "lift"
+    const val ROUTE = "route"
+    const val SETTINGS = "settings"
+    val tabs = listOf(TODAY, WEIGHT, LIFT, ROUTE)
+}
+
+private data class Tab(val route: String, val label: String, val icon: ImageVector)
+
+private val TABS = listOf(
+    Tab(Routes.TODAY, "Today", CutIcons.Today),
+    Tab(Routes.WEIGHT, "Weight", CutIcons.Weight),
+    Tab(Routes.LIFT, "Lift", CutIcons.Lift),
+    Tab(Routes.ROUTE, "Route", CutIcons.Route),
+)
+
+@Composable
+fun App(themeMode: ThemeMode, onThemeMode: (ThemeMode) -> Unit) {
+    val nav = rememberNavController()
+    val entry by nav.currentBackStackEntryAsState()
+    val route = entry?.destination?.route
+    val c = CutTheme.colors
+    Column(Modifier.fillMaxSize().background(c.ground)) {
+        Box(Modifier.weight(1f)) {
+            NavHost(nav, startDestination = Routes.TODAY) {
+                composable(Routes.TODAY) { TodayScreen(onSettings = { nav.navigate(Routes.SETTINGS) }) }
+                composable(Routes.WEIGHT) { WeightScreen() }
+                composable(Routes.LIFT) { LiftScreen() }
+                composable(Routes.ROUTE) { RouteScreen() }
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(themeMode = themeMode, onThemeMode = onThemeMode, onBack = { nav.popBackStack() })
+                }
+            }
+        }
+        if (route in Routes.tabs) {
+            SendBar(progress = 0f, full = false)
+            BottomNav(current = route, onGo = { nav.goTab(it) })
+        }
+    }
+}
+
+fun NavHostController.goTab(route: String) = navigate(route) {
+    popUpTo(graph.findStartDestination().id) { saveState = true }
+    launchSingleTop = true
+    restoreState = true
+}
+
+/** The 3dp Send progress bar that sits above the nav on every tab. */
+@Composable
+fun SendBar(progress: Float, full: Boolean) {
+    val c = CutTheme.colors
+    val p by animateFloatAsState(progress.coerceIn(0f, 1f), tween(400), label = "send")
+    Box(Modifier.fillMaxWidth().height(3.dp).background(c.hairline)) {
+        Box(Modifier.fillMaxHeight().fillMaxWidth(p).background(if (full) c.good else c.accent))
+    }
+}
+
+@Composable
+fun BottomNav(current: String?, onGo: (String) -> Unit) {
+    val c = CutTheme.colors
+    Column(Modifier.fillMaxWidth().background(c.ground)) {
+        Row(Modifier.fillMaxWidth().height(66.dp), verticalAlignment = Alignment.CenterVertically) {
+            for (t in TABS) {
+                val on = t.route == current
+                val tint = if (on) c.accent else c.text2
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() }, indication = null,
+                            role = Role.Tab, onClick = { onGo(t.route) },
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(t.icon, contentDescription = t.label, Modifier.size(22.dp), tint = tint)
+                    Text(t.label.uppercase(), color = tint, style = cutStyle(11, 700, 1f, 0.06f), modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars))
+    }
+}

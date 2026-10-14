@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One route hold (rounded 7-gon) in accent with the chain link knocked out in the ground color. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF5A1F"
+        android:strokeColor="#FF5A1F"
+        android:strokeWidth="8"
+        android:strokeLineJoin="round"
+        android:pathData="M54 26 L75.89 36.54 L81.3 60.23 L66.15 79.23 L41.85 79.23 L26.7 60.23 L32.11 36.54 Z" />
+    <group
+        android:translateX="39.6"
+        android:translateY="39.6"
+        android:scaleX="1.2"
+        android:scaleY="1.2">
+        <path
+            android:strokeColor="#0C0D0E"
+            android:strokeWidth="2.4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+        <path
+            android:strokeColor="#0C0D0E"
+            android:strokeWidth="2.4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+    </group>
+</vector>
