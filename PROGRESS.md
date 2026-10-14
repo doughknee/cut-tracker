@@ -12,8 +12,8 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - [x] 8. Settings and sub-screens, export/import
 - [x] 9. Notifications, boot re-registration
 - [x] 10. Phase 2 switch
-- [ ] 11. Home screen widget, app icon
-- [ ] 12. Export with photos, Auto Backup, Room migration scaffold
+- [x] 11. Home screen widget, app icon
+- [x] 12. Export with photos, Auto Backup, Room migration scaffold
 - [ ] 13. Release build, signed APK, README
 
 ## Environment decisions
@@ -72,4 +72,14 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 ### Step 10: Phase 2
 - Built: already wired through Settings: header "Phase 2 Chest", calories 2700, Phase 2 lift blocks (dips 4, push-ups 2; floor press 4, incline DB press 3, pullover 2, ab roller 1) via `setsPhase2` / `phase2Only`, Checkpoints note "Phase 2, no fixed end", "Start Phase 2" on the final checkpoint. Added `Phase2Test` (2 tests).
 - Decisions: Phase 2 keeps the same Today script; only the Lift blocks and calories change (the handoff lists nothing else).
+- Deferred: nothing.
+
+### Step 11: Widget and icon
+- Built: Glance 4x2 widget (mode label / "Sent", Up next card that checks the item via an ActionCallback with the same haptic, 7-segment Send bar that goes green on a Send, chain count with link icon and CHAIN SAFE), Glance 2x1 widget (chain + bar), day/night ColorProviders from the two token sets, widgets re-render on every state change (debounced 300ms) which covers DayLog edits and the rollover, previews for the picker. Adaptive icon landed in step 1 (ground background, accent 7-gon hold with the chain link in ground, monochrome 7-gon); SVG source in res/raw.
+- Decisions: Glance cannot load Archivo (RemoteViews), so the widget uses the system font. Mipmaps are vector-only (minSdk 26 supports adaptive icons everywhere), so no raster generation was needed.
+- Deferred: nothing.
+
+### Step 12: Export with photos, Auto Backup, migrations
+- Built: "Export with photos" zips backup.json plus the photos folder; Import accepts JSON or zip (zip photos restored into filesDir/photos before rows). `fullBackupContent` + `dataExtractionRules` include cut.db and datastore/, exclude photos/. Migration scaffold documented in Db.kt with the exported schema v1 under app/schemas as the reference; `Migrations.all` is passed to the builder and destructive fallback is never used.
+- Decisions: nothing beyond the handoff.
 - Deferred: nothing.

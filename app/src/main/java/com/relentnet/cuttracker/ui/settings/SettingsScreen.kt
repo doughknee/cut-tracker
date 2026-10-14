@@ -38,7 +38,8 @@ import com.relentnet.cuttracker.data.Backup
 import com.relentnet.cuttracker.data.Settings
 import com.relentnet.cuttracker.data.backupJson
 import com.relentnet.cuttracker.data.buildBackup
-import com.relentnet.cuttracker.data.restoreBackup
+import com.relentnet.cuttracker.data.restoreFrom
+import com.relentnet.cuttracker.data.writeZip
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.components.BackHeader
 import com.relentnet.cuttracker.ui.components.BigButton
@@ -84,22 +85,24 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             val ok = withContext(Dispatchers.IO) {
-                runCatching {
-                    val text = context.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
-                    vm.repo.restoreBackup(backupJson.decodeFromString(Backup.serializer(), text))
-                }.isSuccess
+                runCatching { context.contentResolver.openInputStream(uri)!!.use { vm.repo.restoreFrom(it) } }.isSuccess
             }
             vm.showToast(if (ok) "Imported" else "Could not read that file")
         }
     }
 
-    fun export() = scope.launch {
+    fun export(withPhotos: Boolean) = scope.launch {
         val file = withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "export").apply { mkdirs() }
-            File(dir, "cut-tracker-${LocalDate.now()}.json").apply { writeText(backupJson.encodeToString(Backup.serializer(), vm.repo.buildBackup())) }
+            val name = "cut-tracker-" + LocalDate.now()
+            if (withPhotos) File(dir, "$name.zip").also { vm.repo.writeZip(it) }
+            else File(dir, "$name.json").apply { writeText(backupJson.encodeToString(Backup.serializer(), vm.repo.buildBackup())) }
         }
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
-        val send = Intent(Intent.ACTION_SEND).apply { type = "application/json"; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = if (withPhotos) "application/zip" else "application/json"
+            putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
         context.startActivity(Intent.createChooser(send, "Export Cut Tracker"))
     }
 
@@ -155,8 +158,9 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
             SettingsRow("Day rolls over at", last = true) { TimePicker(LocalTime.of(d.resetHour, 0)) { d = d.copy(resetHour = it.hour) } }
         }
         Section("Data") {
-            SettingsRow("Export JSON", onClick = { export() }) { Sub("›") }
-            SettingsRow("Import JSON", onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }) { Sub("›") }
+            SettingsRow("Export JSON", onClick = { export(false) }) { Sub("›") }
+            SettingsRow("Export with photos", onClick = { export(true) }) { Sub("zip ›") }
+            SettingsRow("Import JSON or zip", onClick = { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) }) { Sub("›") }
             SettingsRow(
                 when (resetStage) { 0 -> "Reset program"; 1 -> "Tap again to wipe everything"; else -> "Last chance. Tap to reset" },
                 last = true, labelColor = c.accent,

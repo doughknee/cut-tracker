@@ -2,4 +2,5 @@
 <resources>
     <color name="ground">#F3F1EC</color>
     <color name="accent">#E8450A</color>
+    <color name="widget_text">#141413</color>
 </resources>

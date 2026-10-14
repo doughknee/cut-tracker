@@ -61,6 +61,38 @@ suspend fun Repo.buildBackup(): Backup = Backup(
     projects = db.projects().all().map { ProjectDto(it.weekStart.toString(), it.id, it.progress, it.done) },
 )
 
+/** backup.json plus every photo, as a zip. */
+suspend fun Repo.writeZip(out: java.io.File) {
+    val json = backupJson.encodeToString(Backup.serializer(), buildBackup())
+    java.util.zip.ZipOutputStream(out.outputStream().buffered()).use { zip ->
+        zip.putNextEntry(java.util.zip.ZipEntry("backup.json")); zip.write(json.toByteArray()); zip.closeEntry()
+        for (f in photosDir.listFiles().orEmpty()) {
+            zip.putNextEntry(java.util.zip.ZipEntry("photos/" + f.name)); f.inputStream().use { it.copyTo(zip) }; zip.closeEntry()
+        }
+    }
+}
+
+/** Reads a JSON or zip export. Zip photos land in the photos folder before the rows are restored. */
+suspend fun Repo.restoreFrom(input: java.io.InputStream) {
+    val bytes = input.readBytes()
+    if (bytes.size > 2 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()) {
+        var json: String? = null
+        java.util.zip.ZipInputStream(bytes.inputStream()).use { zip ->
+            var e = zip.nextEntry
+            while (e != null) {
+                when {
+                    e.name == "backup.json" -> json = zip.readBytes().decodeToString()
+                    e.name.startsWith("photos/") && !e.isDirectory -> photosDir.resolve(java.io.File(e.name).name).outputStream().use { zip.copyTo(it) }
+                }
+                e = zip.nextEntry
+            }
+        }
+        restoreBackup(backupJson.decodeFromString(Backup.serializer(), json ?: error("no backup.json in zip")))
+    } else {
+        restoreBackup(backupJson.decodeFromString(Backup.serializer(), bytes.decodeToString()))
+    }
+}
+
 /** Replaces everything with [b]. Photo rows are kept only when the file exists in the photos folder (restored from a zip or still on device). */
 suspend fun Repo.restoreBackup(b: Backup) {
     db.dayLogs().clear(); db.weighIns().clear(); db.liftSets().clear(); db.photos().clear()

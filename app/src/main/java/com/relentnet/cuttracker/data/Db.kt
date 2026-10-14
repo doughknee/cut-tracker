@@ -110,6 +110,14 @@ abstract class CutDb : RoomDatabase() {
     }
 }
 
+/**
+ * Add one Migration per schema bump and bump the @Database version; the exported schema under app/schemas is the
+ * reference. Template:
+ *
+ *     val M1_2 = object : Migration(1, 2) {
+ *         override fun migrate(db: SQLiteConnection) { db.execSQL("ALTER TABLE DayLog ADD COLUMN note TEXT") }
+ *     }
+ */
 object Migrations {
     val all = arrayOf<androidx.room.migration.Migration>()
 }

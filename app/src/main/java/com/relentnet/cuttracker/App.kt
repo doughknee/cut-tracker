@@ -6,6 +6,9 @@ import com.relentnet.cuttracker.data.CutDb
 import com.relentnet.cuttracker.data.Repo
 import com.relentnet.cuttracker.data.SettingsStore
 import com.relentnet.cuttracker.notify.Reminders
+import com.relentnet.cuttracker.widget.updateWidgets
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -19,6 +22,9 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Reminders.ensureChannel(this)
+        repo.scope.launch {
+            repo.state.filter { it.loaded }.map { listOf(it.today, it.log, it.chain, it.items.size) }.distinctUntilChanged().debounce(300).collect { updateWidgets(this@App) }
+        }
         repo.scope.launch {
             settings.flow.map { Triple(it.onboarded, it.weighInTime, it.pickTime) }.distinctUntilChanged().collect { (onboarded, _, _) ->
                 if (onboarded) Reminders.schedule(this@App, settings.current())
