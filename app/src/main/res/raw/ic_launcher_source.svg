@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <!-- Adaptive icon source. Background layer: ground #0C0D0E. Foreground: one route hold (rounded 7-gon) in accent with the chain link knocked out. -->
+  <rect width="108" height="108" fill="#0C0D0E"/>
+  <path d="M54 26 L75.89 36.54 L81.3 60.23 L66.15 79.23 L41.85 79.23 L26.7 60.23 L32.11 36.54 Z" fill="#FF5A1F" stroke="#FF5A1F" stroke-width="8" stroke-linejoin="round"/>
+  <g transform="translate(39.6 39.6) scale(1.2)" fill="none" stroke="#0C0D0E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/>
+    <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>
+  </g>
+</svg>

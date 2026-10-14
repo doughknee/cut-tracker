@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Auto Backup (API 26 to 30): the Room db and DataStore, never the photos folder. -->
+<!-- Auto Backup (API 26 to 30): only the Room db and DataStore. Listing includes excludes everything else, so photos/ stays out. -->
 <full-backup-content>
     <include domain="database" path="cut.db" />
     <include domain="file" path="datastore/" />
-    <exclude domain="file" path="photos/" />
 </full-backup-content>

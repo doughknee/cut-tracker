@@ -14,7 +14,7 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - [x] 10. Phase 2 switch
 - [x] 11. Home screen widget, app icon
 - [x] 12. Export with photos, Auto Backup, Room migration scaffold
-- [ ] 13. Release build, signed APK, README
+- [x] 13. Release build, signed APK, README
 
 ## Environment decisions
 
@@ -83,3 +83,8 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - Built: "Export with photos" zips backup.json plus the photos folder; Import accepts JSON or zip (zip photos restored into filesDir/photos before rows). `fullBackupContent` + `dataExtractionRules` include cut.db and datastore/, exclude photos/. Migration scaffold documented in Db.kt with the exported schema v1 under app/schemas as the reference; `Migrations.all` is passed to the builder and destructive fallback is never used.
 - Decisions: nothing beyond the handoff.
 - Deferred: nothing.
+
+### Step 13: Release build
+- Built: R8 + resource shrinking release, signed with a new sideload key (`cut-tracker.jks` at the repo root, `keystore.properties` beside it; both gitignored, the password is only in keystore.properties). `apksigner verify` passes. README has build, release and sideload instructions.
+- Decisions: the key is a self-signed personal key with 10000-day validity; losing it means uninstall before the next install (README says so).
+- Deferred: nothing. Emulator pass follows.
