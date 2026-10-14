@@ -4,10 +4,10 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 
 - [x] 1. Project scaffold, theme, bottom nav, Settings route
 - [x] 2. Room entities, DAOs, repository, ProgramSpec + DataStore, day-boundary logic + tests
-- [ ] 3. Today screen end to end
-- [ ] 4. XP engine, level, Send/Min, bonus roll, level-up takeover, chain/freeze tests
-- [ ] 5. Weight screen with Canvas chart
-- [ ] 6. Lift screen
+- [x] 3. Today screen end to end
+- [x] 4. XP engine, level, Send/Min, bonus roll, level-up takeover, chain/freeze tests
+- [x] 5. Weight screen with Canvas chart
+- [x] 6. Lift screen
 - [ ] 7. Route screen: holds, anchors, checkpoint sheet, CameraX, badges, weekly project
 - [ ] 8. Settings and sub-screens, export/import
 - [ ] 9. Notifications, boot re-registration
@@ -33,3 +33,23 @@ Unattended run started 2026-10-14. Steps per `CUT_TRACKER_HANDOFF.md` build orde
 - Built: Room entities (DayLog with `dinnerIndex`, WeighIn, LiftSet, ProgressPhoto, XpEvent, Badge, WeeklyProject), DAOs with Flows, `CutDb` v1 with exported schema and an empty migration list, `SettingsStore` (DataStore Preferences, lists stored as JSON), `ProgramSpec` defaults, `ProgramEngine` pure functions (program day, day number, script, totals, Min/Send, levels, bonus roll, 7-day average, pace, results/freezes/chain, lifts, photo cadence). 14 unit tests pass.
 - Decisions: end date = start + weeks*7 (Jan 6), holds are days 1..84 (Oct 14 to Jan 5), Jan 6 is the final checkpoint "when reached". Checkpoint week label = whole weeks elapsed (Oct 28 = week 2) to match the prototype. Chain = total count of Send + Min + Freeze days (never resets; "paused" when yesterday was an unfrozen miss), which reproduces the prototype's 11 to 12 behavior. Free days count as Send. 7-day average falls back to the last 7 logged readings if the trailing window is empty. Dinner options stay fixed in ProgramSpec (the prototype's Meals editor does not edit them).
 - Deferred: nothing.
+
+### Step 3: Today screen
+- Built: `Repo` (single write path, one combined `AppState` flow), `AppViewModel`, `Haptics` (Vibrator predefined effects, gated by the toggle), Today v3: header with phase gear, welcome-back card, XP strip (level badge, counting XP, bar, chain + freeze caption), pick cards / mode chip + "Chain safe" / 7pm card, script rows with "Up next", swipe-to-check (80dp threshold, 140dp travel, green underlay), inline weigh-in (prefill, -.2/+.2 chips, Enter logs), inline dinner pick, collapsed Done group, protein bar tile and calories tile (hidden on free days), Send bar above the nav on every tab, toast pill.
+- Decisions: chain caption reads "secured today" / "paused · N freezes" / "N freezes". Mode "Change" clears the day's items (prototype); picking a mode from null keeps weigh-in and meal ids. Tapping a workout item checks it (v3 prototype) rather than navigating to Lift (v2 copy).
+- Deferred: nothing.
+
+### Step 4: XP engine
+- Built: `syncDay` reconciles the XpEvent ledger with the DayLog after every write (item events, send + one stored bonus roll, min when not a send; unchecking deletes). Level-ups detected by comparing level before/after each write. Send takeover: 900ms reel then slam + heavy haptic, confetti (accent + success only, 70 frames from the nav upward), "Nice". Level-up takeover auto-dismisses at 1.5s or on tap and queues behind a Send. Chain/freeze/Min/Send unit tests landed in step 2.
+- Decisions: the bonus is its own XpEvent (amount may be 0) so a Send never re-rolls; undoing the Send deletes it.
+- Deferred: nothing.
+
+### Step 5: Weight screen
+- Built: 7-day average hero (46sp, counts), delta + pace copy (green / accent), target tile with "lb to go", Canvas chart (y from floor(target) to ceil(start) or wider if readings demand, three gridlines, dashed target line, accent 7-day-average line with end dot, daily dots only while pressed, start/end date labels), 64dp input with Log, four quick chips, Enter submits. Logging also checks "Weigh in" on Today via the repo.
+- Decisions: the average line uses the trailing-average rule at each logged date.
+- Deferred: nothing.
+
+### Step 6: Lift screen
+- Built: block header with Week won / Not yet pill (live from stepper values or saved sets this week), 90s rest timer card (accent while running, green at zero, triple haptic), exercise cards with Last line, weight stepper (hidden for bodyweight, label in its place), reps stepper, green values and border when beating last, Save session (one LiftSet per set, +20 session, +15 per beat, +50 first Week won per week).
+- Decisions: a never-logged exercise prefills 0 lb × 10 reps and cannot "beat" anything.
+- Deferred: per-set editing (non-goal).
