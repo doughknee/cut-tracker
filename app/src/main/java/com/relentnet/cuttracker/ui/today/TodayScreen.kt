@@ -104,6 +104,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onOpenLift: () -> Unit
                 all -> "Sent"
                 mode == DayMode.CLIMB -> "Climb day"
                 mode == DayMode.OFF -> "Off day"
+                mode == DayMode.REST -> "Rest day"
                 else -> "Pick a day"
             },
             titleColor = if (all) c.good else c.text,
@@ -130,11 +131,16 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onOpenLift: () -> Unit
 
         when {
             late -> LateCard(
-                onOff = { vm.setMode(DayMode.OFF) },
+                onRest = { vm.setMode(DayMode.REST) },
                 onClimb = { vm.setMode(DayMode.CLIMB, preCheck = setOf(ProgramSpec.ITEM_CLIMB)) },
             )
             mode == null -> PickCards(st, onPick = { haptics.tap(); vm.setMode(it, date = editDate) })
-            else -> ModeChipRow(mode, dv.isMin || dv.isSend, onChange = { weighOpen = false; pickOpen = false; vm.setMode(null, date = editDate) })
+            else -> ModeChipRow(
+                mode, dv.isMin || dv.isSend,
+                onChange = { weighOpen = false; pickOpen = false; vm.setMode(null, date = editDate) },
+                // An Off day with the block unchecked is a Rest day that was logged under the old rules; one tap fixes it.
+                onMakeRest = if (mode == DayMode.OFF && ProgramSpec.ITEM_CORE !in done) ({ haptics.tap(); vm.setMode(DayMode.REST, date = editDate) }) else null,
+            )
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -278,14 +284,14 @@ fun XpStrip(st: AppState) {
 }
 
 @Composable
-private fun LateCard(onOff: () -> Unit, onClimb: () -> Unit) {
+private fun LateCard(onRest: () -> Unit, onClimb: () -> Unit) {
     val c = CutTheme.colors
     Card(Modifier.fillMaxWidth(), border = c.accent, borderWidth = 2.dp, radius = 14.dp, padding = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("It's 7pm and no day is picked.", color = c.text, style = cutStyle(20, 800, 1.1f, -0.02f, display = true))
-            Sub("Guessing Off day. Weigh in and hit protein and the chain is safe. Nothing else required tonight.")
+            Sub("Guessing Rest day. Weigh in and hit protein and the chain is safe. Nothing else required tonight.")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                BigButton("Yep, Off day", onClick = onOff, modifier = Modifier.weight(1f), height = 48.dp, fontSize = 13)
+                BigButton("Yep, Rest day", onClick = onRest, modifier = Modifier.weight(1f), height = 48.dp, fontSize = 13)
                 BigButton("I climbed", onClick = onClimb, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 13)
             }
         }
@@ -296,19 +302,27 @@ private fun LateCard(onOff: () -> Unit, onClimb: () -> Unit) {
 private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
     val climb = ProgramEngine.script(DayMode.CLIMB, st.settings, null)
     val off = ProgramEngine.script(DayMode.OFF, st.settings, null)
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        PickCard(Modifier.weight(1f), CutIcons.Climb, "Climb day", "Climb, then 15 min push at the gym. ${climb.size} items, ${ProgramEngine.totalXp(climb)} xp.") { onPick(DayMode.CLIMB) }
-        PickCard(Modifier.weight(1f), CutIcons.Off, "Off day", "15 min core + push at home. ${off.size} items, ${ProgramEngine.totalXp(off)} xp.") { onPick(DayMode.OFF) }
+    val rest = ProgramEngine.script(DayMode.REST, st.settings, null)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PickCard(Modifier.weight(1f), CutIcons.Climb, "Climb day", "Climb, then 15 min push at the gym. ${climb.size} items, ${ProgramEngine.totalXp(climb)} xp.") { onPick(DayMode.CLIMB) }
+            PickCard(Modifier.weight(1f), CutIcons.Off, "Off day", "15 min core + push at home. ${off.size} items, ${ProgramEngine.totalXp(off)} xp.") { onPick(DayMode.OFF) }
+        }
+        PickCard(
+            Modifier.fillMaxWidth(), CutIcons.Rest, "Rest day",
+            "Weigh in and eat the script. No block. ${rest.size} items, ${ProgramEngine.totalXp(rest)} xp. Workouts ${st.workoutsThisWeek} of ${st.settings.workoutsPerWeek} this week.",
+            wide = true,
+        ) { onPick(DayMode.REST) }
     }
 }
 
 @Composable
-private fun PickCard(modifier: Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, sub: String, onClick: () -> Unit) {
+private fun PickCard(modifier: Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, sub: String, wide: Boolean = false, onClick: () -> Unit) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(14.dp)
     Column(
         modifier
-            .heightIn(min = 150.dp)
+            .heightIn(min = if (wide) 0.dp else 150.dp)
             .clip(shape)
             .background(c.surface, shape)
             .border(2.dp, c.mutedBorder, shape)
@@ -327,9 +341,10 @@ private fun PickCard(modifier: Modifier, icon: androidx.compose.ui.graphics.vect
 }
 
 @Composable
-private fun ModeChipRow(mode: DayMode?, safe: Boolean, onChange: () -> Unit) {
+private fun ModeChipRow(mode: DayMode?, safe: Boolean, onChange: () -> Unit, onMakeRest: (() -> Unit)? = null) {
     val c = CutTheme.colors
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             Modifier
                 .height(36.dp)
@@ -341,11 +356,17 @@ private fun ModeChipRow(mode: DayMode?, safe: Boolean, onChange: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)).background(c.accent), contentAlignment = Alignment.Center) {
-                Icon(if (mode == DayMode.CLIMB) CutIcons.Climb else CutIcons.Off, null, Modifier.size(13.dp), tint = c.onAccent)
+                Icon(when (mode) { DayMode.CLIMB -> CutIcons.Climb; DayMode.REST -> CutIcons.Rest; else -> CutIcons.Off }, null, Modifier.size(13.dp), tint = c.onAccent)
             }
-            Text(if (mode == DayMode.CLIMB) "Climb day" else "Off day", color = c.text2, style = cutStyle(12, 600, 1f, 0.04f))
+            Text(when (mode) { DayMode.CLIMB -> "Climb day"; DayMode.REST -> "Rest day"; else -> "Off day" }, color = c.text2, style = cutStyle(12, 600, 1f, 0.04f))
             Text("Change", color = c.accent, style = cutStyle(12, 800, 1f, 0.06f))
         }
+        if (onMakeRest != null) Box(
+            Modifier.height(36.dp).clip(RoundedCornerShape(999.dp)).border(1.dp, c.mutedBorder, RoundedCornerShape(999.dp))
+                .clickable(onClick = onMakeRest, role = Role.Button).padding(horizontal = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) { Text("MAKE IT REST", color = c.text, style = cutStyle(11, 800, 1f, 0.06f)) }
+      }
         if (safe) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Icon(CutIcons.Shield, null, Modifier.size(12.dp), tint = c.good)
             Text("CHAIN SAFE", color = c.good, style = cutStyle(10, 800, 1f, 0.1f))

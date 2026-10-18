@@ -79,6 +79,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
     var tw by remember(saved) { mutableStateOf(fmt(saved.targetWeight)) }
     var cal by remember(saved) { mutableStateOf(saved.calories.toString()) }
     var pro by remember(saved) { mutableStateOf(saved.protein.toString()) }
+    var wpw by remember(saved) { mutableStateOf(saved.workoutsPerWeek.toString()) }
     var resetStage by remember { mutableIntStateOf(0) }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -115,6 +116,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
             caloriesP1 = if (d.phase == 1) cal.toIntOrNull() ?: saved.caloriesP1 else d.caloriesP1,
             caloriesP2 = if (d.phase == 2) cal.toIntOrNull() ?: saved.caloriesP2 else d.caloriesP2,
             protein = pro.toIntOrNull() ?: saved.protein,
+            workoutsPerWeek = wpw.toIntOrNull()?.coerceIn(0, 7) ?: saved.workoutsPerWeek,
         )
         vm.saveSettings(s) { vm.showToast("Saved"); onBack() }
     }
@@ -148,6 +150,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
         Section("Targets") {
             SettingsRow("Calories") { NumField(cal, { cal = it }, 84.dp) }
             SettingsRow("Protein") { NumField(pro, { pro = it }, 64.dp); Sub("g") }
+            SettingsRow("Workouts per week") { NumField(wpw, { wpw = it }, 56.dp); Sub("the plan assumed 5 to 6") }
             SettingsRow("Meals", onClick = onMeals) { Sub("${saved.meals.size} items ›") }
             SettingsRow("Exercises", onClick = onExercises) { Sub("${saved.exercises.size} items ›") }
             SettingsRow("Checkpoints and free days", last = true, onClick = onCheckpoints) { Sub("${saved.checkpoints.size} ›") }

@@ -34,6 +34,7 @@ object CutIcons {
     val Link = stroke("link", 2.4f, "M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1", "M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1")
     val Climb = stroke("climb", 2.2f, "M4 20l6-14 4 7 2-3 4 10z")
     val Off = stroke("off", 2.2f, "M3 12h4l3-7 4 14 3-7h4")
+    val Rest = stroke("rest", 2.2f, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z")
     val Shield = stroke("shield", 2.6f, "M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z", "M8.5 12l2.5 2.5 4.5-5")
     val Camera = stroke("camera", 2f, "M4 8h3l2-3h6l2 3h3v11H4z", circle(12f, 13f, 3.5f))
     val Anchor = stroke("anchor", 2.4f, circle(12f, 5f, 3f), "M12 22V8M5 12H2a10 10 0 0020 0h-3")

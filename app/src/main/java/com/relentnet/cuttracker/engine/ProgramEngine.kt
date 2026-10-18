@@ -61,12 +61,16 @@ object ProgramEngine {
     fun script(mode: DayMode?, s: Settings, dinnerIndex: Int?): List<ScriptItem> {
         if (mode == null) return emptyList()
         val weigh = ScriptItem(ProgramSpec.ITEM_WEIGH, "Weigh in", "Before food. Log it, ignore the number.", "8:30", ProgramSpec.XP_WEIGH)
-        val workout = if (mode == DayMode.CLIMB) listOf(
-            ScriptItem(ProgramSpec.ITEM_CLIMB, "Climb", "Climb Nashville East. Before lunch.", "11:00", ProgramSpec.XP_CLIMB, workout = true),
-            ScriptItem(ProgramSpec.ITEM_PUSH, "Push block", "Dips 3x, push-ups 2x. Last 15 min at the gym.", "12:15", ProgramSpec.XP_PUSH, workout = true),
-        ) else listOf(
-            ScriptItem(ProgramSpec.ITEM_CORE, "Core + push block", "Ab roller, leg raises, floor press, pullover. 15 min at home.", "any", ProgramSpec.XP_CORE, workout = true),
-        )
+        val workout = when (mode) {
+            DayMode.CLIMB -> listOf(
+                ScriptItem(ProgramSpec.ITEM_CLIMB, "Climb", "Climb Nashville East. Before lunch.", "11:00", ProgramSpec.XP_CLIMB, workout = true),
+                ScriptItem(ProgramSpec.ITEM_PUSH, "Push block", "Dips 3x, push-ups 2x. Last 15 min at the gym.", "12:15", ProgramSpec.XP_PUSH, workout = true),
+            )
+            DayMode.OFF -> listOf(
+                ScriptItem(ProgramSpec.ITEM_CORE, "Core + push block", "Ab roller, leg raises, floor press, pullover. 15 min at home.", "any", ProgramSpec.XP_CORE, workout = true),
+            )
+            DayMode.REST -> emptyList()
+        }
         val meals = s.meals.map { m -> mealItem(m, dinnerIndex) }
         return if (meals.isEmpty()) listOf(weigh) + workout
         else listOf(weigh, meals.first()) + workout + meals.drop(1)
@@ -231,6 +235,20 @@ object ProgramEngine {
         last != null && (now.first > last.first || now.second > last.second)
 
     /** True once any exercise session in the week of [day] beat its previous session. */
+    /** A workout is a Climb day with the push block checked or an Off day with the core block checked. */
+    fun isWorkout(log: DayLog): Boolean = when (log.mode) {
+        DayMode.CLIMB -> ProgramSpec.ITEM_PUSH in log.doneItemIds
+        DayMode.OFF -> ProgramSpec.ITEM_CORE in log.doneItemIds
+        else -> false
+    }
+
+    /** Workouts logged in the Monday-to-Sunday week of [day]. */
+    fun workoutsInWeek(logs: List<DayLog>, day: LocalDate): Int {
+        val ws = weekStart(day)
+        val we = ws.plusDays(6)
+        return logs.count { !it.date.isBefore(ws) && !it.date.isAfter(we) && isWorkout(it) }
+    }
+
     fun weekWon(sets: List<LiftSet>, day: LocalDate): Boolean {
         val ws = weekStart(day)
         val we = ws.plusDays(6)

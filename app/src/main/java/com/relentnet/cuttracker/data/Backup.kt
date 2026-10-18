@@ -25,7 +25,7 @@ data class SettingsDto(
     val onboarded: Boolean, val phase: Int, val startDate: String, val lengthWeeks: Int, val startWeight: Double, val targetWeight: Double,
     val caloriesP1: Int, val caloriesP2: Int, val protein: Int, val meals: List<Meal>, val exercises: List<Exercise>, val checkpoints: List<Checkpoint>,
     val weighInTime: String, val pickTime: String, val resetHour: Int, val haptics: Boolean, val theme: String,
-    val lastOpenDate: String? = null, val welcomeBackSeen: String? = null,
+    val lastOpenDate: String? = null, val welcomeBackSeen: String? = null, val workoutsPerWeek: Int = 3,
 )
 
 @Serializable data class DayLogDto(val date: String, val mode: String?, val done: List<String>, val dinnerIndex: Int?)
@@ -40,11 +40,11 @@ val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyP
 
 fun Settings.toDto() = SettingsDto(
     onboarded, phase, startDate.toString(), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
-    weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(),
+    weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
 )
 
 fun SettingsDto.toSettings() = Settings(
-    onboarded, phase, LocalDate.parse(startDate), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
+    onboarded, phase, LocalDate.parse(startDate), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, workoutsPerWeek, meals, exercises, checkpoints,
     java.time.LocalTime.parse(weighInTime), java.time.LocalTime.parse(pickTime), resetHour, haptics, theme,
     lastOpenDate?.let(LocalDate::parse), welcomeBackSeen?.let(LocalDate::parse),
 )

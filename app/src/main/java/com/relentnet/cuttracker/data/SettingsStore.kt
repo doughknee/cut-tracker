@@ -29,6 +29,7 @@ data class Settings(
     val caloriesP1: Int = ProgramSpec.CALORIES_P1,
     val caloriesP2: Int = ProgramSpec.CALORIES_P2,
     val protein: Int = ProgramSpec.PROTEIN_G,
+    val workoutsPerWeek: Int = ProgramSpec.WORKOUTS_PER_WEEK,
     val meals: List<Meal> = ProgramSpec.meals,
     val exercises: List<Exercise> = ProgramSpec.exercises,
     val checkpoints: List<Checkpoint> = ProgramSpec.checkpoints,
@@ -63,6 +64,7 @@ class SettingsStore(context: Context) {
         val caloriesP1 = intPreferencesKey("caloriesP1")
         val caloriesP2 = intPreferencesKey("caloriesP2")
         val protein = intPreferencesKey("protein")
+        val workoutsPerWeek = intPreferencesKey("workoutsPerWeek")
         val meals = stringPreferencesKey("meals")
         val exercises = stringPreferencesKey("exercises")
         val checkpoints = stringPreferencesKey("checkpoints")
@@ -91,6 +93,7 @@ class SettingsStore(context: Context) {
             caloriesP1 = p[K.caloriesP1] ?: d.caloriesP1,
             caloriesP2 = p[K.caloriesP2] ?: d.caloriesP2,
             protein = p[K.protein] ?: d.protein,
+            workoutsPerWeek = p[K.workoutsPerWeek] ?: d.workoutsPerWeek,
             meals = p[K.meals]?.let { runCatching { json.decodeFromString(ListSerializer(Meal.serializer()), it) }.getOrNull() } ?: d.meals,
             exercises = p[K.exercises]?.let { runCatching { json.decodeFromString(ListSerializer(Exercise.serializer()), it) }.getOrNull() } ?: d.exercises,
             checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
@@ -119,6 +122,7 @@ class SettingsStore(context: Context) {
         p[K.caloriesP1] = s.caloriesP1
         p[K.caloriesP2] = s.caloriesP2
         p[K.protein] = s.protein
+        p[K.workoutsPerWeek] = s.workoutsPerWeek
         p[K.meals] = json.encodeToString(ListSerializer(Meal.serializer()), s.meals)
         p[K.exercises] = json.encodeToString(ListSerializer(Exercise.serializer()), s.exercises)
         p[K.checkpoints] = json.encodeToString(ListSerializer(Checkpoint.serializer()), s.checkpoints)

@@ -43,6 +43,7 @@ import com.relentnet.cuttracker.data.AppState
 import com.relentnet.cuttracker.data.BadgeIds
 import com.relentnet.cuttracker.data.DayMode
 import com.relentnet.cuttracker.data.ProgramSpec
+import com.relentnet.cuttracker.data.projectTarget
 import com.relentnet.cuttracker.engine.DayResult
 import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
@@ -173,16 +174,27 @@ private fun ProjectCard(st: AppState) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Eyebrow("This week's project", color = c.accent, size = 11)
-                if (spec != null) Text("${st.projectProgress.coerceAtMost(spec.target)} / ${spec.target}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true))
+                if (spec != null) Text("${st.projectProgress.coerceAtMost(projectTarget(spec, st.settings))} / ${projectTarget(spec, st.settings)}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true))
             }
             Text(spec?.title ?: "A new project appears Monday.", color = c.text, style = cutStyle(17, 700, 1.2f))
             if (spec != null) {
-                val filled = if (st.project?.done == true) 3 else (st.projectProgress * 3 / spec.target).coerceIn(0, 3)
+                val filled = if (st.project?.done == true) 3 else (st.projectProgress * 3 / projectTarget(spec, st.settings).coerceAtLeast(1)).coerceIn(0, 3)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (i in 0 until 3) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < filled) c.good else c.hairline))
                 }
                 Sub("+${ProgramSpec.XP_PROJECT} xp and the ${spec.badgeName} badge. New project every Monday.", size = 12)
             }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(c.hairline))
+            val target = st.settings.workoutsPerWeek
+            val w = st.workoutsThisWeek
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Workouts this week", color = c.text, style = cutStyle(13, 700, 1.2f))
+                Text("$w of $target", color = if (w >= target) c.good else c.text2, style = cutStyle(11, 700, 1f, tabular = true))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (i in 0 until target.coerceAtLeast(1)) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < w) c.good else c.hairline))
+            }
+            Sub("Push block on a Climb day or the core block on an Off day. +${ProgramSpec.XP_WORKOUT_TARGET} xp the week you hit it.", size = 12)
         }
     }
 }
@@ -255,7 +267,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
         DayResult.TODAY -> "In progress. Finish the script for a Send."
         DayResult.FUTURE, DayResult.BEFORE -> "Not here yet."
         else -> buildList {
-            when (log?.mode) { DayMode.CLIMB -> add("Climb day."); DayMode.OFF -> add("Off day."); null -> add("Free day.") }
+            when (log?.mode) { DayMode.CLIMB -> add("Climb day."); DayMode.OFF -> add("Off day."); DayMode.REST -> add("Rest day."); null -> add("Free day.") }
             if (items.isNotEmpty()) add("$done of ${items.size} items.")
             if (weight != null) add("${ProgramEngine.fmt1(weight)} lb.")
             st.liftSets.filter { it.date == date }.groupBy { it.exerciseId }.forEach { (id, sets) ->

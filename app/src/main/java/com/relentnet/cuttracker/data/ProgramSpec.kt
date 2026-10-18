@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import java.time.LocalDate
 import java.time.LocalTime
 
-enum class DayMode { CLIMB, OFF }
+enum class DayMode { CLIMB, OFF, REST }
 
 enum class Block { CLIMB, OFF }
 
@@ -93,6 +93,8 @@ object ProgramSpec {
     const val XP_SEND = 50
     const val XP_MIN = 20
     const val XP_PROJECT = 150
+    const val XP_WORKOUT_TARGET = 40
+    const val WORKOUTS_PER_WEEK = 3
 
     val meals = listOf(
         Meal("b", "Breakfast", "Greek yogurt + whey + banana", "9:00", 48, 430, xp = 10),
@@ -133,5 +135,7 @@ object ProgramSpec {
         ProjectSpec("push2", "Two push blocks on climb days", "heelhook", "Heel Hook", 2),
         ProjectSpec("protein6", "Hit protein 6 of 7 days", "mantle", "Mantle", 6),
         ProjectSpec("offnoon3", "One full Off-day block before noon, three times", "topout", "Top Out", 3),
+        // Target reads Settings.workoutsPerWeek at runtime; 3 here is only the default.
+        ProjectSpec("workouts", "Hit the workout target", "jug", "Jug", WORKOUTS_PER_WEEK),
     )
 }

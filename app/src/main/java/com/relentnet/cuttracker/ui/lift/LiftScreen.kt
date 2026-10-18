@@ -58,7 +58,7 @@ fun LiftScreen(vm: AppViewModel) {
     val blocks: List<Block> = when (st.mode) {
         DayMode.CLIMB -> listOf(Block.CLIMB)
         DayMode.OFF -> listOf(Block.OFF)
-        null -> listOf(Block.CLIMB, Block.OFF)
+        DayMode.REST, null -> listOf(Block.CLIMB, Block.OFF)
     }
     val exercises = blocks.flatMap { ProgramEngine.exercisesFor(it, s) }
     val last = remember(st.liftSets, st.today) { exercises.associate { it.id to ProgramEngine.lastSession(st.liftSets, it.id, st.today) } }
@@ -80,6 +80,7 @@ fun LiftScreen(vm: AppViewModel) {
                     when (st.mode) {
                         DayMode.CLIMB -> "Climb day block · Week ${st.weekN}"
                         DayMode.OFF -> "Off day block · Week ${st.weekN}"
+                        DayMode.REST -> "Rest day · Week ${st.weekN}"
                         null -> "Both blocks · Week ${st.weekN}"
                     },
                 )

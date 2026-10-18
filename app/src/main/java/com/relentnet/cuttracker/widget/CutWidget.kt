@@ -284,6 +284,9 @@ private fun PickStage(st: AppState) {
             PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, "Climb day", "${climb.size} items · ${ProgramEngine.totalXp(climb)} xp · gym push")
             Spacer(GlanceModifier.width(8.dp))
             PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${off.size} items · ${ProgramEngine.totalXp(off)} xp · core at home")
+            Spacer(GlanceModifier.width(8.dp))
+            val rest = ProgramEngine.script(DayMode.REST, st.settings, null)
+            PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${rest.size} items · ${ProgramEngine.totalXp(rest)} xp · no block")
         }
     }
 }
@@ -325,7 +328,10 @@ private fun Dashboard(st: AppState) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             WeekHolds(st)
             Spacer(GlanceModifier.width(6.dp))
-            Text((if (st.mode == DayMode.CLIMB) "CLIMB DAY" else "OFF DAY") + " · DAY ${st.dayN}", style = eyebrow(), modifier = GlanceModifier.defaultWeight())
+            Text(
+                when (st.mode) { DayMode.CLIMB -> "CLIMB DAY"; DayMode.REST -> "REST DAY"; else -> "OFF DAY" } + " · DAY ${st.dayN}",
+                style = eyebrow(), modifier = GlanceModifier.defaultWeight(),
+            )
             ChainBadge(st, safe)
         }
         Spacer(GlanceModifier.height(6.dp))
