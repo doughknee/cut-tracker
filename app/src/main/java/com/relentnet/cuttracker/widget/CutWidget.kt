@@ -176,11 +176,13 @@ private fun Small(st: AppState) {
 private fun Segments(st: AppState) {
     val total = st.items.size.coerceAtLeast(1)
     val done = st.totals.done
+    // Glance allows at most 10 children per Row, so the gaps are padding, not spacers.
     Row(GlanceModifier.fillMaxWidth()) {
         for (i in 0 until if (st.items.isEmpty()) 7 else total) {
             val on = i < done
-            Box(GlanceModifier.defaultWeight().height(6.dp).cornerRadius(3.dp).background(if (!on) W.hairline else if (st.isSend) W.good else W.accent)) {}
-            if (i < total - 1) Spacer(GlanceModifier.width(3.dp))
+            Box(GlanceModifier.defaultWeight().height(6.dp).padding(horizontal = 1.5.dp)) {
+                Box(GlanceModifier.fillMaxSize().cornerRadius(3.dp).background(if (!on) W.hairline else if (st.isSend) W.good else W.accent)) {}
+            }
         }
     }
 }
