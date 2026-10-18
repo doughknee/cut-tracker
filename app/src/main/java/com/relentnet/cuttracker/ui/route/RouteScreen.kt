@@ -78,7 +78,7 @@ fun currentCheckpointDate(st: AppState): LocalDate? =
     st.settings.checkpoints.filter { !it.free }.map { it.localDate }.sorted().firstOrNull { !st.today.isAfter(it) }
 
 @Composable
-fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit) {
+fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDate) -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val haptics = LocalHaptics.current
@@ -137,7 +137,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit) {
             }
             BadgeShelf(st.badges)
         }
-        pop?.let { date -> HoldPopover(st, date, onClose = { pop = null }) }
+        pop?.let { date -> HoldPopover(st, date, onClose = { pop = null }, onEdit = { pop = null; onEditDay(date) }) }
     }
 }
 
@@ -233,7 +233,7 @@ fun Modifier.dashedBorder(color: Color, radius: Float = 10f) = drawBehind {
 
 /** Bottom popover naming the day, its result with XP, and one line of detail. */
 @Composable
-private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit) {
+private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEdit: () -> Unit) {
     val c = CutTheme.colors
     val r = st.results[date] ?: DayResult.FUTURE
     val log = st.logs.firstOrNull { it.date == date }
@@ -276,7 +276,11 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit) {
                     Text(title, color = color, style = cutStyle(12, 800, 1f, tabular = true))
                 }
                 Sub(detail, size = 12)
-                BigButton("Close", onClick = onClose, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), secondary = true, height = 40.dp, fontSize = 12)
+                val editable = !date.isAfter(st.today) && !date.isBefore(st.settings.startDate)
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (editable) BigButton(if (date == st.today) "Open today" else "Edit day", onClick = onEdit, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12)
+                    BigButton("Close", onClick = onClose, modifier = Modifier.weight(1f), secondary = true, height = 40.dp, fontSize = 12)
+                }
             }
         }
     }

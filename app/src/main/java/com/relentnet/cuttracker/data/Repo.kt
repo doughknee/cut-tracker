@@ -56,6 +56,25 @@ data class AppState(
     val lastWeighIn: WeighIn? get() = weighIns.maxByOrNull { it.date }
     val projectSpec: ProjectSpec? get() = project?.let { p -> ProgramSpec.projects.firstOrNull { it.id == p.id } }
     val missedRun: Int get() = ProgramEngine.missedRunBefore(results, today)
+
+    /** Everything Today needs about one program day, past or present. */
+    data class DayView(
+        val date: LocalDate, val log: DayLog, val items: List<ScriptItem>, val totals: ProgramEngine.Totals,
+        val isMin: Boolean, val isSend: Boolean, val result: DayResult,
+    )
+
+    fun day(date: LocalDate): DayView {
+        val l = logs.firstOrNull { it.date == date } ?: DayLog(date)
+        val it = ProgramEngine.script(l.mode, settings, l.dinnerIndex)
+        return DayView(
+            date, l, it, ProgramEngine.totals(it, l.doneItemIds),
+            ProgramEngine.isMin(it, l.doneItemIds, settings.protein), ProgramEngine.isSend(it, l.doneItemIds),
+            results[date] ?: DayResult.FUTURE,
+        )
+    }
+
+    /** The most recent reading before [date]; the inline weigh-in prefills from it. */
+    fun weighInBefore(date: LocalDate): WeighIn? = weighIns.filter { it.date.isBefore(date) }.maxByOrNull { it.date }
 }
 
 sealed interface UiEvent {
@@ -157,8 +176,8 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     // Writes
 
-    suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet()) = write { s, today ->
-        val log = db.dayLogs().get(today) ?: DayLog(today)
+    suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: LocalDate? = null) = write(date) { s, d ->
+        val log = db.dayLogs().get(d) ?: DayLog(d)
         val keep = if (mode == null) emptySet() else {
             val mealIds = s.meals.map { it.id }.toSet() + ProgramSpec.ITEM_WEIGH
             log.doneItemIds.filter { it in mealIds }.toSet()
@@ -166,25 +185,23 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, dinnerIndex = if (mode == null) null else log.dinnerIndex))
     }
 
-    suspend fun toggleItem(id: String, dinnerDefault: Boolean = false) = write { s, today ->
-        val log = db.dayLogs().get(today) ?: DayLog(today)
+    suspend fun toggleItem(id: String, dinnerDefault: Boolean = false, date: LocalDate? = null) = write(date) { s, d ->
+        val log = db.dayLogs().get(d) ?: DayLog(d)
         val done = if (id in log.doneItemIds) log.doneItemIds - id else log.doneItemIds + id
         val meal = s.meals.firstOrNull { it.id == id }
         val dinner = if (meal?.pick == true && id in done && log.dinnerIndex == null && dinnerDefault) 0 else log.dinnerIndex
         db.dayLogs().upsert(log.copy(doneItemIds = done, dinnerIndex = dinner))
     }
 
-    suspend fun pickDinner(mealId: String, index: Int) = write { _, today ->
-        val log = db.dayLogs().get(today) ?: DayLog(today)
+    suspend fun pickDinner(mealId: String, index: Int, date: LocalDate? = null) = write(date) { _, d ->
+        val log = db.dayLogs().get(d) ?: DayLog(d)
         db.dayLogs().upsert(log.copy(doneItemIds = log.doneItemIds + mealId, dinnerIndex = index))
     }
 
-    suspend fun logWeight(lb: Double, date: LocalDate? = null) = write { _, today ->
-        val d = date ?: today
+    suspend fun logWeight(lb: Double, date: LocalDate? = null) = write(date) { _, d ->
         db.weighIns().upsert(WeighIn(d, lb))
         val log = db.dayLogs().get(d) ?: DayLog(d)
         db.dayLogs().upsert(log.copy(doneItemIds = log.doneItemIds + ProgramSpec.ITEM_WEIGH))
-        if (d != today) syncDay(d)
     }
 
     data class LiftEntry(val exerciseId: String, val weightLb: Double, val reps: Int, val sets: Int)
@@ -252,13 +269,15 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     // Internals
 
-    private suspend fun write(block: suspend (Settings, LocalDate) -> Unit) = lock.withLock {
+    /** Runs [block] for [date] (today when null, never a future day), then reconciles that day's XP. */
+    private suspend fun write(date: LocalDate? = null, block: suspend (Settings, LocalDate) -> Unit) = lock.withLock {
         val s = settings.current()
         val today = ProgramEngine.programDay(LocalDateTime.now(), s.resetHour)
         todayFlow.value = today
+        val d = date?.takeIf { it.isBefore(today) } ?: today
         val xpBefore = db.xp().total()
-        block(s, today)
-        syncDay(today)
+        block(s, d)
+        syncDay(d)
         afterWrite(xpBefore)
     }
 
@@ -292,7 +311,8 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         if (send && existing.none { it.kind == XpKind.BONUS } && add.any { it.kind == XpKind.SEND }) {
             val bonus = ProgramEngine.bonus(Random.nextDouble())
             db.xp().insert(XpEvent(date = date, at = now, kind = XpKind.BONUS, amount = bonus, ref = null))
-            events.tryEmit(UiEvent.Send(bonus))
+            // A late check earns the XP; the takeover is for the live moment only.
+            if (date == todayFlow.value) events.tryEmit(UiEvent.Send(bonus))
         }
     }
 

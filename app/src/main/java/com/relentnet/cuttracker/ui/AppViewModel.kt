@@ -37,6 +37,9 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         private set
     var toast by mutableStateOf<String?>(null)
         private set
+    /** A past program day being edited on Today; null means today. */
+    var viewDate by mutableStateOf<java.time.LocalDate?>(null)
+
     /** Tab a notification asked for; the nav consumes it. */
     var pendingTab by mutableStateOf<String?>(null)
     fun requestTab(tab: String) { pendingTab = tab }
@@ -73,11 +76,11 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     }
 
     fun opened() = viewModelScope.launch { repo.opened() }
-    fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet()) = viewModelScope.launch { repo.setMode(mode, preCheck) }
-    fun toggleItem(id: String, dinnerDefault: Boolean = false) = viewModelScope.launch { repo.toggleItem(id, dinnerDefault) }
-    fun pickDinner(mealId: String, index: Int) = viewModelScope.launch { repo.pickDinner(mealId, index) }
-    fun logWeight(lb: Double) = viewModelScope.launch {
-        repo.logWeight(lb)
+    fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: java.time.LocalDate? = null) = viewModelScope.launch { repo.setMode(mode, preCheck, date) }
+    fun toggleItem(id: String, dinnerDefault: Boolean = false, date: java.time.LocalDate? = null) = viewModelScope.launch { repo.toggleItem(id, dinnerDefault, date) }
+    fun pickDinner(mealId: String, index: Int, date: java.time.LocalDate? = null) = viewModelScope.launch { repo.pickDinner(mealId, index, date) }
+    fun logWeight(lb: Double, date: java.time.LocalDate? = null) = viewModelScope.launch {
+        repo.logWeight(lb, date)
         showToast("Logged ${com.relentnet.cuttracker.engine.ProgramEngine.fmt1(lb)} · +${ProgramSpec.XP_WEIGH} xp")
     }
     fun saveLiftSession(entries: List<Repo.LiftEntry>) = viewModelScope.launch { repo.saveLiftSession(entries) }

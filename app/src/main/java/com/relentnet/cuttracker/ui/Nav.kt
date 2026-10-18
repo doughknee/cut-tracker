@@ -104,7 +104,7 @@ fun App(vm: AppViewModel) {
                     }
                     composable(Routes.WEIGHT) { WeightScreen(vm) }
                     composable(Routes.LIFT) { LiftScreen(vm) }
-                    composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }) }
+                    composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS) {
