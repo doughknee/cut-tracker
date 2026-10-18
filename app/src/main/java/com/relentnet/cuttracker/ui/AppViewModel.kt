@@ -77,8 +77,9 @@ class AppViewModel(val repo: Repo) : ViewModel() {
 
     fun opened() = viewModelScope.launch { repo.opened() }
     fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: java.time.LocalDate? = null) = viewModelScope.launch { repo.setMode(mode, preCheck, date) }
-    fun toggleItem(id: String, dinnerDefault: Boolean = false, date: java.time.LocalDate? = null) = viewModelScope.launch { repo.toggleItem(id, dinnerDefault, date) }
-    fun pickDinner(mealId: String, index: Int, date: java.time.LocalDate? = null) = viewModelScope.launch { repo.pickDinner(mealId, index, date) }
+    fun toggleItem(id: String, date: java.time.LocalDate? = null) = viewModelScope.launch { repo.toggleItem(id, date) }
+    fun pickMeal(slotId: String, ref: String?, date: java.time.LocalDate? = null) = viewModelScope.launch { repo.pickMeal(slotId, ref, date) }
+    fun saveLibraryMeal(m: com.relentnet.cuttracker.data.LibMeal) = viewModelScope.launch { repo.saveLibraryMeal(m) }
     fun logWeight(lb: Double, date: java.time.LocalDate? = null) = viewModelScope.launch {
         repo.logWeight(lb, date)
         showToast("Logged ${com.relentnet.cuttracker.engine.ProgramEngine.fmt1(lb)} · +${ProgramSpec.XP_WEIGH} xp")

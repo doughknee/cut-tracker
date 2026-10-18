@@ -50,6 +50,7 @@ fun Field(
     focusRequester: FocusRequester? = null,
     radius: Dp = 9.dp,
     padding: Dp = 12.dp,
+    singleLine: Boolean = true,
 ) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(radius)
@@ -63,12 +64,12 @@ fun Field(
             .border(borderWidth, border, shape)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         textStyle = cutStyle(fontSize, weight, 1f, tabular = true).copy(color = c.text, textAlign = if (center) TextAlign.Center else TextAlign.Start),
-        singleLine = true,
+        singleLine = singleLine,
         cursorBrush = SolidColor(c.accent),
         keyboardOptions = KeyboardOptions(keyboardType = keyboard, imeAction = imeAction),
         keyboardActions = KeyboardActions(onDone = { onDone() }, onNext = { onDone() }),
         decorationBox = { inner ->
-            Box(Modifier.fillMaxWidth().padding(horizontal = padding), contentAlignment = if (center) Alignment.Center else Alignment.CenterStart) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = padding, vertical = if (singleLine) 0.dp else 10.dp), contentAlignment = if (center) Alignment.Center else if (singleLine) Alignment.CenterStart else Alignment.TopStart) {
                 if (value.isEmpty() && placeholder != null) {
                     Text(placeholder, color = c.dim, style = cutStyle(fontSize, weight, 1f, tabular = true), textAlign = if (center) TextAlign.Center else TextAlign.Start)
                 }

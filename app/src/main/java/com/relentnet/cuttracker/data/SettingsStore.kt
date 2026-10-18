@@ -42,6 +42,7 @@ data class Settings(
     val lastOpenDate: LocalDate? = null,
     /** Program day on which the welcome-back card was dismissed, so it shows once per re-entry. */
     val welcomeBackSeen: LocalDate? = null,
+    val library: List<LibMeal> = ProgramSpec.library,
 ) {
     val calories: Int get() = if (phase == 2) caloriesP2 else caloriesP1
     val endDate: LocalDate get() = startDate.plusDays(lengthWeeks * 7L)
@@ -66,6 +67,7 @@ class SettingsStore(context: Context) {
         val protein = intPreferencesKey("protein")
         val workoutsPerWeek = intPreferencesKey("workoutsPerWeek")
         val meals = stringPreferencesKey("meals")
+        val library = stringPreferencesKey("library")
         val exercises = stringPreferencesKey("exercises")
         val checkpoints = stringPreferencesKey("checkpoints")
         val weighInTime = stringPreferencesKey("weighInTime")
@@ -94,7 +96,10 @@ class SettingsStore(context: Context) {
             caloriesP2 = p[K.caloriesP2] ?: d.caloriesP2,
             protein = p[K.protein] ?: d.protein,
             workoutsPerWeek = p[K.workoutsPerWeek] ?: d.workoutsPerWeek,
-            meals = p[K.meals]?.let { runCatching { json.decodeFromString(ListSerializer(Meal.serializer()), it) }.getOrNull() } ?: d.meals,
+            // A meals list saved before the library existed has no defaults; borrow them from the spec by slot id.
+            meals = (p[K.meals]?.let { runCatching { json.decodeFromString(ListSerializer(Meal.serializer()), it) }.getOrNull() } ?: d.meals)
+                .map { m -> if (m.defaultLib != null) m else m.copy(defaultLib = ProgramSpec.meals.firstOrNull { it.id == m.id }?.defaultLib) },
+            library = p[K.library]?.let { runCatching { json.decodeFromString(ListSerializer(LibMeal.serializer()), it) }.getOrNull() } ?: d.library,
             exercises = p[K.exercises]?.let { runCatching { json.decodeFromString(ListSerializer(Exercise.serializer()), it) }.getOrNull() } ?: d.exercises,
             checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
             weighInTime = p[K.weighInTime]?.let(LocalTime::parse) ?: d.weighInTime,
@@ -124,6 +129,7 @@ class SettingsStore(context: Context) {
         p[K.protein] = s.protein
         p[K.workoutsPerWeek] = s.workoutsPerWeek
         p[K.meals] = json.encodeToString(ListSerializer(Meal.serializer()), s.meals)
+        p[K.library] = json.encodeToString(ListSerializer(LibMeal.serializer()), s.library)
         p[K.exercises] = json.encodeToString(ListSerializer(Exercise.serializer()), s.exercises)
         p[K.checkpoints] = json.encodeToString(ListSerializer(Checkpoint.serializer()), s.checkpoints)
         p[K.weighInTime] = s.weighInTime.toString()

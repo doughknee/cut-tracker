@@ -66,7 +66,7 @@ data class AppState(
 
     fun day(date: LocalDate): DayView {
         val l = logs.firstOrNull { it.date == date } ?: DayLog(date)
-        val it = ProgramEngine.script(l.mode, settings, l.dinnerIndex)
+        val it = ProgramEngine.script(l.mode, settings, l.picks)
         return DayView(
             date, l, it, ProgramEngine.totals(it, l.doneItemIds),
             ProgramEngine.isMin(it, l.doneItemIds, settings.protein), ProgramEngine.isSend(it, l.doneItemIds),
@@ -162,7 +162,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val liftSets = arr[7] as List<LiftSet>
         val photos = arr[8] as List<ProgressPhoto>
         val log = logs.firstOrNull { it.date == today } ?: DayLog(today)
-        val items = ProgramEngine.script(log.mode, s, log.dinnerIndex)
+        val items = ProgramEngine.script(log.mode, s, log.picks)
         val results = ProgramEngine.results(logs, weighIns, s, today)
         val ws = ProgramEngine.weekStart(today)
         val project = projects.firstOrNull { it.weekStart == ws }
@@ -187,20 +187,25 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
             val mealIds = s.meals.map { it.id }.toSet() + ProgramSpec.ITEM_WEIGH
             log.doneItemIds.filter { it in mealIds }.toSet()
         }
-        db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, dinnerIndex = if (mode == null) null else log.dinnerIndex))
+        db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, picks = if (mode == null) emptyMap() else log.picks))
     }
 
-    suspend fun toggleItem(id: String, dinnerDefault: Boolean = false, date: LocalDate? = null) = write(date) { s, d ->
+    /** Checks or unchecks an item. A meal checked this way logs the slot's current pick, or its default. */
+    suspend fun toggleItem(id: String, date: LocalDate? = null) = write(date) { _, d ->
         val log = db.dayLogs().get(d) ?: DayLog(d)
         val done = if (id in log.doneItemIds) log.doneItemIds - id else log.doneItemIds + id
-        val meal = s.meals.firstOrNull { it.id == id }
-        val dinner = if (meal?.pick == true && id in done && log.dinnerIndex == null && dinnerDefault) 0 else log.dinnerIndex
-        db.dayLogs().upsert(log.copy(doneItemIds = done, dinnerIndex = dinner))
+        db.dayLogs().upsert(log.copy(doneItemIds = done))
     }
 
-    suspend fun pickDinner(mealId: String, index: Int, date: LocalDate? = null) = write(date) { _, d ->
+    /** Logs [ref] ("lib:<id>" or "custom:...", null = the default) for a meal slot and checks it. */
+    suspend fun pickMeal(slotId: String, ref: String?, date: LocalDate? = null) = write(date) { _, d ->
         val log = db.dayLogs().get(d) ?: DayLog(d)
-        db.dayLogs().upsert(log.copy(doneItemIds = log.doneItemIds + mealId, dinnerIndex = index))
+        val picks = if (ref == null) log.picks - slotId else log.picks + (slotId to ref)
+        db.dayLogs().upsert(log.copy(doneItemIds = log.doneItemIds + slotId, picks = picks))
+    }
+
+    suspend fun saveLibraryMeal(m: LibMeal) = write { _, _ ->
+        settings.update { it.copy(library = it.library.filter { x -> x.id != m.id } + m) }
     }
 
     suspend fun logWeight(lb: Double, date: LocalDate? = null) = write(date) { _, d ->
@@ -293,7 +298,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     private suspend fun syncDay(date: LocalDate) {
         val s = settings.current()
         val log = db.dayLogs().get(date) ?: DayLog(date)
-        val items = ProgramEngine.script(log.mode, s, log.dinnerIndex)
+        val items = ProgramEngine.script(log.mode, s, log.picks)
         val existing = db.xp().forDate(date)
         val wanted = LinkedHashMap<Pair<String, String?>, Int>()
         for (it in items) if (it.id in log.doneItemIds) wanted[XpKind.ITEM to it.id] = it.xp
@@ -388,7 +393,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
             }
             "push2" -> weekLogs.count { it.mode == DayMode.CLIMB && ProgramSpec.ITEM_PUSH in it.doneItemIds }
             "workouts" -> weekLogs.count { ProgramEngine.isWorkout(it) }
-            "protein6" -> weekLogs.count { ProgramEngine.totals(ProgramEngine.script(it.mode, s, it.dinnerIndex), it.doneItemIds).protein >= s.protein }
+            "protein6" -> weekLogs.count { ProgramEngine.totals(ProgramEngine.script(it.mode, s, it.picks), it.doneItemIds).protein >= s.protein }
             "offnoon3" -> xpEvents.count {
                 it.kind == XpKind.ITEM && it.ref == ProgramSpec.ITEM_CORE && inWeek(it.date) && it.at.atZone(zone).toLocalTime().isBefore(LocalTime.NOON)
             }

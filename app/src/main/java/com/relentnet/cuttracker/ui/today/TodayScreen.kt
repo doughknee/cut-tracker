@@ -45,6 +45,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.AppState
 import com.relentnet.cuttracker.data.Block
+import com.relentnet.cuttracker.data.LibMeal
+import com.relentnet.cuttracker.data.Meal
+import com.relentnet.cuttracker.ui.components.Switch
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import com.relentnet.cuttracker.data.DayMode
 import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.engine.ProgramEngine
@@ -78,7 +83,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
     val now by vm.nowTime.collectAsStateWithLifecycle()
     val haptics = LocalHaptics.current
     var weighOpen by rememberSaveable { mutableStateOf(false) }
-    var pickOpen by rememberSaveable { mutableStateOf(false) }
+    var pickOpen by rememberSaveable { mutableStateOf<String?>(null) }
     var doneOpen by rememberSaveable { mutableStateOf(false) }
     var liftOpen by rememberSaveable { mutableStateOf(false) }
 
@@ -122,9 +127,9 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
 
         DayNav(
             past = past, atStart = !date.isAfter(st.settings.startDate),
-            onEarlier = { vm.viewDate = date.minusDays(1); weighOpen = false; pickOpen = false },
-            onLater = { vm.viewDate = date.plusDays(1).takeIf { it.isBefore(st.today) }; weighOpen = false; pickOpen = false },
-            onToday = { vm.viewDate = null; weighOpen = false; pickOpen = false },
+            onEarlier = { vm.viewDate = date.minusDays(1); weighOpen = false; pickOpen = null },
+            onLater = { vm.viewDate = date.plusDays(1).takeIf { it.isBefore(st.today) }; weighOpen = false; pickOpen = null },
+            onToday = { vm.viewDate = null; weighOpen = false; pickOpen = null },
         )
 
         if (welcomeBack) WelcomeBack(st.chain.count, onOk = { vm.dismissWelcomeBack() })
@@ -139,7 +144,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
             mode == null -> PickCards(st, onPick = { haptics.tap(); vm.setMode(it, date = editDate) })
             else -> ModeChipRow(
                 mode, dv.isMin || dv.isSend,
-                onChange = { weighOpen = false; pickOpen = false; vm.setMode(null, date = editDate) },
+                onChange = { weighOpen = false; pickOpen = null; vm.setMode(null, date = editDate) },
                 // An Off day with the block unchecked is a Rest day that was logged under the old rules; one tap fixes it.
                 onMakeRest = if (mode == DayMode.OFF && ProgramSpec.ITEM_CORE !in done) ({ haptics.tap(); vm.setMode(DayMode.REST, date = editDate) }) else null,
             )
@@ -166,13 +171,13 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                     tag = if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && ProgramEngine.weekWon(st.liftSets, st.today)) "Week won" else null,
                     onClick = {
                         when {
-                            it.id == ProgramSpec.ITEM_WEIGH -> { weighOpen = !weighOpen; pickOpen = false; liftOpen = false }
-                            it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past -> { liftOpen = !liftOpen; weighOpen = false; pickOpen = false }
-                            it.pick && dv.log.dinnerIndex == null -> { pickOpen = !pickOpen; weighOpen = false }
+                            it.id == ProgramSpec.ITEM_WEIGH -> { weighOpen = !weighOpen; pickOpen = null; liftOpen = false }
+                            it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past -> { liftOpen = !liftOpen; weighOpen = false; pickOpen = null }
+                            it.pick -> { pickOpen = if (pickOpen == it.id) null else it.id; weighOpen = false; liftOpen = false }
                             else -> { haptics.tap(); vm.toggleItem(it.id, date = editDate) }
                         }
                     },
-                    onSwipeCheck = { haptics.tap(); vm.toggleItem(it.id, dinnerDefault = true, date = editDate) },
+                    onSwipeCheck = { haptics.tap(); vm.toggleItem(it.id, date = editDate) },
                 )
                 if (it.id == ProgramSpec.ITEM_WEIGH && weighOpen) {
                     WeighInline(
@@ -180,8 +185,13 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                         onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) },
                     )
                 }
-                if (it.pick && pickOpen) {
-                    DinnerOptions(dv.log.dinnerIndex) { i -> pickOpen = false; haptics.tap(); vm.pickDinner(it.id, i, editDate) }
+                if (it.pick && pickOpen == it.id) {
+                    val slot = st.settings.meals.firstOrNull { m -> m.id == it.id }
+                    if (slot != null) MealPicker(
+                        st, slot, current = dv.log.picks[it.id],
+                        onPick = { ref -> pickOpen = null; haptics.tap(); vm.pickMeal(it.id, ref, editDate) },
+                        onSaveLib = { m -> vm.saveLibraryMeal(m) },
+                    )
                 }
                 if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && liftOpen && !past) {
                     // Saving the session checks the block. Swiping the row checks it without a session.
@@ -348,9 +358,9 @@ private fun LateCard(onRest: () -> Unit, onClimb: () -> Unit) {
 
 @Composable
 private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
-    val climb = ProgramEngine.script(DayMode.CLIMB, st.settings, null)
-    val off = ProgramEngine.script(DayMode.OFF, st.settings, null)
-    val rest = ProgramEngine.script(DayMode.REST, st.settings, null)
+    val climb = ProgramEngine.script(DayMode.CLIMB, st.settings)
+    val off = ProgramEngine.script(DayMode.OFF, st.settings)
+    val rest = ProgramEngine.script(DayMode.REST, st.settings)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PickCard(Modifier.weight(1f), CutIcons.Climb, "Climb day", "Climb, then 15 min push at the gym. ${climb.size} items, ${ProgramEngine.totalXp(climb)} xp.") { onPick(DayMode.CLIMB) }
@@ -452,19 +462,91 @@ private fun Chip(label: String, onClick: () -> Unit) {
     ) { Text(label, color = c.text, style = cutStyle(12, 800, 1f, 0.06f, tabular = true)) }
 }
 
+/** Library meals for a slot (default pinned, then most picked), a one-off entry, and a way to add to the library. */
 @Composable
-private fun DinnerOptions(selected: Int?, onPick: (Int) -> Unit) {
+private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (String?) -> Unit, onSaveLib: (LibMeal) -> Unit) {
     val c = CutTheme.colors
+    val s = st.settings
+    val def = ProgramEngine.defaultChoice(slot, s)
+    val counts = st.logs.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
+    val sorted = s.library.sortedByDescending { counts["lib:" + it.id] ?: 0 }.let { l ->
+        val d = l.firstOrNull { "lib:" + it.id == def.ref }
+        if (d != null) listOf(d) + l.filter { it !== d } else l
+    }
+    val selected = current ?: def.ref
+    var recipeOpen by remember { mutableStateOf<String?>(null) }
+    var form by remember { mutableStateOf<Boolean?>(null) }  // null closed, false = one-off, true = new library meal
     Column(Modifier.padding(start = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        ProgramSpec.dinners.forEachIndexed { i, d ->
+        for (m in sorted) {
+            val ref = "lib:" + m.id
+            val shape = RoundedCornerShape(9.dp)
+            Column(Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, if (selected == ref) c.accent else c.hairline, shape)) {
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = { onPick(ref) }, role = Role.Button).padding(12.dp, 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(m.name, color = c.text, style = cutStyle(14, 600, 1.1f))
+                        if (ref == def.ref) Text("DEFAULT", color = c.text2, style = cutStyle(9, 800, 1f, 0.1f))
+                    }
+                    if (m.recipe.isNotBlank()) Text(
+                        "RECIPE", color = c.accent, style = cutStyle(10, 800, 1f, 0.08f),
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { recipeOpen = if (recipeOpen == m.id) null else m.id }.padding(6.dp),
+                    )
+                    Text("${m.protein}g · ${m.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
+                }
+                if (recipeOpen == m.id) Text(m.recipe, color = c.text2, style = cutStyle(13, 500, 1.4f), modifier = Modifier.padding(12.dp, 0.dp, 12.dp, 12.dp))
+            }
+        }
+        if (current != null && current.startsWith("custom:")) {
+            val ch = ProgramEngine.resolveChoice(slot, current, s)
             val shape = RoundedCornerShape(9.dp)
             Row(
-                Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, if (selected == i) c.accent else c.hairline, shape)
-                    .clickable(onClick = { onPick(i) }, role = Role.Button).padding(12.dp, 10.dp),
+                Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, c.accent, shape).padding(12.dp, 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(d.name, color = c.text, style = cutStyle(14, 600, 1f))
-                Text("${d.protein}g · ${d.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
+                Text(ch.name, color = c.text, style = cutStyle(14, 600, 1f))
+                Text("${ch.protein}g · ${ch.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Chip(if (form == false) "CLOSE" else "SOMETHING ELSE") { form = if (form == false) null else false }
+            Chip(if (form == true) "CLOSE" else "+ NEW MEAL") { form = if (form == true) null else true }
+        }
+        if (form != null) CustomMealForm(
+            toLibrary = form == true,
+            onLog = { name, p, cal, save ->
+                if (save) {
+                    val m = LibMeal("lib_" + System.currentTimeMillis(), name.ifBlank { "New meal" }, p, cal)
+                    onSaveLib(m); onPick("lib:" + m.id)
+                } else onPick(ProgramEngine.customRef(p, cal, name))
+                form = null
+            },
+        )
+    }
+}
+
+/** Name, protein, calories, and whether to keep it in the library. */
+@Composable
+private fun CustomMealForm(toLibrary: Boolean, onLog: (String, Int, Int, Boolean) -> Unit) {
+    val c = CutTheme.colors
+    var name by rememberSaveable { mutableStateOf("") }
+    var pro by rememberSaveable { mutableStateOf("") }
+    var cal by rememberSaveable { mutableStateOf("") }
+    var save by rememberSaveable(toLibrary) { mutableStateOf(toLibrary) }
+    Card(Modifier.fillMaxWidth(), border = c.hairline, padding = PaddingValues(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Field(name, { name = it }, Modifier.fillMaxWidth(), height = 40.dp, fontSize = 14, weight = 700, keyboard = KeyboardType.Text, imeAction = ImeAction.Next, borderWidth = 1.dp, radius = 8.dp, padding = 10.dp, placeholder = if (toLibrary) "Meal name" else "What was it (optional)")
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Field(pro, { pro = it }, Modifier.weight(1f), height = 40.dp, fontSize = 16, center = true, imeAction = ImeAction.Next, borderWidth = 1.dp, radius = 8.dp, padding = 8.dp, placeholder = "protein g")
+                Field(cal, { cal = it }, Modifier.weight(1f), height = 40.dp, fontSize = 16, center = true, borderWidth = 1.dp, radius = 8.dp, padding = 8.dp, placeholder = "calories")
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Switch(save) { save = !save }
+                    Sub("Save to library", size = 12)
+                }
+                BigButton("Log it", onClick = { onLog(name, pro.toIntOrNull() ?: 0, cal.toIntOrNull() ?: 0, save) }, modifier = Modifier.width(110.dp), height = 40.dp, fontSize = 12, enabled = pro.toIntOrNull() != null || cal.toIntOrNull() != null)
             }
         }
     }

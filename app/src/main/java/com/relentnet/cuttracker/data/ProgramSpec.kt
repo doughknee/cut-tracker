@@ -17,12 +17,15 @@ data class Meal(
     val protein: Int,
     val calories: Int,
     val xp: Int = 10,
-    /** Dinner: the user picks one of [ProgramSpec.dinners]; the pick's numbers replace protein/calories. */
+    /** Legacy flag from v1; every slot has a picker now. */
     val pick: Boolean = false,
+    /** Library meal this slot logs by default; null falls back to the slot's own numbers. */
+    val defaultLib: String? = null,
 )
 
+/** A named meal in the library: what a slot can log, with an optional recipe or notes. */
 @Serializable
-data class Dinner(val name: String, val protein: Int, val calories: Int)
+data class LibMeal(val id: String, val name: String, val protein: Int, val calories: Int, val recipe: String = "")
 
 @Serializable
 data class Exercise(
@@ -97,16 +100,19 @@ object ProgramSpec {
     const val WORKOUTS_PER_WEEK = 3
 
     val meals = listOf(
-        Meal("b", "Breakfast", "Greek yogurt + whey + banana", "9:00", 48, 430, xp = 10),
-        Meal("l", "Lunch", "Chicken + rice + veg", "1:00", 55, 620, xp = 10),
-        Meal("s", "Snack", "String cheese + apple", "4:00", 20, 250, xp = 5),
-        Meal("d", "Dinner", "Tap to pick one of 3", "7:30", 45, 950, xp = 10, pick = true),
+        Meal("b", "Breakfast", "Greek yogurt + whey + banana", "9:00", 48, 430, xp = 10, defaultLib = "lib_b"),
+        Meal("l", "Lunch", "Chicken + rice + veg", "1:00", 55, 620, xp = 10, defaultLib = "lib_l"),
+        Meal("s", "Snack", "String cheese + apple", "4:00", 20, 250, xp = 5, defaultLib = "lib_s"),
+        Meal("d", "Dinner", "Burrito bowl", "7:30", 46, 820, xp = 10, pick = true, defaultLib = "lib_d1"),
     )
 
-    val dinners = listOf(
-        Dinner("Burrito bowl", 46, 820),
-        Dinner("Salmon + potatoes", 44, 760),
-        Dinner("Steak + salad", 48, 900),
+    val library = listOf(
+        LibMeal("lib_b", "Greek yogurt + whey + banana", 48, 430),
+        LibMeal("lib_l", "Chicken or turkey + rice + veg", 55, 620),
+        LibMeal("lib_s", "String cheese + apple or shake", 20, 250),
+        LibMeal("lib_d1", "Burrito bowl", 46, 820),
+        LibMeal("lib_d2", "Salmon + potatoes", 44, 760),
+        LibMeal("lib_d3", "Steak + salad", 48, 900),
     )
 
     val exercises = listOf(

@@ -250,7 +250,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val r = st.results[date] ?: DayResult.FUTURE
     val log = st.logs.firstOrNull { it.date == date }
     val xp = st.xpEvents.filter { it.date == date }.sumOf { it.amount }
-    val items = ProgramEngine.script(log?.mode, st.settings, log?.dinnerIndex)
+    val items = ProgramEngine.script(log?.mode, st.settings, log?.picks ?: emptyMap())
     val done = log?.doneItemIds?.count { id -> items.any { it.id == id } } ?: 0
     val weight = st.weighIns.firstOrNull { it.date == date }?.lb
     val (title, color) = when (r) {

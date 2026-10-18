@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.Block
 import com.relentnet.cuttracker.data.Checkpoint
 import com.relentnet.cuttracker.data.Exercise
+import com.relentnet.cuttracker.data.LibMeal
 import com.relentnet.cuttracker.data.Meal
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.components.BackHeader
@@ -82,42 +83,71 @@ private fun RowDivider(last: Boolean) {
     if (!last) Box(Modifier.fillMaxWidth().height(1.dp).background(CutTheme.colors.hairline))
 }
 
-// Meals
+// Meals: the slots on Today and the library they log from
 
-private data class MealDraft(val id: String, var name: String, var sub: String, var time: String, var protein: String, var calories: String, val xp: Int, val pick: Boolean)
+private data class SlotDraft(val id: String, var name: String, var time: String, var defaultLib: String?, val xp: Int, val sub: String, val protein: Int, val calories: Int)
+private data class LibDraft(val id: String, var name: String, var protein: String, var calories: String, var recipe: String)
 
 @Composable
 fun MealsEditor(vm: AppViewModel, onBack: () -> Unit) {
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
-    val rows = remember(s.meals) { s.meals.map { MealDraft(it.id, it.name, it.sub, it.time, it.protein.toString(), it.calories.toString(), it.xp, it.pick) }.toMutableStateList() }
+    val slots = remember(s.meals) { s.meals.map { SlotDraft(it.id, it.name, it.time, it.defaultLib, it.xp, it.sub, it.protein, it.calories) }.toMutableStateList() }
+    val lib = remember(s.library) { s.library.map { LibDraft(it.id, it.name, it.protein.toString(), it.calories.toString(), it.recipe) }.toMutableStateList() }
     var tick by remember { mutableStateOf(0) }
     Screen(bottomInset = true) {
         BackHeader("Settings", "Meals", onBack)
-        Sub("These are the fixed rows on Today. Protein and calories feed the tiles. Dinner options are the three picks.")
+        Sub("Slots are the rows on Today. Each logs its default meal with a swipe; tapping the row picks any library meal or a one-off.")
+        Sub("SLOTS", size = 11)
         Card(Modifier.fillMaxWidth()) {
             key(tick) {
-                rows.forEachIndexed { i, m ->
+                slots.forEachIndexed { i, m ->
                     Column(Modifier.padding(14.dp, 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            TextField(m.name, { rows[i] = m.copy(name = it) }, Modifier.weight(1f), "Name")
-                            RemoveButton { rows.removeAt(i); tick++ }
+                            TextField(m.name, { slots[i] = m.copy(name = it) }, Modifier.weight(1f), "Name")
+                            Field(m.time, { slots[i] = m.copy(time = it) }, Modifier.width(72.dp), height = 40.dp, fontSize = 13, weight = 700, center = true, keyboard = KeyboardType.Text, imeAction = ImeAction.Next, borderWidth = 1.dp, radius = 8.dp, padding = 6.dp, placeholder = "Time")
+                            RemoveButton { slots.removeAt(i); tick++ }
                         }
-                        TextField(m.sub, { rows[i] = m.copy(sub = it) }, Modifier.fillMaxWidth(), "Description")
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Field(m.time, { rows[i] = m.copy(time = it) }, Modifier.weight(1f), height = 36.dp, fontSize = 13, weight = 700, center = true, keyboard = KeyboardType.Text, imeAction = ImeAction.Next, borderWidth = 1.dp, radius = 8.dp, padding = 8.dp, placeholder = "Time")
-                            SmallNum(m.protein, { rows[i] = m.copy(protein = it) }); Sub("g", size = 11)
-                            SmallNum(m.calories, { rows[i] = m.copy(calories = it) }, 64); Sub("cal", size = 11)
+                        // Tapping cycles the default through the library.
+                        val cur = lib.firstOrNull { it.id == m.defaultLib }
+                        BlockPill("Default: " + (cur?.name ?: "slot numbers") + "  ›", on = false) {
+                            if (lib.isNotEmpty()) {
+                                val idx = lib.indexOfFirst { it.id == m.defaultLib }
+                                slots[i] = m.copy(defaultLib = lib[(idx + 1) % lib.size].id); tick++
+                            }
                         }
                     }
-                    RowDivider(i == rows.lastIndex)
+                    RowDivider(i == slots.lastIndex)
                 }
             }
         }
-        BigButton("Add a meal", secondary = true, modifier = Modifier.fillMaxWidth(), onClick = { rows += MealDraft("m${System.currentTimeMillis()}", "New meal", "", "", "0", "0", 10, false); tick++ })
+        BigButton("Add a slot", secondary = true, modifier = Modifier.fillMaxWidth(), height = 44.dp, fontSize = 13, onClick = {
+            slots += SlotDraft("m${System.currentTimeMillis()}", "New slot", "", lib.firstOrNull()?.id, 10, "", 0, 0); tick++
+        })
+        Sub("LIBRARY", size = 11)
+        Card(Modifier.fillMaxWidth()) {
+            key(tick) {
+                lib.forEachIndexed { i, m ->
+                    Column(Modifier.padding(14.dp, 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            TextField(m.name, { lib[i] = m.copy(name = it) }, Modifier.weight(1f), "Name")
+                            RemoveButton { lib.removeAt(i); tick++ }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            SmallNum(m.protein, { lib[i] = m.copy(protein = it) }); Sub("g", size = 11)
+                            SmallNum(m.calories, { lib[i] = m.copy(calories = it) }, 64); Sub("cal", size = 11)
+                        }
+                        Field(m.recipe, { lib[i] = m.copy(recipe = it) }, Modifier.fillMaxWidth(), height = 84.dp, fontSize = 13, weight = 500, keyboard = KeyboardType.Text, imeAction = ImeAction.Default, borderWidth = 1.dp, radius = 8.dp, padding = 10.dp, placeholder = "Recipe or notes", singleLine = false)
+                    }
+                    RowDivider(i == lib.lastIndex)
+                }
+            }
+        }
+        BigButton("Add a meal", secondary = true, modifier = Modifier.fillMaxWidth(), height = 44.dp, fontSize = 13, onClick = { lib += LibDraft("lib_${System.currentTimeMillis()}", "New meal", "0", "0", ""); tick++ })
         BigButton("Save", modifier = Modifier.fillMaxWidth(), onClick = {
-            val meals = rows.map { Meal(it.id, it.name, it.sub, it.time, it.protein.toIntOrNull() ?: 0, it.calories.toIntOrNull() ?: 0, it.xp, it.pick) }
-            vm.saveSettings(s.copy(meals = meals)) { vm.showToast("Meals saved"); onBack() }
+            val library = lib.map { LibMeal(it.id, it.name, it.protein.toIntOrNull() ?: 0, it.calories.toIntOrNull() ?: 0, it.recipe) }
+            val meals = slots.map { Meal(it.id, it.name, it.sub, it.time, it.protein, it.calories, it.xp, true, it.defaultLib?.takeIf { d -> library.any { l -> l.id == d } }) }
+            vm.saveSettings(s.copy(meals = meals, library = library)) { vm.showToast("Meals saved"); onBack() }
         })
     }
 }

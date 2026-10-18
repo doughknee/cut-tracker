@@ -10,6 +10,9 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
@@ -87,7 +90,7 @@ interface WeeklyProjectDao {
 
 @Database(
     entities = [DayLog::class, WeighIn::class, LiftSet::class, ProgressPhoto::class, XpEvent::class, Badge::class, WeeklyProject::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -119,5 +122,12 @@ abstract class CutDb : RoomDatabase() {
  *     }
  */
 object Migrations {
-    val all = arrayOf<androidx.room.migration.Migration>()
+    /** v2: per-slot meal picks; the v1 dinner index becomes a library pick. */
+    val M1_2 = object : Migration(1, 2) {
+        override fun migrate(connection: SQLiteConnection) {
+            connection.execSQL("ALTER TABLE DayLog ADD COLUMN picks TEXT NOT NULL DEFAULT ''")
+            connection.execSQL("UPDATE DayLog SET picks = 'd=lib:lib_d' || (dinnerIndex + 1) WHERE dinnerIndex IS NOT NULL")
+        }
+    }
+    val all = arrayOf<Migration>(M1_2)
 }

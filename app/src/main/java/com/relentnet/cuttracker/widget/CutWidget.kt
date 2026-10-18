@@ -133,7 +133,7 @@ class CheckItemAction : ActionCallback {
         val app = App.of(context)
         val st = app.repo.state.first { it.loaded }
         if (id !in st.done) Haptics(context) { st.settings.haptics }.tap()
-        app.repo.toggleItem(id, dinnerDefault = true)
+        app.repo.toggleItem(id)
         updateWidgets(context)
     }
 }
@@ -279,13 +279,13 @@ private fun PickStage(st: AppState) {
         }
         Spacer(GlanceModifier.height(8.dp))
         Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
-            val climb = ProgramEngine.script(DayMode.CLIMB, st.settings, null)
-            val off = ProgramEngine.script(DayMode.OFF, st.settings, null)
+            val climb = ProgramEngine.script(DayMode.CLIMB, st.settings)
+            val off = ProgramEngine.script(DayMode.OFF, st.settings)
             PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, "Climb day", "${climb.size} items · ${ProgramEngine.totalXp(climb)} xp")
             Spacer(GlanceModifier.width(8.dp))
             PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${off.size} items · ${ProgramEngine.totalXp(off)} xp")
             Spacer(GlanceModifier.width(8.dp))
-            val rest = ProgramEngine.script(DayMode.REST, st.settings, null)
+            val rest = ProgramEngine.script(DayMode.REST, st.settings)
             PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${rest.size} items · ${ProgramEngine.totalXp(rest)} xp")
         }
     }

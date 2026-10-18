@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
@@ -12,7 +13,10 @@ data class DayLog(
     @PrimaryKey val date: LocalDate,
     val mode: DayMode? = null,
     val doneItemIds: Set<String> = emptySet(),
+    /** v1 dinner pick; migrated into [picks], kept so the column stays valid. */
     val dinnerIndex: Int? = null,
+    /** Slot id to what was logged: "lib:<id>" or "custom:<protein>:<calories>:<name>". Empty means the slot's default. */
+    @ColumnInfo(defaultValue = "") val picks: Map<String, String> = emptyMap(),
 )
 
 @Entity
@@ -60,4 +64,7 @@ class Converters {
     @TypeConverter fun longToInstant(l: Long?): Instant? = l?.let(Instant::ofEpochMilli)
     @TypeConverter fun setToString(s: Set<String>?): String? = s?.joinToString(",")
     @TypeConverter fun stringToSet(s: String?): Set<String>? = s?.split(',')?.filter { it.isNotEmpty() }?.toSet()
+    @TypeConverter fun mapToString(m: Map<String, String>?): String? = m?.entries?.joinToString(";") { it.key + "=" + it.value }
+    @TypeConverter fun stringToMap(s: String?): Map<String, String>? =
+        s?.split(';')?.filter { '=' in it }?.associate { val i = it.indexOf('='); it.substring(0, i) to it.substring(i + 1) }
 }

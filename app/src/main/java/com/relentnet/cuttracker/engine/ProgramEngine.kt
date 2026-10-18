@@ -4,7 +4,7 @@ import com.relentnet.cuttracker.data.Block
 import com.relentnet.cuttracker.data.Checkpoint
 import com.relentnet.cuttracker.data.DayLog
 import com.relentnet.cuttracker.data.DayMode
-import com.relentnet.cuttracker.data.Dinner
+import com.relentnet.cuttracker.data.LibMeal
 import com.relentnet.cuttracker.data.Exercise
 import com.relentnet.cuttracker.data.LiftSet
 import com.relentnet.cuttracker.data.Meal
@@ -58,7 +58,7 @@ object ProgramEngine {
 
     // Script
 
-    fun script(mode: DayMode?, s: Settings, dinnerIndex: Int?): List<ScriptItem> {
+    fun script(mode: DayMode?, s: Settings, picks: Map<String, String> = emptyMap()): List<ScriptItem> {
         if (mode == null) return emptyList()
         val weigh = ScriptItem(ProgramSpec.ITEM_WEIGH, "Weigh in", "Before food. Log it, ignore the number.", "8:30", ProgramSpec.XP_WEIGH)
         val workout = when (mode) {
@@ -71,20 +71,39 @@ object ProgramEngine {
             )
             DayMode.REST -> emptyList()
         }
-        val meals = s.meals.map { m -> mealItem(m, dinnerIndex) }
+        val meals = s.meals.map { m -> mealItem(m, picks[m.id], s) }
         return if (meals.isEmpty()) listOf(weigh) + workout
         else listOf(weigh, meals.first()) + workout + meals.drop(1)
     }
 
-    private fun mealItem(m: Meal, dinnerIndex: Int?): ScriptItem {
-        val d = if (m.pick) dinnerIndex?.let { ProgramSpec.dinners.getOrNull(it) } else null
-        val sub = when {
-            d != null -> "${d.name}. ${d.protein}g"
-            m.protein > 0 -> "${m.sub}. ${m.protein}g"
-            else -> m.sub
-        }
-        return ScriptItem(m.id, m.name, sub, m.time, m.xp, d?.protein ?: m.protein, d?.calories ?: (if (m.pick) 0 else m.calories), pick = m.pick)
+    private fun mealItem(m: Meal, ref: String?, s: Settings): ScriptItem {
+        val ch = resolveChoice(m, ref, s)
+        val sub = if (ch.protein > 0) "${ch.name}. ${ch.protein}g" else ch.name
+        return ScriptItem(m.id, m.name, sub, m.time, m.xp, ch.protein, ch.calories, pick = true)
     }
+
+    /** What a slot logs: a library meal, a one-off custom entry, or the slot's own numbers. */
+    data class MealChoice(val ref: String?, val name: String, val protein: Int, val calories: Int, val recipe: String = "")
+
+    private fun LibMeal.choice() = MealChoice("lib:$id", name, protein, calories, recipe)
+
+    fun libMeal(id: String?, s: Settings): LibMeal? = if (id == null) null else s.library.firstOrNull { it.id == id }
+
+    fun defaultChoice(slot: Meal, s: Settings): MealChoice =
+        libMeal(slot.defaultLib, s)?.choice() ?: MealChoice(null, slot.sub, slot.protein, slot.calories)
+
+    fun resolveChoice(slot: Meal, ref: String?, s: Settings): MealChoice = when {
+        ref == null -> defaultChoice(slot, s)
+        ref.startsWith("lib:") -> libMeal(ref.removePrefix("lib:"), s)?.choice() ?: defaultChoice(slot, s)
+        ref.startsWith("custom:") -> {
+            val parts = ref.removePrefix("custom:").split(':', limit = 3)
+            MealChoice(ref, parts.getOrNull(2)?.ifBlank { null } ?: "Something else", parts.getOrNull(0)?.toIntOrNull() ?: 0, parts.getOrNull(1)?.toIntOrNull() ?: 0)
+        }
+        else -> defaultChoice(slot, s)
+    }
+
+    fun customRef(protein: Int, calories: Int, name: String) =
+        "custom:$protein:$calories:" + name.trim().replace(';', ' ').replace('=', ' ').replace(':', ' ')
 
     fun totalXp(items: List<ScriptItem>) = items.sumOf { it.xp }
 
@@ -151,7 +170,7 @@ object ProgramEngine {
 
     private fun resultOf(log: DayLog?, weighed: Boolean, s: Settings): DayResult {
         if (log?.mode == null) return if (weighed) MISSED_UNLESS_MIN else DayResult.MISSED
-        val items = script(log.mode, s, log.dinnerIndex)
+        val items = script(log.mode, s, log.picks)
         return when {
             isSend(items, log.doneItemIds) -> DayResult.SEND
             isMin(items, log.doneItemIds, s.protein) -> DayResult.MIN

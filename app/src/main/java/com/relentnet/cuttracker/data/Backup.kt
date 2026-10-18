@@ -26,9 +26,10 @@ data class SettingsDto(
     val caloriesP1: Int, val caloriesP2: Int, val protein: Int, val meals: List<Meal>, val exercises: List<Exercise>, val checkpoints: List<Checkpoint>,
     val weighInTime: String, val pickTime: String, val resetHour: Int, val haptics: Boolean, val theme: String,
     val lastOpenDate: String? = null, val welcomeBackSeen: String? = null, val workoutsPerWeek: Int = 3,
+    val library: List<LibMeal> = ProgramSpec.library,
 )
 
-@Serializable data class DayLogDto(val date: String, val mode: String?, val done: List<String>, val dinnerIndex: Int?)
+@Serializable data class DayLogDto(val date: String, val mode: String?, val done: List<String>, val dinnerIndex: Int?, val picks: Map<String, String> = emptyMap())
 @Serializable data class WeighInDto(val date: String, val lb: Double)
 @Serializable data class LiftSetDto(val date: String, val exerciseId: String, val weightLb: Double, val reps: Int, val setIndex: Int)
 @Serializable data class PhotoDto(val date: String, val file: String)
@@ -40,19 +41,19 @@ val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyP
 
 fun Settings.toDto() = SettingsDto(
     onboarded, phase, startDate.toString(), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
-    weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
+    weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek, library,
 )
 
 fun SettingsDto.toSettings() = Settings(
     onboarded, phase, LocalDate.parse(startDate), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, workoutsPerWeek, meals, exercises, checkpoints,
     java.time.LocalTime.parse(weighInTime), java.time.LocalTime.parse(pickTime), resetHour, haptics, theme,
-    lastOpenDate?.let(LocalDate::parse), welcomeBackSeen?.let(LocalDate::parse),
+    lastOpenDate?.let(LocalDate::parse), welcomeBackSeen?.let(LocalDate::parse), library,
 )
 
 suspend fun Repo.buildBackup(): Backup = Backup(
     exportedAt = Instant.now().toString(),
     settings = settings.current().toDto(),
-    dayLogs = db.dayLogs().all().map { DayLogDto(it.date.toString(), it.mode?.name, it.doneItemIds.toList(), it.dinnerIndex) },
+    dayLogs = db.dayLogs().all().map { DayLogDto(it.date.toString(), it.mode?.name, it.doneItemIds.toList(), it.dinnerIndex, it.picks) },
     weighIns = db.weighIns().all().map { WeighInDto(it.date.toString(), it.lb) },
     liftSets = db.liftSets().all().map { LiftSetDto(it.date.toString(), it.exerciseId, it.weightLb, it.reps, it.setIndex) },
     photos = db.photos().all().map { PhotoDto(it.date.toString(), java.io.File(it.path).name) },
@@ -97,7 +98,11 @@ suspend fun Repo.restoreFrom(input: java.io.InputStream) {
 suspend fun Repo.restoreBackup(b: Backup) {
     db.dayLogs().clear(); db.weighIns().clear(); db.liftSets().clear(); db.photos().clear()
     db.xp().clear(); db.badges().clear(); db.projects().clear()
-    for (d in b.dayLogs) db.dayLogs().upsert(DayLog(LocalDate.parse(d.date), d.mode?.let { DayMode.valueOf(it) }, d.done.toSet(), d.dinnerIndex))
+    for (d in b.dayLogs) {
+        // A v1 export carries only the dinner index; it becomes a library pick.
+        val picks = if (d.picks.isEmpty() && d.dinnerIndex != null) mapOf("d" to "lib:lib_d${d.dinnerIndex + 1}") else d.picks
+        db.dayLogs().upsert(DayLog(LocalDate.parse(d.date), d.mode?.let { DayMode.valueOf(it) }, d.done.toSet(), d.dinnerIndex, picks))
+    }
     for (w in b.weighIns) db.weighIns().upsert(WeighIn(LocalDate.parse(w.date), w.lb))
     db.liftSets().insertAll(b.liftSets.map { LiftSet(date = LocalDate.parse(it.date), exerciseId = it.exerciseId, weightLb = it.weightLb, reps = it.reps, setIndex = it.setIndex) })
     for (p in b.photos) {

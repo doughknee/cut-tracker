@@ -22,11 +22,11 @@ class ProgramEngineTest {
     private fun d(n: Int) = start.plusDays((n - 1).toLong())
 
     private fun sendLog(date: LocalDate, mode: DayMode = DayMode.CLIMB): DayLog {
-        val items = ProgramEngine.script(mode, s, 0).map { it.id }.toSet()
-        return DayLog(date, mode, items, 0)
+        val items = ProgramEngine.script(mode, s).map { it.id }.toSet()
+        return DayLog(date, mode, items)
     }
 
-    private fun minLog(date: LocalDate) = DayLog(date, DayMode.OFF, setOf("w", "b", "l", "s", "d"), 0)
+    private fun minLog(date: LocalDate) = DayLog(date, DayMode.OFF, setOf("w", "b", "l", "s", "d"))
 
     @Test fun rolloverAt0359StaysYesterday() {
         assertEquals(LocalDate.of(2026, 10, 14), ProgramEngine.programDay(LocalDateTime.of(2026, 10, 15, 3, 59), 4))
@@ -80,18 +80,26 @@ class ProgramEngineTest {
     }
 
     @Test fun minVsSend() {
-        val items = ProgramEngine.script(DayMode.CLIMB, s, 0)
+        val items = ProgramEngine.script(DayMode.CLIMB, s)
         assertEquals(7, items.size)
         assertEquals(100, ProgramEngine.totalXp(items))
-        assertEquals(75, ProgramEngine.totalXp(ProgramEngine.script(DayMode.OFF, s, 0)))
+        assertEquals(75, ProgramEngine.totalXp(ProgramEngine.script(DayMode.OFF, s)))
         assertFalse(ProgramEngine.isMin(items, setOf("w", "b"), 165))
         assertTrue(ProgramEngine.isMin(items, setOf("w", "b", "l", "s", "d"), 165))
         assertFalse(ProgramEngine.isSend(items, setOf("w", "b", "l", "s", "d")))
         assertTrue(ProgramEngine.isSend(items, items.map { it.id }.toSet()))
         assertEquals(48, ProgramEngine.totals(items, setOf("b")).protein)
         assertEquals(430, ProgramEngine.totals(items, setOf("b")).calories)
-        // dinner pick replaces the meal's numbers
+        // the slot's default meal supplies the numbers; a pick replaces them
         assertEquals(820, ProgramEngine.totals(items, setOf("d")).calories)
+        val picked = ProgramEngine.script(DayMode.CLIMB, s, mapOf("d" to "lib:lib_d2"))
+        assertEquals(760, ProgramEngine.totals(picked, setOf("d")).calories)
+        assertEquals(44, ProgramEngine.totals(picked, setOf("d")).protein)
+        val custom = ProgramEngine.script(DayMode.CLIMB, s, mapOf("l" to ProgramEngine.customRef(30, 400, "Pizza")))
+        assertEquals("Pizza. 30g", custom.first { it.id == "l" }.sub)
+        assertEquals(400, ProgramEngine.totals(custom, setOf("l")).calories)
+        // an unknown library id falls back to the default
+        assertEquals(820, ProgramEngine.totals(ProgramEngine.script(DayMode.CLIMB, s, mapOf("d" to "lib:gone")), setOf("d")).calories)
     }
 
     @Test fun chainWithNoMisses() {

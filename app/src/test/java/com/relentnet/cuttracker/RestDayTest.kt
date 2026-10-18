@@ -17,19 +17,19 @@ class RestDayTest {
     private fun d(n: Int) = start.plusDays((n - 1).toLong())
 
     @Test fun restScriptIsWeighInPlusMeals() {
-        val items = ProgramEngine.script(DayMode.REST, s, 0)
+        val items = ProgramEngine.script(DayMode.REST, s)
         assertEquals(listOf("w", "b", "l", "s", "d"), items.map { it.id })
         assertEquals(45, ProgramEngine.totalXp(items))
         assertTrue(items.none { it.workout })
     }
 
     @Test fun fullRestDayIsASend() {
-        val log = DayLog(d(1), DayMode.REST, setOf("w", "b", "l", "s", "d"), 0)
+        val log = DayLog(d(1), DayMode.REST, setOf("w", "b", "l", "s", "d"))
         val r = ProgramEngine.results(listOf(log), emptyList(), s, d(2))
         assertEquals(DayResult.SEND, r[d(1)])
         // without dinner it is still a Min day: weigh in + 123g is under 165, so not safe; add lunch+breakfast+snack+dinner needed
-        val half = DayLog(d(1), DayMode.REST, setOf("w", "b", "l"), 0)
-        assertFalse(ProgramEngine.isMin(ProgramEngine.script(DayMode.REST, s, 0), half.doneItemIds, s.protein))
+        val half = DayLog(d(1), DayMode.REST, setOf("w", "b", "l"))
+        assertFalse(ProgramEngine.isMin(ProgramEngine.script(DayMode.REST, s), half.doneItemIds, s.protein))
     }
 
     @Test fun workoutsCountPushAndCoreOnly() {
