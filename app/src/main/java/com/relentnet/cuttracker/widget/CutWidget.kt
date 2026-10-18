@@ -2,6 +2,8 @@ package com.relentnet.cuttracker.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +46,7 @@ import com.relentnet.cuttracker.MainActivity
 import com.relentnet.cuttracker.R
 import com.relentnet.cuttracker.data.AppState
 import com.relentnet.cuttracker.data.DayMode
+import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.ui.Haptics
 import com.relentnet.cuttracker.ui.theme.DarkCutColors
 import com.relentnet.cuttracker.ui.theme.LightCutColors
@@ -66,16 +69,19 @@ private val ItemKey = ActionParameters.Key<String>("item")
 /** 4x2: mode + up next on the left, 7-segment Send bar in the middle, chain on the right. */
 class CutWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val st = App.of(context).repo.state.first { it.loaded }
-        provideContent { Wide(st) }
+        val repo = App.of(context).repo
+        val initial = repo.state.first { it.loaded }
+        // Collected inside the composition: Glance keeps this session alive and re-renders on every state change.
+        provideContent { val st by repo.state.collectAsState(initial); Wide(st) }
     }
 }
 
 /** 2x1: chain number and the Send bar only. */
 class CutSmallWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val st = App.of(context).repo.state.first { it.loaded }
-        provideContent { Small(st) }
+        val repo = App.of(context).repo
+        val initial = repo.state.first { it.loaded }
+        provideContent { val st by repo.state.collectAsState(initial); Small(st) }
     }
 }
 
@@ -122,7 +128,11 @@ private fun Wide(st: AppState) {
                     Spacer(GlanceModifier.height(6.dp))
                     Column(
                         GlanceModifier.background(W.surface).cornerRadius(8.dp).padding(horizontal = 10.dp, vertical = 6.dp)
-                            .clickable(actionRunCallback<CheckItemAction>(actionParametersOf(ItemKey to next.id))),
+                            .clickable(
+                                // Weigh-in needs a number, so it opens the app; everything else checks in place.
+                                if (next.id == ProgramSpec.ITEM_WEIGH) actionStartActivity<MainActivity>()
+                                else actionRunCallback<CheckItemAction>(actionParametersOf(ItemKey to next.id)),
+                            ),
                     ) {
                         Text("UP NEXT", style = TextStyle(color = W.accent, fontSize = 9.sp, fontWeight = FontWeight.Bold))
                         Text(next.label, style = TextStyle(color = W.text, fontSize = 13.sp, fontWeight = FontWeight.Medium), maxLines = 1)

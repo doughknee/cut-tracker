@@ -7,5 +7,6 @@
     android:padding="10dp"
     android:gravity="center_vertical">
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="11" android:textColor="@color/widget_text" android:textSize="18sp" android:textStyle="bold" />
-    <View android:layout_width="0dp" android:layout_height="6dp" android:layout_weight="1" android:layout_marginStart="10dp" android:background="@color/accent" />
+    <!-- RemoteViews cannot inflate a plain View; a TextView carries the bar. -->
+    <TextView android:layout_width="0dp" android:layout_height="6dp" android:layout_weight="1" android:layout_marginStart="10dp" android:background="@color/accent" />
 </LinearLayout>
