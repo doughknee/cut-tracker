@@ -38,7 +38,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.relentnet.cuttracker.ui.components.TakeoverOverlay
 import com.relentnet.cuttracker.ui.components.ToastPill
-import com.relentnet.cuttracker.ui.lift.LiftScreen
 import com.relentnet.cuttracker.ui.route.CameraScreen
 import com.relentnet.cuttracker.ui.route.CheckpointsScreen
 import com.relentnet.cuttracker.ui.route.RouteScreen
@@ -56,7 +55,6 @@ import com.relentnet.cuttracker.ui.weight.WeightScreen
 object Routes {
     const val TODAY = "today"
     const val WEIGHT = "weight"
-    const val LIFT = "lift"
     const val ROUTE = "route"
     const val SETTINGS = "settings"
     const val CHECKPOINTS = "checkpoints"
@@ -65,15 +63,13 @@ object Routes {
     const val MEALS = "settings/meals"
     const val EXERCISES = "settings/exercises"
     const val CHECKPOINT_EDITOR = "settings/checkpoints"
-    val tabs = listOf(TODAY, WEIGHT, LIFT, ROUTE)
+    val tabs = listOf(TODAY, ROUTE)
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
 private val TABS = listOf(
     Tab(Routes.TODAY, "Today", CutIcons.Today),
-    Tab(Routes.WEIGHT, "Weight", CutIcons.Weight),
-    Tab(Routes.LIFT, "Lift", CutIcons.Lift),
     Tab(Routes.ROUTE, "Route", CutIcons.Route),
 )
 
@@ -87,7 +83,7 @@ fun App(vm: AppViewModel) {
     if (!st.loaded) { Box(Modifier.fillMaxSize().background(c.ground)); return }
     LaunchedEffect(vm.pendingTab, st.settings.onboarded) {
         val t = vm.pendingTab
-        if (t != null && st.settings.onboarded) { vm.pendingTab = null; nav.goTab(t) }
+        if (t != null && st.settings.onboarded) { vm.pendingTab = null; if (t == Routes.WEIGHT) nav.navigate(Routes.WEIGHT) else nav.goTab(t) }
     }
     LaunchedEffect(st.settings.onboarded) {
         if (!st.settings.onboarded && route != null && route != Routes.ONBOARDING) nav.navigate(Routes.ONBOARDING) { popUpTo(0) { inclusive = true } }
@@ -100,10 +96,9 @@ fun App(vm: AppViewModel) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(Routes.ONBOARDING) { inclusive = true } } })
                     }
                     composable(Routes.TODAY) {
-                        TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onOpenLift = { nav.goTab(Routes.LIFT) })
+                        TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) })
                     }
-                    composable(Routes.WEIGHT) { WeightScreen(vm) }
-                    composable(Routes.LIFT) { LiftScreen(vm) }
+                    composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }

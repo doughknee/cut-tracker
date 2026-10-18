@@ -50,7 +50,7 @@ import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.Eyebrow
 import com.relentnet.cuttracker.ui.components.Field
-import com.relentnet.cuttracker.ui.components.Header
+import com.relentnet.cuttracker.ui.components.BackHeader
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.components.TileLabel
@@ -65,7 +65,7 @@ import kotlin.math.floor
 private val shortDate: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 @Composable
-fun WeightScreen(vm: AppViewModel) {
+fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val haptics = LocalHaptics.current
@@ -77,8 +77,8 @@ fun WeightScreen(vm: AppViewModel) {
     var text by rememberSaveable(prefill) { mutableStateOf(ProgramEngine.fmt1(prefill)) }
     fun log() { text.toDoubleOrNull()?.takeIf { it > 0 }?.let { haptics.tap(); vm.logWeight(it) } }
 
-    Screen {
-        Header(eyebrow = "Weigh-in · Week ${st.weekN}", title = "Weight")
+    Screen(bottomInset = true) {
+        BackHeader(backLabel = "Today", title = "Weight", onBack = onBack)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Card(Modifier.weight(1.4f), padding = PaddingValues(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {

@@ -1,4 +1,4 @@
-package com.relentnet.cuttracker.ui.lift
+package com.relentnet.cuttracker.ui.today
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,26 +40,20 @@ import com.relentnet.cuttracker.ui.LocalHaptics
 import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.Eyebrow
-import com.relentnet.cuttracker.ui.components.H1
 import com.relentnet.cuttracker.ui.components.Pill
-import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
 import kotlinx.coroutines.delay
 
 private data class Entry(val weight: Double, val reps: Int)
 
+/** The exercise cards, rest timer and Save session, rendered inside Today under the workout row. */
 @Composable
-fun LiftScreen(vm: AppViewModel) {
+fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val haptics = LocalHaptics.current
-    val blocks: List<Block> = when (st.mode) {
-        DayMode.CLIMB -> listOf(Block.CLIMB)
-        DayMode.OFF -> listOf(Block.OFF)
-        DayMode.REST, null -> listOf(Block.CLIMB, Block.OFF)
-    }
     val exercises = blocks.flatMap { ProgramEngine.exercisesFor(it, s) }
     val last = remember(st.liftSets, st.today) { exercises.associate { it.id to ProgramEngine.lastSession(st.liftSets, it.id, st.today) } }
     val values = remember { mutableStateMapOf<String, Entry>() }
@@ -73,23 +67,13 @@ fun LiftScreen(vm: AppViewModel) {
     val liveWon = exercises.any { e -> values[e.id]?.let { v -> ProgramEngine.beat(v.weight to v.reps, last[e.id]) } == true }
     val won = liveWon || ProgramEngine.weekWon(st.liftSets, st.today)
 
-    Screen {
-        Column {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Eyebrow(
-                    when (st.mode) {
-                        DayMode.CLIMB -> "Climb day block · Week ${st.weekN}"
-                        DayMode.OFF -> "Off day block · Week ${st.weekN}"
-                        DayMode.REST -> "Rest day · Week ${st.weekN}"
-                        null -> "Both blocks · Week ${st.weekN}"
-                    },
-                )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(if (won) c.good else c.text2))
-                    Text(if (won) "WEEK WON" else "NOT YET", color = if (won) c.good else c.text2, style = cutStyle(11, 700, 1f, 0.08f))
-                }
+    Column(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Eyebrow("Lift · Week ${st.weekN}")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(if (won) c.good else c.text2))
+                Text(if (won) "WEEK WON" else "NOT YET", color = if (won) c.good else c.text2, style = cutStyle(11, 700, 1f, 0.08f))
             }
-            H1("Lift")
         }
         RestTimer()
         for (b in blocks) {
@@ -102,12 +86,13 @@ fun LiftScreen(vm: AppViewModel) {
                 )
             }
         }
-        BigButton("Save session", modifier = Modifier.fillMaxWidth(), onClick = {
+        BigButton("Save session · checks the block", modifier = Modifier.fillMaxWidth(), height = 48.dp, fontSize = 13, onClick = {
             haptics.pattern(0, 20)
             vm.saveLiftSession(exercises.map { e ->
                 val v = values[e.id] ?: Entry(0.0, 10)
                 Repo.LiftEntry(e.id, v.weight, v.reps, ProgramEngine.setsFor(e, s.phase))
             })
+            onSaved()
         })
     }
 }

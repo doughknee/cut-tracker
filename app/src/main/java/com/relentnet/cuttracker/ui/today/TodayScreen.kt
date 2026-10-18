@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.AppState
+import com.relentnet.cuttracker.data.Block
 import com.relentnet.cuttracker.data.DayMode
 import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.engine.ProgramEngine
@@ -71,7 +72,7 @@ import java.util.Locale
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
 
 @Composable
-fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onOpenLift: () -> Unit) {
+fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val now by vm.nowTime.collectAsStateWithLifecycle()
@@ -79,6 +80,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onOpenLift: () -> Unit
     var weighOpen by rememberSaveable { mutableStateOf(false) }
     var pickOpen by rememberSaveable { mutableStateOf(false) }
     var doneOpen by rememberSaveable { mutableStateOf(false) }
+    var liftOpen by rememberSaveable { mutableStateOf(false) }
 
     // A past day can be edited in place; anything today or later is today.
     val date = vm.viewDate?.takeIf { it.isBefore(st.today) && !it.isBefore(st.settings.startDate) } ?: st.today
@@ -161,9 +163,11 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onOpenLift: () -> Unit
                     label = it.label,
                     sub = if (it.id == ProgramSpec.ITEM_WEIGH && prevWeigh != null) "Last ${ProgramEngine.fmt1(prevWeigh.lb)}. Tap to log." else it.sub,
                     time = it.time, xp = it.xp, done = false, next = isNext,
+                    tag = if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && ProgramEngine.weekWon(st.liftSets, st.today)) "Week won" else null,
                     onClick = {
                         when {
-                            it.id == ProgramSpec.ITEM_WEIGH -> { weighOpen = !weighOpen; pickOpen = false }
+                            it.id == ProgramSpec.ITEM_WEIGH -> { weighOpen = !weighOpen; pickOpen = false; liftOpen = false }
+                            it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past -> { liftOpen = !liftOpen; weighOpen = false; pickOpen = false }
                             it.pick && dv.log.dinnerIndex == null -> { pickOpen = !pickOpen; weighOpen = false }
                             else -> { haptics.tap(); vm.toggleItem(it.id, date = editDate) }
                         }
@@ -179,6 +183,18 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onOpenLift: () -> Unit
                 if (it.pick && pickOpen) {
                     DinnerOptions(dv.log.dinnerIndex) { i -> pickOpen = false; haptics.tap(); vm.pickDinner(it.id, i, editDate) }
                 }
+                if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && liftOpen && !past) {
+                    // Saving the session checks the block. Swiping the row checks it without a session.
+                    LiftInline(vm, blocks = listOf(if (mode == DayMode.CLIMB) Block.CLIMB else Block.OFF), onSaved = { liftOpen = false; vm.toggleItem(it.id) })
+                }
+            }
+            if (mode == DayMode.REST && !past) {
+                Text(
+                    if (liftOpen) "CLOSE LIFTS" else "LIFT ANYWAY",
+                    color = c.text2, style = cutStyle(11, 800, 1f, 0.1f),
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { liftOpen = !liftOpen }.padding(horizontal = 4.dp, vertical = 6.dp),
+                )
+                if (liftOpen) LiftInline(vm, blocks = listOf(Block.CLIMB, Block.OFF), onSaved = { liftOpen = false })
             }
             if (finished.isNotEmpty()) {
                 Row(
@@ -199,6 +215,38 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onOpenLift: () -> Unit
         }
 
         Tiles(st, dv)
+        WeightTile(st, onWeight)
+    }
+}
+
+/** 7-day average and pace. Tapping opens the full Weight sheet with the chart. */
+@Composable
+private fun WeightTile(st: AppState, onWeight: () -> Unit) {
+    val c = CutTheme.colors
+    val s = st.settings
+    val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
+    val shown = tickedFloat((avg ?: s.startWeight).toFloat())
+    val onPace = avg != null && ProgramEngine.onPace(avg, st.dayN, s)
+    Card(Modifier.fillMaxWidth().clickable(onClick = onWeight, role = Role.Button), padding = PaddingValues(14.dp, 12.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                TileLabel("7-day average")
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(if (avg == null) "--" else ProgramEngine.fmt1(shown.toDouble()), color = c.text, style = cutStyle(22, 800, 1f, tabular = true))
+                    Text(" lb", color = c.text2, style = cutStyle(13, 600, 1f))
+                }
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (avg != null) {
+                    val delta = avg - s.startWeight
+                    Text(
+                        (if (delta < 0) "" else "+") + ProgramEngine.fmt1(delta) + " · " + (if (onPace) "on pace" else "behind, cut 200 cal"),
+                        color = if (onPace) c.good else c.accent, style = cutStyle(12, 700, 1f, tabular = true),
+                    )
+                } else Text("No readings yet", color = c.text2, style = cutStyle(12, 600, 1f))
+                Text("CHART ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+            }
+        }
     }
 }
 

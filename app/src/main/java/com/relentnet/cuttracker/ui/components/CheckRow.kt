@@ -83,6 +83,7 @@ fun CheckRow(
     compact: Boolean = false,
     onClick: () -> Unit,
     onSwipeCheck: (() -> Unit)? = null,
+    tag: String? = null,
 ) {
     val c = CutTheme.colors
     val density = LocalDensity.current
@@ -146,7 +147,8 @@ fun CheckRow(
                 if (!compact && sub != null) Text(sub, color = c.text2, style = cutStyle(12, 500, 1.3f))
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                if (!compact && time != null) Text(time, color = c.text2, style = cutStyle(12, 700, 1f, tabular = true))
+                if (!compact && tag != null) Text(tag.uppercase(), color = c.good, style = cutStyle(10, 800, 1f, 0.08f))
+                else if (!compact && time != null) Text(time, color = c.text2, style = cutStyle(12, 700, 1f, tabular = true))
                 val xpColor by animateColorAsState(if (done) c.good else c.dim, tween(200), label = "xp")
                 Text("+$xp", color = xpColor, style = cutStyle(11, 800, 1f, tabular = true))
             }
