@@ -38,6 +38,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -61,8 +68,7 @@ import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.CheckRow
 import com.relentnet.cuttracker.ui.components.Eyebrow
 import com.relentnet.cuttracker.ui.components.Field
-import com.relentnet.cuttracker.ui.components.Header
-import com.relentnet.cuttracker.ui.components.Screen
+import com.relentnet.cuttracker.engine.DayResult
 import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.components.TileLabel
 import com.relentnet.cuttracker.ui.components.tickedFloat
@@ -74,7 +80,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
+private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d", Locale.US)
 
 @Composable
 fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) {
@@ -86,6 +92,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
     var pickOpen by rememberSaveable { mutableStateOf<String?>(null) }
     var doneOpen by rememberSaveable { mutableStateOf(false) }
     var liftOpen by rememberSaveable { mutableStateOf(false) }
+    var infoOpen by rememberSaveable { mutableStateOf(false) }
+    val scroll = rememberScrollState()
 
     // A past day can be edited in place; anything today or later is today.
     val date = vm.viewDate?.takeIf { it.isBefore(st.today) && !it.isBefore(st.settings.startDate) } ?: st.today
@@ -104,37 +112,61 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
     val welcomeBack = !past && st.missedRun >= 2 && st.settings.welcomeBackSeen != st.today
     val prevWeigh = st.weighInBefore(date)
 
-    Screen {
-        Header(
-            eyebrow = (if (past) "Editing · " else "") + "${date.format(dayFmt)} · Day ${ProgramEngine.dayNumber(date, st.settings.startDate)} of ${st.settings.totalDays}",
-            title = when {
-                all -> "Sent"
-                mode == DayMode.CLIMB -> "Climb day"
-                mode == DayMode.OFF -> "Off day"
-                mode == DayMode.REST -> "Rest day"
-                else -> "Pick a day"
-            },
-            titleColor = if (all) c.good else c.text,
+    fun closeInline() { weighOpen = false; pickOpen = null; liftOpen = false }
+    fun view(d: LocalDate) {
+        val t = if (d.isAfter(st.today)) st.today else if (d.isBefore(st.settings.startDate)) st.settings.startDate else d
+        vm.viewDate = t.takeIf { it != st.today }
+        closeInline()
+    }
+    val total = st.settings.protein
+    val (stateLine, stateColor) = when {
+        !past && dv.isSend -> "Sent" to c.good
+        !past && dv.isMin -> "Chain safe · today" to c.good
+        !past && mode == null -> "Today · pick a day" to c.accent
+        !past && dv.totals.protein < total -> "Today · ${total - dv.totals.protein}g to safe" to c.accent
+        !past -> "Today · weigh in to safe" to c.accent
+        else -> "${resultName(dv.result)} · earlier day" to when (dv.result) {
+            DayResult.SEND, DayResult.MIN -> c.good
+            DayResult.FREEZE -> c.freeze
+            else -> c.text2
+        }
+    }
+
+    Column(Modifier.fillMaxSize().background(c.ground).verticalScroll(scroll).imePadding()) {
+        Wall(
+            st, date, scroll,
+            onPickDay = { haptics.tick(); view(it) },
+            onWeek = { view(date.plusWeeks(it.toLong())) },
+            onInfo = { infoOpen = true },
+            onSettings = onSettings,
+        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    // Fade the wall into the content edge; it stays put while the holds parallax underneath.
+                    val h = 70.dp.toPx()
+                    drawRect(Brush.verticalGradient(listOf(Color.Transparent, c.ground), startY = -h, endY = 0f), Offset(0f, -h), Size(size.width, h))
+                }
+                .background(c.ground)
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Row(
-                Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onSettings, role = Role.Button),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Eyebrow(if (st.settings.phase == 2) "Phase 2 Chest" else "Phase 1 Cut", color = c.accent)
-                Icon(CutIcons.Gear, contentDescription = "Open settings", Modifier.size(16.dp), tint = c.accent)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 34.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(stateLine.uppercase(), color = stateColor, style = cutStyle(11, 800, 1f, 0.1f, tabular = true))
+                if (past) NavPill("Back to today ›", { view(st.today) }, accent = true)
+                else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Icon(CutIcons.Link, null, Modifier.size(15.dp), tint = c.good)
+                    Text("${tickedInt(st.chain.count)}", color = c.text, style = cutStyle(16, 800, 1f, tabular = true))
+                    Text("CHAIN", color = c.text2, style = cutStyle(10, 700, 1f, 0.08f), modifier = Modifier.padding(start = 4.dp))
+                }
             }
+            Text(date.format(dayFmt), color = c.text, style = cutStyle(48, 800, 1f, -0.03f, display = true), maxLines = 1)
+            Sub("Day ${ProgramEngine.dayNumber(date, st.settings.startDate)} of ${st.settings.totalDays}", size = 12)
         }
 
-        DayNav(
-            past = past, atStart = !date.isAfter(st.settings.startDate),
-            onEarlier = { vm.viewDate = date.minusDays(1); weighOpen = false; pickOpen = null },
-            onLater = { vm.viewDate = date.plusDays(1).takeIf { it.isBefore(st.today) }; weighOpen = false; pickOpen = null },
-            onToday = { vm.viewDate = null; weighOpen = false; pickOpen = null },
-        )
-
         if (welcomeBack) WelcomeBack(st.chain.count, onOk = { vm.dismissWelcomeBack() })
-
-        XpStrip(st)
 
         when {
             late -> LateCard(
@@ -143,7 +175,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
             )
             mode == null -> PickCards(st, onPick = { haptics.tap(); vm.setMode(it, date = editDate) })
             else -> ModeChipRow(
-                mode, dv.isMin || dv.isSend,
+                mode, dv, st.settings.protein,
                 onChange = { weighOpen = false; pickOpen = null; vm.setMode(null, date = editDate) },
                 // An Off day with the block unchecked is a Rest day that was logged under the old rules; one tap fixes it.
                 onMakeRest = if (mode == DayMode.OFF && ProgramSpec.ITEM_CORE !in done) ({ haptics.tap(); vm.setMode(DayMode.REST, date = editDate) }) else null,
@@ -152,14 +184,14 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Eyebrow("Script")
+                Eyebrow(if (past) "Script · late checks count" else "Script")
                 Eyebrow("${tickedInt(finished.size)} / ${items.size}")
             }
             if (items.isEmpty()) {
                 Box(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).dashedBorder(c.mutedBorder).padding(18.dp, 14.dp),
                 ) {
-                    Sub("Pick a day and the script shows up. Minimum day is weigh in + protein. That keeps the chain.")
+                    Sub(if (past) "Nothing was logged. Pick what this day was and fill it in." else "Pick a day and the script shows up. Minimum day is weigh in + protein. That keeps the chain.")
                 }
             }
             for (it in remaining) {
@@ -224,9 +256,11 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
             }
         }
 
-        Tiles(st, dv)
+        XpStrip(st)
         WeightTile(st, onWeight)
+        }
     }
+    if (infoOpen) WallInfoSheet(onDismiss = { infoOpen = false })
 }
 
 /** 7-day average and pace. Tapping opens the full Weight sheet with the chart. */
@@ -256,22 +290,6 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
                 } else Text("No readings yet", color = c.text2, style = cutStyle(12, 600, 1f))
                 Text("CHART ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
             }
-        }
-    }
-}
-
-/** Yesterday chip on today; Earlier / Later / Today pills while editing a past day. */
-@Composable
-private fun DayNav(past: Boolean, atStart: Boolean, onEarlier: () -> Unit, onLater: () -> Unit, onToday: () -> Unit) {
-    val c = CutTheme.colors
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (!past) {
-            if (!atStart) NavPill("‹ Yesterday", onEarlier)
-        } else {
-            if (!atStart) NavPill("‹ Earlier", onEarlier)
-            NavPill("Later ›", onLater)
-            NavPill("Today", onToday, accent = true)
-            Text("Late checks count. No confetti.", color = c.text2, style = cutStyle(11, 500, 1f), modifier = Modifier.padding(start = 4.dp))
         }
     }
 }
@@ -399,7 +417,7 @@ private fun PickCard(modifier: Modifier, icon: androidx.compose.ui.graphics.vect
 }
 
 @Composable
-private fun ModeChipRow(mode: DayMode?, safe: Boolean, onChange: () -> Unit, onMakeRest: (() -> Unit)? = null) {
+private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int, onChange: () -> Unit, onMakeRest: (() -> Unit)? = null) {
     val c = CutTheme.colors
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
       Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -425,9 +443,11 @@ private fun ModeChipRow(mode: DayMode?, safe: Boolean, onChange: () -> Unit, onM
             contentAlignment = Alignment.Center,
         ) { Text("MAKE IT REST", color = c.text, style = cutStyle(11, 800, 1f, 0.06f)) }
       }
-        if (safe) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(CutIcons.Shield, null, Modifier.size(12.dp), tint = c.good)
-            Text("CHAIN SAFE", color = c.good, style = cutStyle(10, 800, 1f, 0.1f))
+        val hit = dv.totals.protein >= proteinTarget
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("${tickedInt(dv.totals.protein)}", color = if (hit) c.good else c.text, style = cutStyle(13, 800, 1f, tabular = true))
+            Text(" / $proteinTarget g", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
+            Text("   ${tickedInt(dv.totals.calories)} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
         }
     }
 }
@@ -547,44 +567,6 @@ private fun CustomMealForm(toLibrary: Boolean, onLog: (String, Int, Int, Boolean
                     Sub("Save to library", size = 12)
                 }
                 BigButton("Log it", onClick = { onLog(name, pro.toIntOrNull() ?: 0, cal.toIntOrNull() ?: 0, save) }, modifier = Modifier.width(110.dp), height = 40.dp, fontSize = 12, enabled = pro.toIntOrNull() != null || cal.toIntOrNull() != null)
-            }
-        }
-    }
-}
-
-@Composable
-private fun Tiles(st: AppState, dv: AppState.DayView) {
-    val c = CutTheme.colors
-    val pro = tickedInt(dv.totals.protein)
-    val cal = tickedInt(dv.totals.calories)
-    val target = st.settings.protein
-    val hit = dv.totals.protein >= target
-    val free = st.settings.checkpoints.any { it.free && it.covers(dv.date) }
-    val bar by animateFloatAsState((dv.totals.protein.toFloat() / target).coerceIn(0f, 1f), tween(350), label = "pro")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Card(Modifier.weight(1.3f), padding = PaddingValues(14.dp, 12.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TileLabel("Protein")
-                    TileLabel("${dv.totals.protein} / ${target}g")
-                }
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text("$pro", color = c.text, style = cutStyle(22, 800, 1f, tabular = true))
-                    Text("g", color = c.text2, style = cutStyle(13, 600, 1f))
-                }
-                Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(c.hairline)) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(bar).clip(RoundedCornerShape(3.dp)).background(if (hit) c.good else c.accent))
-                }
-            }
-        }
-        if (!free) Card(Modifier.weight(1f), padding = PaddingValues(14.dp, 12.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                TileLabel("Calories")
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text("$cal", color = c.text, style = cutStyle(22, 800, 1f, tabular = true))
-                    Text(" / ${st.settings.calories}", color = c.text2, style = cutStyle(13, 600, 1f, tabular = true))
-                }
-                Text("${(st.settings.calories - dv.totals.calories).coerceAtLeast(0)} left", color = c.text2, style = cutStyle(11, 500, 1f, tabular = true))
             }
         }
     }

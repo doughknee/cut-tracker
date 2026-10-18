@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,7 +52,11 @@ import com.relentnet.cuttracker.ui.LocalHaptics
 import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.Eyebrow
-import com.relentnet.cuttracker.ui.components.H1
+import com.relentnet.cuttracker.ui.components.Hold
+import com.relentnet.cuttracker.ui.components.HoldShape
+import com.relentnet.cuttracker.ui.components.holdFill
+import com.relentnet.cuttracker.ui.components.holdNumberColor
+import com.relentnet.cuttracker.ui.components.holdShape
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.theme.CutIcons
@@ -89,53 +94,23 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
 
     Box(Modifier.fillMaxSize()) {
         Screen {
-            Column {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Eyebrow("Day ${st.dayN} of ${s.totalDays} · ${ProgramEngine.pct(st.dayN, s.totalDays)}%")
-                    Eyebrow("${st.sends} send" + if (st.sends == 1) "" else "s", color = c.good)
-                }
-                H1("The Route")
-            }
-            ProjectCard(st)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Eyebrow("${s.totalDays} holds, bottom to top")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LegendDot(c.good, "Send"); LegendDot(c.goodDim, "Min"); LegendDot(c.freeze, "Freeze")
-                }
-            }
-            Card(Modifier.fillMaxWidth(), padding = PaddingValues(14.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (w in s.lengthWeeks downTo 1) {
-                        val anchors = s.checkpoints.filter { !it.free && ProgramEngine.checkpointWeek(it, s.startDate, s.lengthWeeks) == w }
-                        val firstDay = s.startDate.plusDays(((w - 1) * 7).toLong())
-                        val fut = firstDay.isAfter(st.today)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("WK $w", Modifier.width(34.dp), color = if (fut) c.dim else c.text, style = cutStyle(10, 700, 1f, 0.06f))
-                            for (d in 0 until 7) {
-                                val date = firstDay.plusDays(d.toLong())
-                                val r = st.results[date] ?: DayResult.FUTURE
-                                Hold(r, Modifier.weight(1f)) { pop = date; haptics.tick() }
-                            }
-                            Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                                val cp = anchors.firstOrNull()
-                                if (cp != null) {
-                                    val (state, _) = checkpointState(st, cp.localDate, cp.target)
-                                    val tint = when {
-                                        state == CpState.HIT -> c.good
-                                        cp.localDate == current -> c.accent
-                                        else -> c.mutedBorder
-                                    }
-                                    Icon(
-                                        CutIcons.Anchor, contentDescription = "Checkpoint week $w",
-                                        Modifier.size(16.dp).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Button, onClick = onCheckpoints),
-                                        tint = tint,
-                                    )
-                                }
-                            }
-                        }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                Column {
+                    Eyebrow("The Route · ${s.lengthWeeks} weeks")
+                    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
+                        Text("Day ${st.dayN}", color = c.text, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
+                        Text(" / ${s.totalDays}", color = c.dim, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
                     }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Stat("${st.sends}", "Sends", c.good)
+                    Stat("${st.chain.count}", "Chain", c.text, icon = true)
+                }
             }
+            ProjectCard(st)
+            HoldCalendar(st, current, onDay = { pop = it; haptics.tick() })
+            NextCheckpoint(st, current, onCheckpoints)
+            Legend()
             BadgeShelf(st.badges)
         }
         pop?.let { date -> HoldPopover(st, date, onClose = { pop = null }, onEdit = { pop = null; onEditDay(date) }) }
@@ -143,27 +118,127 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
 }
 
 @Composable
-private fun LegendDot(color: Color, label: String) {
+private fun Stat(value: String, label: String, color: Color, icon: Boolean = false) {
     val c = CutTheme.colors
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(Modifier.size(9.dp).clip(RoundedCornerShape(3.dp)).background(color))
-        Text(label.uppercase(), color = c.text2, style = cutStyle(10, 600, 1f, 0.06f))
+    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon) Icon(CutIcons.Link, null, Modifier.size(14.dp), tint = c.good)
+            Text(value, color = color, style = cutStyle(24, 800, 1f, tabular = true))
+        }
+        Text(label.uppercase(), color = c.text2, style = cutStyle(10, 700, 1f, 0.08f))
+    }
+}
+
+private val monthFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM", Locale.US)
+
+/** Twelve Monday-to-Sunday rows. Climbed days are holds (shape = kind of day, fill = result); the rest are numbers. */
+@Composable
+private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -> Unit) {
+    val c = CutTheme.colors
+    val s = st.settings
+    val modes = st.logs.associate { it.date to it.mode }
+    val firstMon = ProgramEngine.weekStart(s.startDate)
+    val rows = (java.time.temporal.ChronoUnit.DAYS.between(firstMon, s.endDate).toInt() + 6) / 7
+    val cps = s.checkpoints.associateBy { it.localDate }
+    var lastMonth = -1
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().padding(start = 34.dp, end = 22.dp)) {
+            for (d in "MTWTFSS") Text("$d", Modifier.weight(1f), color = c.dim, style = cutStyle(9, 800, 1f, 0.06f), textAlign = TextAlign.Center)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            for (w in 0 until rows) {
+                val mon = firstMon.plusDays(7L * w)
+                val mid = mon.plusDays(3)
+                val label = if (mid.monthValue != lastMonth) mid.format(monthFmt).uppercase() else ""
+                lastMonth = mid.monthValue
+                val reached = !mon.isAfter(st.today)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, Modifier.width(34.dp), color = if (reached) c.text else c.dim, style = cutStyle(10, 800, 1f, 0.06f))
+                    for (d in 0 until 7) {
+                        val day = mon.plusDays(d.toLong())
+                        val r = st.results[day]
+                        val cp = cps[day]
+                        Box(Modifier.weight(1f).height(34.dp), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                                when (r) {
+                                    null -> Text("${day.dayOfMonth}", color = c.dim.copy(alpha = 0.5f), style = cutStyle(11, 600, 1f, tabular = true))
+                                    DayResult.FUTURE, DayResult.BEFORE -> Text("${day.dayOfMonth}", color = c.dim, style = cutStyle(11, 700, 1f, tabular = true))
+                                    else -> Hold(
+                                        holdShape(modes[day]), holdFill(r, c), if (r == DayResult.TODAY) 32.dp else 30.dp,
+                                        Modifier.clickable(onClick = { onDay(day) }, role = Role.Button),
+                                        stroke = if (r == DayResult.TODAY) c.accent else null, strokeWidth = if (r == DayResult.TODAY) 2.4.dp else 0.dp,
+                                    ) { Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(11, 900, 1f, tabular = true)) }
+                                }
+                                if (cp != null) Icon(
+                                    CutIcons.Flag, null, Modifier.align(Alignment.TopEnd).offset(4.dp, (-6).dp).size(11.dp),
+                                    tint = when {
+                                        cp.localDate == current -> c.accent
+                                        cp.free -> c.freeze
+                                        else -> c.mutedBorder
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    Text("${w + 1}", Modifier.width(22.dp), color = if (reached) c.text2 else c.dim, style = cutStyle(9, 700, 1f, tabular = true), textAlign = TextAlign.End)
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun Hold(r: DayResult, modifier: Modifier, onClick: () -> Unit) {
+private fun NextCheckpoint(st: AppState, current: LocalDate?, onCheckpoints: () -> Unit) {
     val c = CutTheme.colors
-    val (bg, border) = when (r) {
-        DayResult.SEND -> c.good to c.good
-        DayResult.MIN -> c.goodDim to c.goodDim
-        DayResult.FREEZE -> c.freeze to c.freeze
-        DayResult.MISSED -> c.miss to c.miss
-        DayResult.TODAY -> c.ground to c.accent
-        else -> c.future to c.future
+    val cp = st.settings.checkpoints.firstOrNull { it.localDate == current } ?: return
+    val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, cp.localDate).toInt()
+    val whenText = when (days) { 0 -> "today"; 1 -> "tomorrow"; else -> "in $days days" }
+    Card(Modifier.fillMaxWidth().clickable(onClick = onCheckpoints, role = Role.Button), border = c.accent, padding = PaddingValues(12.dp, 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(CutIcons.Flag, null, Modifier.size(16.dp), tint = c.accent)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(cp.localDate.format(cpFmt) + (cp.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "") + " · $whenText", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
+                if (cp.note.isNotBlank()) Sub(cp.note, size = 11)
+            }
+        }
     }
-    val shape = RoundedCornerShape(6.dp)
-    Box(modifier.height(22.dp).clip(shape).background(bg, shape).border(2.dp, border, shape).clickable(onClick = onClick, role = Role.Button))
+}
+
+private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
+
+@Composable
+private fun Legend() {
+    val c = CutTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Key("Off") { Hold(HoldShape.JUG, c.mutedBorder, 13.dp) }
+            Key("Climb") { Hold(HoldShape.CRIMP, c.mutedBorder, 13.dp) }
+            Key("Rest") { Hold(HoldShape.SLOPER, c.mutedBorder, 13.dp) }
+            Key("No pick") { Hold(HoldShape.PINCH, c.mutedBorder, 13.dp) }
+            Key("Checkpoint") { Icon(CutIcons.Flag, null, Modifier.size(11.dp), tint = c.mutedBorder) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Key("Send") { Swatch(c.good) }
+            Key("Min") { Swatch(c.goodDim) }
+            Key("Freeze") { Swatch(c.freeze) }
+            Key("Missed") { Swatch(c.miss) }
+            Key("Today") { Swatch(Color.Transparent, ring = c.accent) }
+        }
+    }
+}
+
+@Composable
+private fun Key(label: String, icon: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        icon()
+        Text(label.uppercase(), color = CutTheme.colors.text2, style = cutStyle(10, 700, 1f, 0.06f))
+    }
+}
+
+@Composable
+private fun Swatch(fill: Color, ring: Color? = null) {
+    val shape = RoundedCornerShape(3.dp)
+    Box(Modifier.size(11.dp).clip(shape).background(fill).then(if (ring != null) Modifier.border(2.dp, ring, shape) else Modifier))
 }
 
 @Composable
