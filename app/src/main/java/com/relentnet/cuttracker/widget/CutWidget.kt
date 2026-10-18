@@ -303,14 +303,14 @@ private fun PickCard(modifier: GlanceModifier, mode: DayMode, icon: Int, title: 
 
 private data class WRow(val item: ScriptItem, val done: Boolean, val next: Boolean)
 
-/** The next two items to do, then the most recently completed (tap to undo); older ones fold into the summary line. */
-private fun rowsFor(st: AppState): List<WRow> {
+/** Up to [n] rows: the next items to do, then the most recently completed (tap to undo); older ones fold into the summary line. */
+private fun rowsFor(st: AppState, n: Int = 4): List<WRow> {
     val items = st.items
     val remaining = items.filter { it.id !in st.done }
     val lastAt = st.xpEvents.filter { it.date == st.today && it.kind == XpKind.ITEM }.associate { it.ref to it.at }
     val recent = items.filter { it.id in st.done && it.id != ProgramSpec.ITEM_WEIGH }.sortedByDescending { lastAt[it.id]?.toEpochMilli() ?: 0L }
-    val todo = remaining.take(3 - minOf(1, recent.size))
-    val done = recent.take(3 - todo.size)
+    val todo = remaining.take(n - minOf(1, recent.size))
+    val done = recent.take(n - todo.size)
     return todo.mapIndexed { i, it -> WRow(it, false, i == 0) } + done.map { WRow(it, true, false) }
 }
 
@@ -320,9 +320,7 @@ private fun Dashboard(st: AppState) {
     val sent = st.isSend
     val target = st.settings.protein
     val protein = st.totals.protein
-    val calories = st.totals.calories
     val lb = st.weighIns.firstOrNull { it.date == st.today }?.lb
-    val xpToday = st.xpEvents.filter { it.date == st.today }.sumOf { it.amount }
     Column(GlanceModifier.fillMaxSize()) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             WeekHolds(st)
@@ -331,43 +329,28 @@ private fun Dashboard(st: AppState) {
             ChainBadge(st, safe)
         }
         Spacer(GlanceModifier.height(6.dp))
-        Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
-            Column(GlanceModifier.defaultWeight().fillMaxHeight()) {
-                if (sent) {
-                    Column(GlanceModifier.fillMaxWidth().defaultWeight().background(W.surface).cornerRadius(8.dp).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Sent", style = TextStyle(color = W.good, fontSize = 18.sp, fontWeight = FontWeight.Bold))
-                        Text("Every item checked. Hold went green.", style = eyebrow(size = 10).copy(fontWeight = FontWeight.Medium), maxLines = 1)
-                    }
-                } else {
-                    for (r in rowsFor(st)) { ItemRow(r); Spacer(GlanceModifier.height(3.dp)) }
-                    Spacer(GlanceModifier.defaultWeight())
+        Column(GlanceModifier.fillMaxWidth().defaultWeight()) {
+            if (sent) {
+                Column(GlanceModifier.fillMaxWidth().defaultWeight().background(W.surface).cornerRadius(8.dp).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Sent", style = TextStyle(color = W.good, fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                    Text("Every item checked. Hold went green.", style = eyebrow(size = 10).copy(fontWeight = FontWeight.Medium), maxLines = 1)
                 }
-                Row(GlanceModifier.padding(horizontal = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Image(ImageProvider(R.drawable.ic_w_check), null, GlanceModifier.size(10.dp), colorFilter = ColorFilter.tint(W.good))
-                    Spacer(GlanceModifier.width(5.dp))
-                    Text("${st.totals.done} of ${st.totals.total} done · $xpToday xp today", style = eyebrow(W.dim, 10).copy(fontWeight = FontWeight.Medium), maxLines = 1)
-                }
-            }
-            Spacer(GlanceModifier.width(8.dp))
-            Box(GlanceModifier.width(1.dp).fillMaxHeight().background(W.hairline)) {}
-            Spacer(GlanceModifier.width(8.dp))
-            Column(GlanceModifier.width(112.dp).fillMaxHeight()) {
-                Meter("$protein", "/ ${target}g", "PROTEIN", protein.toFloat() / target, if (protein >= target) W.good else W.accent, big = true)
+            } else {
+                for (r in rowsFor(st)) { ItemRow(r); Spacer(GlanceModifier.height(3.dp)) }
                 Spacer(GlanceModifier.defaultWeight())
-                Meter("$calories", "/ ${st.settings.calories}", "CAL", calories.toFloat() / st.settings.calories, W.text2, big = false)
-                Spacer(GlanceModifier.defaultWeight())
-                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (lb != null) fmt1(lb) + " " else "", style = eyebrow(size = 10))
-                    Image(ImageProvider(R.drawable.ic_w_check), null, GlanceModifier.size(9.dp), colorFilter = ColorFilter.tint(W.good))
-                    Spacer(GlanceModifier.defaultWeight())
-                    Text(
-                        if (safe) "Safe day" else "${(target - protein).coerceAtLeast(0)}g to safe",
-                        style = eyebrow(if (safe) W.good else W.text2, 10),
-                    )
-                }
             }
         }
-        Spacer(GlanceModifier.height(6.dp))
+        Spacer(GlanceModifier.height(4.dp))
+        Row(GlanceModifier.fillMaxWidth().padding(horizontal = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(ImageProvider(R.drawable.ic_w_check), null, GlanceModifier.size(10.dp), colorFilter = ColorFilter.tint(W.good))
+            Spacer(GlanceModifier.width(5.dp))
+            Text("${st.totals.done} of ${st.totals.total} done", style = eyebrow(W.dim, 10).copy(fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
+            Text("$protein / ${target}g", style = eyebrow(if (protein >= target) W.good else W.text, 10))
+            Text("  ·  ", style = eyebrow(W.dim, 10))
+            Text(if (lb != null) fmt1(lb) + "  ·  " else "", style = eyebrow(W.text2, 10))
+            Text(if (safe) "Safe day" else "${(target - protein).coerceAtLeast(0)}g to safe", style = eyebrow(if (safe) W.good else W.text2, 10))
+        }
+        Spacer(GlanceModifier.height(5.dp))
         LinearProgressIndicator(
             progress = if (st.totals.total == 0) 0f else st.totals.done.toFloat() / st.totals.total,
             modifier = GlanceModifier.fillMaxWidth().height(3.dp),
@@ -381,7 +364,7 @@ private fun ItemRow(r: WRow) {
     val action = if (r.item.id == ProgramSpec.ITEM_WEIGH) actionStartActivity<MainActivity>()
     else actionRunCallback<CheckItemAction>(actionParametersOf(ItemKey to r.item.id))
     Row(
-        GlanceModifier.fillMaxWidth().height(23.dp).cornerRadius(7.dp).background(if (r.done) W.ground else W.surface).padding(horizontal = 7.dp).clickable(action),
+        GlanceModifier.fillMaxWidth().height(24.dp).cornerRadius(7.dp).background(if (r.done) W.ground else W.surface).padding(horizontal = 7.dp).clickable(action),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(GlanceModifier.size(13.dp).cornerRadius(4.dp).background(if (r.done) W.accent else W.mutedBorder), contentAlignment = Alignment.Center) {
@@ -397,20 +380,6 @@ private fun ItemRow(r: WRow) {
             if (r.next || r.done) "+${r.item.xp}" else r.item.time,
             style = eyebrow(if (r.done) W.good else if (r.next) W.accent else W.text2),
         )
-    }
-}
-
-@Composable
-private fun Meter(value: String, of: String, label: String, fraction: Float, color: ColorProvider, big: Boolean) {
-    Column(GlanceModifier.fillMaxWidth()) {
-        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(value, style = TextStyle(color = W.text, fontSize = if (big) 18.sp else 13.sp, fontWeight = FontWeight.Bold))
-            Spacer(GlanceModifier.width(3.dp))
-            Text(of, style = eyebrow(size = 9).copy(fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
-            Text(label, style = eyebrow(size = 8))
-        }
-        Spacer(GlanceModifier.height(3.dp))
-        LinearProgressIndicator(progress = fraction.coerceIn(0f, 1f), modifier = GlanceModifier.fillMaxWidth().height(4.dp), color = color, backgroundColor = W.hairline)
     }
 }
 

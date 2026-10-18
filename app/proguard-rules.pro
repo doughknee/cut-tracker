@@ -5,3 +5,6 @@
 -keep class * extends androidx.work.InputMerger { <init>(); }
 -keep class androidx.work.OverwritingInputMerger { *; }
 -keep class * extends androidx.work.ListenableWorker { <init>(...); }
+
+# Glance instantiates ActionCallback classes reflectively when a widget is tapped.
+-keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }
