@@ -281,12 +281,12 @@ private fun PickStage(st: AppState) {
         Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
             val climb = ProgramEngine.script(DayMode.CLIMB, st.settings, null)
             val off = ProgramEngine.script(DayMode.OFF, st.settings, null)
-            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, "Climb day", "${climb.size} items · ${ProgramEngine.totalXp(climb)} xp · gym push")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, "Climb day", "${climb.size} items · ${ProgramEngine.totalXp(climb)} xp")
             Spacer(GlanceModifier.width(8.dp))
-            PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${off.size} items · ${ProgramEngine.totalXp(off)} xp · core at home")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${off.size} items · ${ProgramEngine.totalXp(off)} xp")
             Spacer(GlanceModifier.width(8.dp))
             val rest = ProgramEngine.script(DayMode.REST, st.settings, null)
-            PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${rest.size} items · ${ProgramEngine.totalXp(rest)} xp · no block")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${rest.size} items · ${ProgramEngine.totalXp(rest)} xp")
         }
     }
 }
