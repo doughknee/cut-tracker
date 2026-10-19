@@ -1,6 +1,17 @@
 package com.relentnet.cuttracker.ui.beta
 
+import android.app.DatePickerDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import java.time.LocalDate
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -62,6 +73,16 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
             PlainRow("Start", "weighed on ${s.startDate.format(shortDate)}") { MiniStepper(ProgramEngine.fmt1(s.startWeight), { set { it.copy(startWeight = it.startWeight - 0.5) } }, { set { it.copy(startWeight = it.startWeight + 0.5) } }, "lb") }
             PlainRow("Goal", "where the route ends") { MiniStepper(ProgramEngine.fmt1(s.targetWeight), { set { it.copy(targetWeight = it.targetWeight - 0.5) } }, { set { it.copy(targetWeight = it.targetWeight + 0.5) } }, "lb") }
             PlainRow("Weeks", "${s.startDate.format(shortDate)} to ${s.endDate.format(shortDate)}") { MiniStepper("${s.lengthWeeks}", { set { it.copy(lengthWeeks = (it.lengthWeeks - 1).coerceAtLeast(1)) } }, { set { it.copy(lengthWeeks = (it.lengthWeeks + 1).coerceAtMost(52)) } }, "wk") }
+            PlainRow("Starts", "day 1 of the route; what you logged is kept") {
+                val context = LocalContext.current
+                val shape = RoundedCornerShape(8.dp)
+                Box(
+                    Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape).clickable(role = Role.Button) {
+                        DatePickerDialog(context, { _, y, m, d -> vm.saveSettings(s.copy(startDate = LocalDate.of(y, m + 1, d))) }, s.startDate.year, s.startDate.monthValue - 1, s.startDate.dayOfMonth).show()
+                    }.padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(s.startDate.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
+            }
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -73,7 +94,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
                 Text(note, color = if (warn) c.accent else c.text2, style = cutStyle(12, 500, 1.4f))
             }
         }
-        Sub("Changing the goal or the weeks redraws the pace line and moves every checkpoint that sits on it. The start date is under Settings, Program.", size = 12)
+        Sub("Changing the start, the goal or the weeks redraws the pace line and moves every checkpoint that sits on it.", size = 12)
     }
 }
 

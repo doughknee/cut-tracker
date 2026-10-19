@@ -1,7 +1,6 @@
 package com.relentnet.cuttracker.ui.settings
 
 import android.app.AlarmManager
-import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.net.Uri
@@ -14,30 +13,28 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
@@ -49,17 +46,16 @@ import com.relentnet.cuttracker.data.buildBackup
 import com.relentnet.cuttracker.data.restoreFrom
 import com.relentnet.cuttracker.data.writeZip
 import com.relentnet.cuttracker.ui.AppViewModel
+import com.relentnet.cuttracker.ui.LocalHaptics
 import com.relentnet.cuttracker.ui.components.BackHeader
-import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
-import com.relentnet.cuttracker.ui.components.Eyebrow
-import com.relentnet.cuttracker.ui.components.Field
-import com.relentnet.cuttracker.ui.components.Pill
+import com.relentnet.cuttracker.ui.components.ChipRow
+import com.relentnet.cuttracker.ui.components.KindCard
+import com.relentnet.cuttracker.ui.components.PlainRow
 import com.relentnet.cuttracker.ui.components.Screen
-import com.relentnet.cuttracker.ui.components.SettingsRow
 import com.relentnet.cuttracker.ui.components.Sub
-import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.components.Switch
+import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -72,13 +68,10 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val shortDate: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 
-/** Settings is a list of categories; each opens its own page, the way the phone's own Settings does. */
+/** Settings is the app's chrome: nudges, looks, data, about. The plan itself lives on Beta. */
 object SettingsSections {
-    const val PROGRAM = "program"
-    const val TARGETS = "targets"
     const val NUDGES = "nudges"
     const val APPEARANCE = "appearance"
     const val DATA = "data"
@@ -94,16 +87,23 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
     val notifOn = remember { NotificationManagerCompat.from(context).areNotificationsEnabled() }
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Today", title = "Settings", onBack = onBack)
-        Card(Modifier.fillMaxWidth()) {
-            CategoryRow(CutIcons.Route, "Program", "${s.lengthWeeks} weeks from ${s.startDate.format(shortDate)} · ${fmt(s.startWeight)} to ${fmt(s.targetWeight)} lb") { onSection(SettingsSections.PROGRAM) }
-            CategoryRow(CutIcons.Zap, "Targets", "${s.calories} cal · ${s.protein} g protein · ${s.workoutsPerWeek} workouts a week") { onSection(SettingsSections.TARGETS) }
-            CategoryRow(CutIcons.Today, "Nudges", (if (notifOn) "Weigh-in ${s.weighInTime.format(timeFmt)} · pick a day ${s.pickTime.format(timeFmt)}" else "Notifications are off")) { onSection(SettingsSections.NUDGES) }
-            CategoryRow(CutIcons.Layers, "Appearance", when (s.theme) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follows the system" } + (if (s.haptics) " · haptics on" else " · haptics off")) { onSection(SettingsSections.APPEARANCE) }
-            CategoryRow(CutIcons.Camera, "Data", "Export, import, reset" + (if (s.onlineFeatures) ", online features on" else ", offline")) { onSection(SettingsSections.DATA) }
+        // The privacy line comes first, because it is the one thing every settings page promises.
+        Card(Modifier.fillMaxWidth(), radius = 14.dp, background = c.ground, border = c.hairline, padding = PaddingValues(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(CutIcons.Shield, null, Modifier.size(22.dp), tint = if (s.onlineFeatures) c.text2 else c.good)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(if (s.onlineFeatures) "Online features: ${if (s.recipeImport) 1 else 0} on" else "Offline", color = c.text, style = cutStyle(16, 800, 1f, display = true))
+                    Text(if (s.onlineFeatures) "Only what you switched on can use the network." else "Nothing leaves the phone.", color = c.text2, style = cutStyle(12, 500, 1.3f))
+                }
+            }
+        }
+        Card(Modifier.fillMaxWidth(), radius = 14.dp) {
+            CategoryRow(CutIcons.Today, "Nudges", if (notifOn) "Weigh-in ${s.weighInTime.format(timeFmt)}, pick a day ${s.pickTime.format(timeFmt)}" else "Notifications are off") { onSection(SettingsSections.NUDGES) }
+            CategoryRow(CutIcons.Layers, "Appearance", when (s.theme) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follows the system" } + (if (s.haptics) ", haptics on" else ", haptics off")) { onSection(SettingsSections.APPEARANCE) }
+            CategoryRow(CutIcons.Camera, "Data", "Export, import, online features, reset") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = true) { onSection(SettingsSections.ABOUT) }
         }
-        Sub(if (s.onlineFeatures) "Online features: ${if (s.recipeImport) 1 else 0} on. Only what you switched on can use the network." else "Offline. Nothing leaves the phone.", size = 12, color = if (s.onlineFeatures) c.text2 else c.good)
-        Sub("Meals, lifts and checkpoints live on the Beta tab.", size = 12)
+        Sub("The route itself, targets, meals, lifts and checkpoints live on the Beta tab.", size = 12)
     }
 }
 
@@ -116,7 +116,7 @@ private fun CategoryRow(icon: ImageVector, title: String, sub: String, last: Boo
                 Icon(icon, null, Modifier.size(18.dp), tint = c.accent)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, color = c.text, style = cutStyle(16, 700, 1.1f))
+                Text(title, color = c.text, style = cutStyle(17, 800, 1.1f, -0.01f, display = true))
                 Text(sub, color = c.text2, style = cutStyle(12, 500, 1.25f, tabular = true))
             }
             Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
@@ -125,21 +125,15 @@ private fun CategoryRow(icon: ImageVector, title: String, sub: String, last: Boo
     }
 }
 
-/** One category page. Program, Targets and Nudges edit a draft and Save; the others apply at once. */
+/** One category page. Every control applies at once, the way the Beta pages do. */
 @Composable
 fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
-    val saved = st.settings
+    val s = st.settings
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var d by remember(saved) { mutableStateOf(saved) }
-    var len by remember(saved) { mutableStateOf(saved.lengthWeeks.toString()) }
-    var sw by remember(saved) { mutableStateOf(fmt(saved.startWeight)) }
-    var tw by remember(saved) { mutableStateOf(fmt(saved.targetWeight)) }
-    var cal by remember(saved) { mutableStateOf(saved.calories.toString()) }
-    var pro by remember(saved) { mutableStateOf(saved.protein.toString()) }
-    var wpw by remember(saved) { mutableStateOf(saved.workoutsPerWeek.toString()) }
+    val haptics = LocalHaptics.current
     var resetStage by remember { mutableIntStateOf(0) }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -167,129 +161,76 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
         context.startActivity(Intent.createChooser(send, "Export Sendline"))
     }
 
-    fun save() {
-        val weeks = len.toIntOrNull()?.coerceIn(1, 52) ?: saved.lengthWeeks
-        val s = d.copy(
-            lengthWeeks = weeks,
-            startWeight = sw.toDoubleOrNull() ?: saved.startWeight,
-            targetWeight = tw.toDoubleOrNull() ?: saved.targetWeight,
-            caloriesP1 = cal.toIntOrNull() ?: saved.caloriesP1,
-            protein = pro.toIntOrNull() ?: saved.protein,
-            workoutsPerWeek = wpw.toIntOrNull()?.coerceIn(0, 7) ?: saved.workoutsPerWeek,
-        )
-        vm.saveSettings(s) { vm.showToast("Saved"); onBack() }
-    }
-
-    val title = when (section) {
-        SettingsSections.PROGRAM -> "Program"; SettingsSections.TARGETS -> "Targets"; SettingsSections.NUDGES -> "Nudges"
-        SettingsSections.APPEARANCE -> "Appearance"; SettingsSections.DATA -> "Data"; else -> "About"
-    }
+    val title = when (section) { SettingsSections.NUDGES -> "Nudges"; SettingsSections.APPEARANCE -> "Appearance"; SettingsSections.DATA -> "Data"; else -> "About" }
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Settings", title = title, onBack = onBack)
         when (section) {
-            SettingsSections.PROGRAM -> {
-                Sub("The route itself. Changing the start or the length re-draws the calendar; nothing you logged is touched.")
-                Card(Modifier.fillMaxWidth()) {
-                    SettingsRow("Start date") {
-                        Picker(d.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)) {
-                            DatePickerDialog(context, { _, y, m, day -> d = d.copy(startDate = LocalDate.of(y, m + 1, day)) }, d.startDate.year, d.startDate.monthValue - 1, d.startDate.dayOfMonth).show()
-                        }
-                    }
-                    SettingsRow("Length") {
-                        NumField(len, { len = it }, 56.dp)
-                        val weeks = len.toIntOrNull() ?: saved.lengthWeeks
-                        Sub("weeks · ends ${d.startDate.plusDays(weeks * 7L).format(shortDate)}")
-                    }
-                    SettingsRow("Start weight") { NumField(sw, { sw = it }); Sub("lb") }
-                    SettingsRow("Target weight", last = true) { NumField(tw, { tw = it }); Sub("lb") }
-                }
-                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth(), confirm = true)
-            }
-            SettingsSections.TARGETS -> {
-                Sub("Protein is the one that keeps the chain: weigh in and hit it and the day counts.")
-                Card(Modifier.fillMaxWidth()) {
-                    SettingsRow("Calories") { NumField(cal, { cal = it }, 84.dp) }
-                    SettingsRow("Protein") { NumField(pro, { pro = it }, 64.dp); Sub("g") }
-                    SettingsRow("Workouts per week", last = true) { NumField(wpw, { wpw = it }, 56.dp); Sub("blocks on Climb and Off days") }
-                }
-                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth(), confirm = true)
-            }
             SettingsSections.NUDGES -> {
-                Sub("Two notifications a day at most. Nothing about streaks.")
-                Card(Modifier.fillMaxWidth()) {
-                    // Re-read on every resume so coming back from system settings updates the row.
-                    var tick by remember { mutableIntStateOf(0) }
-                    LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose { } }
-                    val notifOn = remember(tick) { NotificationManagerCompat.from(context).areNotificationsEnabled() }
-                    val exactOn = remember(tick) { Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms() }
-                    SettingsRow(
-                        "Reminders",
-                        onClick = when {
+                Sub("Two notifications a day at most. Nothing about streaks.", size = 12)
+                // Re-read on every resume so coming back from system settings updates the row.
+                var tick by remember { mutableIntStateOf(0) }
+                LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose { } }
+                val notifOn = remember(tick) { NotificationManagerCompat.from(context).areNotificationsEnabled() }
+                val exactOn = remember(tick) { Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms() }
+                KindCard("Reminders", if (notifOn) "on" else "off") {
+                    PlainRow("Allowed by the phone", when { !notifOn -> "Off. Tap to allow notifications."; !exactOn -> "On, timing may drift. Tap to allow exact alarms."; else -> "On, exact" }) {
+                        val fix = when {
                             !notifOn -> ({ context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)) })
                             !exactOn && Build.VERSION.SDK_INT >= 31 -> ({ context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName))) })
                             else -> null
-                        },
-                    ) {
-                        Sub(
-                            when {
-                                !notifOn -> "Off. Allow notifications ›"
-                                !exactOn -> "On, timing may drift. Allow exact alarms ›"
-                                else -> "On"
-                            },
-                            color = if (notifOn) c.text2 else c.accent,
-                        )
+                        }
+                        if (fix != null) LinkText("Allow", onClick = fix) else Icon(CutIcons.Check, null, Modifier.size(16.dp), tint = c.good)
                     }
-                    SettingsRow("Weigh-in reminder") { TimePicker(d.weighInTime) { d = d.copy(weighInTime = it) } }
-                    SettingsRow("\"Pick a day\" if unset") { TimePicker(d.pickTime) { d = d.copy(pickTime = it) } }
-                    SettingsRow("Day rolls over at", last = true) { TimePicker(LocalTime.of(d.resetHour, 0)) { d = d.copy(resetHour = it.hour) } }
+                    PlainRow("Weigh-in", "before food") { TimePick(s.weighInTime) { vm.saveSettings(s.copy(weighInTime = it)) } }
+                    PlainRow("Pick a day", "if the day is still unset") { TimePick(s.pickTime) { vm.saveSettings(s.copy(pickTime = it)) } }
                 }
-                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth(), confirm = true)
+                KindCard("The day", "") {
+                    PlainRow("Rolls over at", "a late night still counts as today until then") { TimePick(LocalTime.of(s.resetHour, 0)) { vm.saveSettings(s.copy(resetHour = it.hour)) } }
+                }
             }
             SettingsSections.APPEARANCE -> {
-                Card(Modifier.fillMaxWidth()) {
-                    SettingsRow("Theme") {
-                        for ((k, l) in listOf("system" to "System", "dark" to "Dark", "light" to "Light")) Pill(l, saved.theme == k, { vm.saveSettings(saved.copy(theme = k)) })
+                KindCard("Theme", "") {
+                    Box(Modifier.padding(14.dp, 6.dp, 14.dp, 14.dp)) {
+                        ChipRow(listOf("system" to "Follows the system", "dark" to "Dark", "light" to "Light"), s.theme, onSelect = { haptics.tick(); vm.saveSettings(s.copy(theme = it)) })
                     }
-                    SettingsRow("Haptics and confetti", last = true) { Switch(saved.haptics) { vm.saveSettings(saved.copy(haptics = !saved.haptics)) } }
+                }
+                KindCard("Feel", "") {
+                    PlainRow("Haptics and confetti", "a tick on every check, a burst on a Send") { Switch(s.haptics) { vm.saveSettings(s.copy(haptics = !s.haptics)) } }
                 }
                 Sub("Applies at once.", size = 12)
             }
             SettingsSections.DATA -> {
-                Sub("Everything lives on this phone. Export is how it moves to another one.")
-                Card(Modifier.fillMaxWidth()) {
-                    SettingsRow("Export JSON", onClick = { export(false) }) { Sub("›") }
-                    SettingsRow("Export with photos", onClick = { export(true) }) { Sub("zip ›") }
-                    SettingsRow("Import JSON or zip", last = true, onClick = { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) }) { Sub("›") }
+                Sub("Everything lives on this phone. Export is how it moves to another one.", size = 12)
+                KindCard("Backup", "") {
+                    PlainRow("Export", "a JSON file of everything but photos") { LinkText("Share") { export(false) } }
+                    PlainRow("Export with photos", "a zip, bigger") { LinkText("Share") { export(true) } }
+                    PlainRow("Import", "a JSON or zip you exported") { LinkText("Pick a file") { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) } }
                 }
-                Eyebrow("Online features")
-                Card(Modifier.fillMaxWidth()) {
-                    SettingsRow("Allow online features") { Switch(saved.onlineFeatures) { vm.saveSettings(saved.copy(onlineFeatures = !saved.onlineFeatures)) } }
-                    SettingsRow("Recipe import by link", last = true, labelColor = if (saved.onlineFeatures) c.text else c.text2) {
-                        Switch(saved.onlineFeatures && saved.recipeImport) { if (saved.onlineFeatures) vm.saveSettings(saved.copy(recipeImport = !saved.recipeImport)) }
+                KindCard("Online features", if (s.onlineFeatures) "on" else "off", sub = "Off, the app never touches the network. Each feature says what it sends and to whom, and nothing about you is ever part of it.") {
+                    PlainRow("Allow online features", "the master switch") { Switch(s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(onlineFeatures = !s.onlineFeatures)) } }
+                    PlainRow("Recipe import by link", "downloads the one page you paste in New meal, straight from that site") {
+                        Switch(s.onlineFeatures && s.recipeImport) { if (s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(recipeImport = !s.recipeImport)) } }
                     }
+                    PlainRow("The code that does it", "public, on GitHub") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/RecipeImport.kt"))) } }
                 }
-                Sub("Off, the app never touches the network. Recipe import downloads the one page you paste in New meal, straight from that site, and reads the recipe out of it. Nothing about you is sent, and nothing else connects.", size = 12)
-                Text(
-                    "Read the code that does it ›", color = c.accent, style = cutStyle(12, 700, 1.3f),
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/RecipeImport.kt"))) }.padding(4.dp, 2.dp),
-                )
-                Eyebrow("Danger")
-                Card(Modifier.fillMaxWidth()) {
-                    SettingsRow(
-                        when (resetStage) { 0 -> "Reset program"; 1 -> "Tap again to wipe everything"; else -> "Last chance. Tap to reset" },
-                        last = true, labelColor = c.accent,
-                        onClick = {
+                KindCard("Danger", "") {
+                    PlainRow(
+                        when (resetStage) { 0 -> "Reset program"; 1 -> "Tap again to wipe everything"; else -> "Last chance" },
+                        "logs, photos, settings, all of it",
+                    ) {
+                        LinkText(when (resetStage) { 0 -> "Reset"; 1 -> "Again"; else -> "Wipe" }, color = c.accent) {
+                            haptics.tap()
                             if (resetStage < 2) resetStage++ else { resetStage = 0; vm.resetProgram { vm.showToast("Program reset") } }
-                        },
-                    ) { Sub(if (resetStage == 0) "double confirm" else "${2 - resetStage + 1} more") }
+                        }
+                    }
                 }
             }
             else -> {
                 val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
-                Card(Modifier.fillMaxWidth()) {
-                    SettingsRow("Sendline") { Sub(version) }
-                    SettingsRow("Privacy policy", onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://doughknee.github.io/cut-tracker/privacy.html"))) }) { Sub("›") }
-                    SettingsRow("Everything stays on this phone", last = true) { Sub(if (saved.onlineFeatures) "no account, online only when you ask" else "no account, no network") }
+                KindCard("Sendline", version) {
+                    PlainRow("Privacy policy", "what the app keeps and what it never does") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://doughknee.github.io/cut-tracker/privacy.html"))) } }
+                    PlainRow("Everything stays on this phone", if (s.onlineFeatures) "no account, online only when you ask" else "no account, no network") { Icon(CutIcons.Shield, null, Modifier.size(16.dp), tint = c.good) }
+                    PlainRow("The code", "public, on GitHub") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker"))) } }
                 }
                 Sub("Sendline is a logbook and a scoreboard, not medical advice. Your targets are yours; talk to a doctor before a cut if you have a condition.", size = 12)
             }
@@ -297,27 +238,24 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
     }
 }
 
+/** A small accent action at the right of a row. */
 @Composable
-fun NumField(value: String, onChange: (String) -> Unit, width: Dp = 76.dp) {
-    Field(value, onChange, Modifier.width(width), height = 36.dp, fontSize = 14, weight = 700, center = true, borderWidth = 1.dp, radius = 8.dp, padding = 6.dp, keyboard = KeyboardType.Decimal)
+private fun LinkText(label: String, color: Color = CutTheme.colors.accent, onClick: () -> Unit) {
+    Text(
+        label.uppercase(), color = color, style = cutStyle(11, 800, 1f, 0.08f),
+        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onClick, role = Role.Button).padding(6.dp, 8.dp),
+    )
 }
 
 @Composable
-private fun Picker(label: String, onClick: () -> Unit) {
+private fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
     val c = CutTheme.colors
+    val context = LocalContext.current
     val shape = RoundedCornerShape(8.dp)
     Box(
-        Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape).clickable(onClick = onClick, role = Role.Button).padding(horizontal = 10.dp),
+        Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape)
+            .clickable(role = Role.Button) { TimePickerDialog(context, { _, h, m -> onPick(LocalTime.of(h, m)) }, value.hour, value.minute, true).show() }
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = c.text, style = cutStyle(14, 700, 1f, tabular = true)) }
+    ) { Text(value.format(timeFmt), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
 }
-
-@Composable
-private fun TimePicker(value: LocalTime, onPick: (LocalTime) -> Unit) {
-    val context = LocalContext.current
-    Picker(value.format(timeFmt)) {
-        TimePickerDialog(context, { _, h, m -> onPick(LocalTime.of(h, m)) }, value.hour, value.minute, true).show()
-    }
-}
-
-internal fun fmt(v: Double) = if (v % 1.0 == 0.0) "%.1f".format(Locale.US, v) else v.toString()
