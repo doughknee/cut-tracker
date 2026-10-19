@@ -192,7 +192,7 @@ private val popSpec = tween<IntOffset>(320, easing = FastOutSlowInEasing)
 private fun popEnter(from: String?, to: String?): EnterTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        a >= 0 && b >= 0 -> slideInHorizontally(popSpec) { if (b > a) it / 2 else -it / 2 }
+        a >= 0 && b >= 0 -> slideInHorizontally(popSpec) { if (b > a) it / 2 else -it / 2 } + fadeIn(tween(320), initialAlpha = 0.55f)
         else -> slideInHorizontally(popSpec) { -it / 4 } + fadeIn(tween(320), initialAlpha = 0.55f)
     }
 }
@@ -200,7 +200,9 @@ private fun popEnter(from: String?, to: String?): EnterTransition {
 private fun popExit(from: String?, to: String?): ExitTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        a >= 0 && b >= 0 -> slideOutHorizontally(popSpec) { if (b > a) -it / 4 else it / 4 }
+        // Today is the start destination, so any tab -> Today is a pop. No fade here, so the leaving tab must travel the
+        // whole width or it stops a quarter of the way and vanishes.
+        a >= 0 && b >= 0 -> slideOutHorizontally(popSpec) { if (b > a) -it else it }
         from == Routes.WEIGHT -> slideOutVertically(popSpec) { it }
         else -> slideOutHorizontally(popSpec) { it }
     }
