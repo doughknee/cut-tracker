@@ -66,7 +66,6 @@ import com.relentnet.cuttracker.ui.beta.BetaScreen
 import com.relentnet.cuttracker.ui.beta.LiftsPage
 import com.relentnet.cuttracker.ui.beta.MealsPage
 import com.relentnet.cuttracker.ui.onboarding.OnboardingScreen
-import com.relentnet.cuttracker.ui.settings.CheckpointsEditor
 import com.relentnet.cuttracker.ui.settings.SettingsScreen
 import com.relentnet.cuttracker.ui.settings.SettingsSectionScreen
 import com.relentnet.cuttracker.ui.theme.CutIcons
@@ -84,7 +83,6 @@ object Routes {
     const val CHECKPOINTS = "checkpoints"
     const val CAMERA = "camera"
     const val ONBOARDING = "onboarding"
-    const val CHECKPOINT_EDITOR = "beta/checkpoints"
     const val BETA_MEALS = "beta/meals"
     const val BETA_LIFTS = "beta/lifts"
     const val SETTINGS_SECTION = "settings/{section}"
@@ -133,7 +131,7 @@ fun App(vm: AppViewModel) {
                     }
                     composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA) {
-                        BetaScreen(vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onCheckpoints = { nav.navigate(Routes.CHECKPOINT_EDITOR) })
+                        BetaScreen(vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) })
                     }
                     composable(Routes.BETA_MEALS) { MealsPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA_LIFTS) { LiftsPage(vm, onBack = { nav.popBackStack() }) }
@@ -146,7 +144,6 @@ fun App(vm: AppViewModel) {
                     composable(Routes.SETTINGS) {
                         SettingsScreen(vm, onBack = { nav.popBackStack() }, onSection = { nav.navigate(Routes.settingsSection(it)) })
                     }
-                    composable(Routes.CHECKPOINT_EDITOR) { CheckpointsEditor(vm, onBack = { nav.popBackStack() }) }
                 }
             }
             if (route in Routes.tabs) {

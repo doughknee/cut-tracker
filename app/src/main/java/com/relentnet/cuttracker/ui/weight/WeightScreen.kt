@@ -166,7 +166,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
         Eyebrow("Today, before food")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Field(text, { text = it }, Modifier.weight(1f), height = 64.dp, fontSize = 32, onDone = ::log, placeholder = ProgramEngine.fmt1(prefill), radius = 12.dp, padding = 18.dp)
-            BigButton("Log", onClick = ::log, modifier = Modifier.width(110.dp))
+            BigButton("Log", onClick = ::log, modifier = Modifier.width(110.dp), confirm = true)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (q in listOf(-1.0, -0.2, 0.2, 1.0)) {

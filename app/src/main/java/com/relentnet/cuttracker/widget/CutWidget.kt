@@ -226,7 +226,7 @@ private fun WeighStage(st: AppState, draft: Double) {
                 Text(
                     when {
                         delta == null -> "first reading"
-                        delta == 0.0 -> "same as yesterday"
+                        delta == 0.0 -> "yesterday ${fmt1(yesterday!!)}"
                         else -> (if (delta > 0) "+" else "") + fmt1(delta) + " vs yesterday"
                     },
                     style = eyebrow(size = 9).copy(fontWeight = FontWeight.Medium),

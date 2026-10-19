@@ -22,6 +22,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import android.app.DatePickerDialog
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import com.relentnet.cuttracker.ui.components.Field
+import com.relentnet.cuttracker.ui.components.pressable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,8 +77,10 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
     // Right-hand photo of the compare pair; the left is always the first one.
     var compare by remember { mutableStateOf<LocalDate?>(null) }
 
+    var editing by remember { mutableStateOf<String?>(null) }
+    val haptics2 = LocalHaptics.current
     Screen(bottomInset = true) {
-        BackHeader(backLabel = "Route", title = "Checkpoints", onBack = onBack)
+        BackHeader(backLabel = "Back", title = "Checkpoints", onBack = onBack)
         if (due) {
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.accent).padding(16.dp, 14.dp),
@@ -131,9 +143,67 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
                 }
             }
         }
+        Sub("Targets on the pace line. Tap one to change the date, the weight or the note. Days off are planned from the calendar on Route.", size = 12)
         Column {
             val cps = s.checkpoints.sortedBy { it.date }
-            cps.forEachIndexed { i, cp -> CheckpointRow(cp, st, current, last = i == cps.lastIndex) }
+            cps.forEachIndexed { i, cp ->
+                Column(Modifier.animateContentSize(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow))) {
+                    Box(Modifier.pressable(haptic = false) { editing = if (editing == cp.date) null else cp.date }) {
+                        CheckpointRow(cp, st, current, last = i == cps.lastIndex && editing != cp.date)
+                    }
+                    if (editing == cp.date) CheckpointEditor(
+                        cp, last = i == cps.lastIndex,
+                        onSave = { ncp -> vm.saveSettings(s.copy(checkpoints = s.checkpoints.map { if (it.date == cp.date) ncp else it }.sortedBy { it.date })); editing = null },
+                        onRemove = { haptics2.tap(); vm.saveSettings(s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date })); editing = null },
+                    )
+                }
+            }
+        }
+        Text(
+            "+ ADD A CHECKPOINT", color = c.text2, style = cutStyle(11, 800, 1f, 0.1f),
+            modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) {
+                val last = s.checkpoints.filter { !it.free }.maxOfOrNull { it.localDate } ?: st.today
+                val d = last.plusDays(14).let { if (it.isAfter(s.endDate.minusDays(1))) s.endDate.minusDays(1) else it }
+                val ncp = Checkpoint(d.toString(), ProgramEngine.paceWeight(ProgramEngine.dayNumber(d, s.startDate), s, ProgramEngine.paceAnchor(st.weighIns, s)).let { kotlin.math.round(it * 2) / 2 }, note = "Pace check.")
+                vm.saveSettings(s.copy(checkpoints = (s.checkpoints + ncp).sortedBy { it.date }))
+                editing = ncp.date
+            }.padding(horizontal = 4.dp, vertical = 8.dp),
+        )
+    }
+}
+
+/** Unfolds under a checkpoint row: date, target, note. A skip only offers Unskip. */
+@Composable
+private fun CheckpointEditor(cp: Checkpoint, last: Boolean, onSave: (Checkpoint) -> Unit, onRemove: () -> Unit) {
+    val c = CutTheme.colors
+    val context = LocalContext.current
+    var date by remember(cp.date) { mutableStateOf(cp.localDate) }
+    var target by remember(cp.date) { mutableStateOf(cp.target?.let { ProgramEngine.fmt1(it) } ?: "") }
+    var note by remember(cp.date) { mutableStateOf(cp.note) }
+    Column(
+        Modifier.fillMaxWidth().padding(start = 40.dp, bottom = if (last) 0.dp else 18.dp).clip(RoundedCornerShape(10.dp)).background(c.surface).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (cp.free) {
+            Sub("A planned skip. Chain kept, no freeze spent, not a Send.", size = 12)
+            BigButton("Unskip", onClick = onRemove, modifier = Modifier.fillMaxWidth(), secondary = true, height = 40.dp, fontSize = 12)
+            return@Column
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            val shape = RoundedCornerShape(8.dp)
+            Box(
+                Modifier.weight(1f).height(40.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape).clickable(role = Role.Button) {
+                    DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d) }, date.year, date.monthValue - 1, date.dayOfMonth).show()
+                }.padding(horizontal = 10.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) { Text(date.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)), color = c.text, style = cutStyle(14, 700, 1f, tabular = true)) }
+            Field(target, { target = it }, Modifier.width(76.dp), height = 40.dp, fontSize = 14, weight = 700, center = true, borderWidth = 1.dp, radius = 8.dp, padding = 6.dp, imeAction = ImeAction.Next)
+            Sub("lb", size = 11)
+        }
+        Field(note, { note = it }, Modifier.fillMaxWidth(), height = 40.dp, fontSize = 14, weight = 700, keyboard = KeyboardType.Text, imeAction = ImeAction.Done, borderWidth = 1.dp, radius = 8.dp, padding = 10.dp, placeholder = "Note")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BigButton("Done", onClick = { onSave(cp.copy(date = date.toString(), target = target.toDoubleOrNull() ?: cp.target, note = note.trim())) }, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12, confirm = true)
+            BigButton("Remove", onClick = onRemove, modifier = Modifier.width(110.dp), secondary = true, height = 40.dp, fontSize = 12)
         }
     }
 }

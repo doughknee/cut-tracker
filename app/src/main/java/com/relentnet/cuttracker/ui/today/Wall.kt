@@ -58,6 +58,7 @@ import com.relentnet.cuttracker.ui.components.Hold
 import com.relentnet.cuttracker.ui.components.holdFill
 import com.relentnet.cuttracker.ui.components.holdNumberColor
 import com.relentnet.cuttracker.ui.components.holdShape
+import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -235,7 +236,7 @@ private fun ChromeButton(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     val shape = RoundedCornerShape(9.dp)
     Box(
         Modifier.size(32.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape)
-            .clickable(enabled = enabled, onClick = onClick, role = Role.Button),
+            .pressable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, contentDescription = label, Modifier.size(15.dp), tint = if (!enabled) c.dim else tint ?: c.text2) }
 }

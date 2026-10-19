@@ -262,7 +262,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                 Text(
                     if (liftOpen) "CLOSE LIFTS" else "LIFT ANYWAY",
                     color = c.text2, style = cutStyle(11, 800, 1f, 0.1f),
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { liftOpen = !liftOpen }.padding(horizontal = 4.dp, vertical = 6.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).pressable { liftOpen = !liftOpen }.padding(horizontal = 4.dp, vertical = 6.dp),
                 )
                 if (liftOpen) LiftInline(vm, blocks = listOf(Block.CLIMB, Block.OFF), onSaved = { liftOpen = false })
             }
@@ -516,7 +516,7 @@ private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (Stri
             val shape = RoundedCornerShape(9.dp)
             Column(Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, if (selected == ref) c.accent else c.hairline, shape)) {
                 Row(
-                    Modifier.fillMaxWidth().clickable(onClick = { onPick(ref) }, role = Role.Button).padding(12.dp, 10.dp),
+                    Modifier.fillMaxWidth().pressable(haptic = false, onClick = { onPick(ref) }).padding(12.dp, 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
