@@ -80,6 +80,7 @@ fun resultName(r: DayResult): String = when (r) {
     DayResult.SEND -> "Send"
     DayResult.MIN -> "Min day"
     DayResult.FREEZE -> "Frozen"
+    DayResult.SKIP -> "Skipped"
     DayResult.MISSED -> "Missed"
     DayResult.TODAY -> "In progress"
     DayResult.FUTURE -> "Not yet"
@@ -220,7 +221,7 @@ fun Wall(
     }
 }
 
-private val ROPE = setOf(DayResult.SEND, DayResult.MIN, DayResult.FREEZE, DayResult.TODAY)
+private val ROPE = setOf(DayResult.SEND, DayResult.MIN, DayResult.FREEZE, DayResult.SKIP, DayResult.TODAY)
 
 private fun weekLabel(monday: LocalDate): String {
     val sunday = monday.plusDays(6)

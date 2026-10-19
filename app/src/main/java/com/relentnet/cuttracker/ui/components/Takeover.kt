@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.ui.LocalHaptics
 import com.relentnet.cuttracker.ui.Takeover
 import com.relentnet.cuttracker.ui.theme.ArchivoTakeover
@@ -60,18 +61,13 @@ import kotlin.random.Random
 fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
     val c = CutTheme.colors
     val haptics = LocalHaptics.current
-    var reelSpinning by remember(t) { mutableStateOf(t is Takeover.Send) }
-    var reelText by remember(t) { mutableStateOf(if (t is Takeover.Send) "??" else "V${t.levelOrZero() - 1} → V${t.levelOrZero()}") }
     val slam = remember(t) { Animatable(1f) }
 
     LaunchedEffect(t) {
         when (t) {
             is Takeover.Send -> {
                 haptics.pattern(0, 30, 40, 60)
-                delay(900)
-                reelSpinning = false
-                reelText = if (t.bonus > 0) "+${t.bonus}" else "0"
-                slam.snapTo(1.5f)
+                slam.snapTo(1.4f)
                 slam.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessMedium))
                 haptics.heavy()
             }
@@ -96,13 +92,12 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
         ) {
             Eyebrow(if (t is Takeover.Send) "Send" else "Level up", color = c.accent)
             Text(
-                if (t is Takeover.Send) "+50" else "V${t.levelOrZero()}",
+                if (t is Takeover.Send) "Sent" else "V${t.levelOrZero()}",
                 color = c.accent,
-                style = cutStyle(120, 900, 0.9f, -0.05f).copy(fontFamily = ArchivoTakeover),
-                textAlign = TextAlign.Center,
+                style = cutStyle(if (t is Takeover.Send) 96 else 120, 900, 0.9f, -0.05f).copy(fontFamily = ArchivoTakeover),
+                textAlign = TextAlign.Center, modifier = Modifier.scale(slam.value),
             )
-            Eyebrow(if (t is Takeover.Send) "Bonus roll" else "New grade")
-            Reel(reelText, reelSpinning, slam.value)
+            Eyebrow(if (t is Takeover.Send) "+${ProgramSpec.XP_SEND} xp" else "New grade")
             Text(
                 if (t is Takeover.Send) "Every item checked. Today's hold just went green." else "New grade. The bar starts over, the chain does not.",
                 color = c.text2, style = cutStyle(13, 500, 1.4f), textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 260.dp),
@@ -115,23 +110,6 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
 
 private fun Takeover.levelOrZero() = (this as? Takeover.LevelUp)?.level ?: 0
 
-@Composable
-private fun Reel(text: String, spinning: Boolean, slamScale: Float) {
-    val c = CutTheme.colors
-    val inf = rememberInfiniteTransition(label = "reel")
-    val y by inf.animateFloat(-14f, 14f, infiniteRepeatable(tween(80, easing = LinearEasing), RepeatMode.Restart), label = "reely")
-    val a by inf.animateFloat(0.3f, 1f, infiniteRepeatable(tween(80, easing = LinearEasing), RepeatMode.Restart), label = "reela")
-    Box(
-        Modifier.width(180.dp).height(64.dp).clip(RoundedCornerShape(12.dp)).background(c.surface).scale(slamScale),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text, color = c.text,
-            style = cutStyle(40, 900, 1f, tabular = true).copy(fontFeatureSettings = TNUM),
-            modifier = if (spinning) Modifier.alpha(a).offset { IntOffset(0, y.dp.roundToPx()) } else Modifier,
-        )
-    }
-}
 
 private class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, val s: Float, val color: Color, var a: Float, val va: Float)
 

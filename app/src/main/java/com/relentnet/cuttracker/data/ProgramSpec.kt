@@ -57,9 +57,6 @@ data class Checkpoint(
     fun covers(d: LocalDate) = !d.isBefore(localDate) && !d.isAfter(lastDate)
 }
 
-@Serializable
-data class ProjectSpec(val id: String, val title: String, val badgeId: String, val badgeName: String, val target: Int)
-
 /** Program defaults. Settings overrides persist in DataStore; this object is what Reset program returns to. */
 object ProgramSpec {
     val PHASE_1_START: LocalDate = LocalDate.of(2026, 10, 14)
@@ -95,7 +92,6 @@ object ProgramSpec {
     const val XP_PHOTO = 40
     const val XP_SEND = 50
     const val XP_MIN = 20
-    const val XP_PROJECT = 150
     const val XP_WORKOUT_TARGET = 40
     const val WORKOUTS_PER_WEEK = 3
 
@@ -134,22 +130,11 @@ object ProgramSpec {
             val rounded = kotlin.math.round(target * 2) / 2
             Checkpoint(
                 start.plusDays(7L * w).toString(), rounded,
-                note = if (w == weeks) "Cut ends. Phase 2 unlocks." else "Pace check. Photo day.",
+                note = if (w == weeks) "Last checkpoint. Top out." else "Pace check. Photo day.",
             )
         }
     }
 
     /** The defaults before onboarding; onboarding replaces them with the user's own. */
     val checkpoints: List<Checkpoint> get() = defaultCheckpoints(PHASE_1_START, START_WEIGHT, TARGET_WEIGHT, LENGTH_WEEKS)
-
-    val projects = listOf(
-        ProjectSpec("dips3", "Beat last week's dips three times", "overhang", "Overhang", 3),
-        ProjectSpec("weigh7", "Log weight all 7 days", "crimp", "Crimp", 7),
-        ProjectSpec("sends3", "Three Sends in a row", "dyno", "Dyno", 3),
-        ProjectSpec("push2", "Two push blocks on climb days", "heelhook", "Heel Hook", 2),
-        ProjectSpec("protein6", "Hit protein 6 of 7 days", "mantle", "Mantle", 6),
-        ProjectSpec("offnoon3", "One full Off-day block before noon, three times", "topout", "Top Out", 3),
-        // Target reads Settings.workoutsPerWeek at runtime; 3 here is only the default.
-        ProjectSpec("workouts", "Hit the workout target", "jug", "Jug", WORKOUTS_PER_WEEK),
-    )
 }

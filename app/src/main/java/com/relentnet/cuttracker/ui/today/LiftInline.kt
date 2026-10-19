@@ -71,24 +71,15 @@ fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
             values[e.id] = Entry(l?.first ?: 0.0, l?.second ?: 10)
         }
     }
-    val liveWon = exercises.any { e -> values[e.id]?.let { v -> ProgramEngine.beat(v.weight to v.reps, last[e.id]) } == true }
-    val won = liveWon || ProgramEngine.weekWon(st.liftSets, st.today)
 
     Column(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Eyebrow("Lift · Week ${st.weekN}")
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(if (won) c.good else c.text2))
-                Text(if (won) "WEEK WON" else "NOT YET", color = if (won) c.good else c.text2, style = cutStyle(11, 700, 1f, 0.08f))
-            }
-        }
-        RestTimer()
+        Eyebrow("Lift · Week ${st.weekN} · beat the last number")
         for (b in blocks) {
             if (blocks.size > 1) Eyebrow(if (b == Block.CLIMB) "Climb day block" else "Off day block")
             for (e in ProgramEngine.exercisesFor(b, s)) {
                 val v = values[e.id] ?: Entry(last[e.id]?.first ?: 0.0, last[e.id]?.second ?: 10)
                 ExerciseCard(
-                    e, v, last[e.id], history[e.id] ?: emptyList(), sets = ProgramEngine.setsFor(e, s.phase),
+                    e, v, last[e.id], history[e.id] ?: emptyList(), sets = e.sets,
                     onChange = { values[e.id] = it; haptics.tick() },
                 )
             }
@@ -97,7 +88,7 @@ fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
             haptics.pattern(0, 20)
             vm.saveLiftSession(exercises.map { e ->
                 val v = values[e.id] ?: Entry(0.0, 10)
-                Repo.LiftEntry(e.id, v.weight, v.reps, ProgramEngine.setsFor(e, s.phase))
+                Repo.LiftEntry(e.id, v.weight, v.reps, e.sets)
             })
             onSaved()
         })
@@ -172,33 +163,4 @@ private fun StepButton(label: String, onClick: () -> Unit) {
         Modifier.width(44.dp).height(48.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape).clickable(onClick = onClick, role = Role.Button),
         contentAlignment = Alignment.Center,
     ) { Text(label, color = c.text, style = cutStyle(20, 700, 1f)) }
-}
-
-/** 90-second rest timer. Accent border while running, green at zero, triple haptic when it ends. */
-@Composable
-fun RestTimer() {
-    val c = CutTheme.colors
-    val haptics = LocalHaptics.current
-    var left by remember { mutableIntStateOf(ProgramSpec.REST_SECONDS) }
-    var running by remember { mutableStateOf(false) }
-    LaunchedEffect(running) {
-        while (running && left > 0) {
-            delay(1000)
-            left--
-            if (left == 0) { running = false; haptics.pattern(0, 60, 60, 60, 60, 60) }
-        }
-    }
-    val border = when { running -> c.accent; left == 0 -> c.good; else -> c.hairline }
-    Card(Modifier.fillMaxWidth(), border = border, padding = PaddingValues(14.dp, 12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("REST", color = c.text2, style = cutStyle(10, 600, 1f, 0.1f))
-                Text("%d:%02d".format(left / 60, left % 60), color = c.text, style = cutStyle(28, 800, 1f, tabular = true))
-            }
-            Pill(
-                when { running -> "Stop"; left == 0 -> "Reset"; else -> "Start" }, on = false,
-                onClick = { if (running) running = false else if (left == 0) left = ProgramSpec.REST_SECONDS else running = true },
-            )
-        }
-    }
 }

@@ -130,7 +130,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
         !past -> "Today · weigh in to safe" to c.accent
         else -> "${resultName(dv.result)} · earlier day" to when (dv.result) {
             DayResult.SEND, DayResult.MIN -> c.good
-            DayResult.FREEZE -> c.freeze
+            DayResult.FREEZE, DayResult.SKIP -> c.freeze
             else -> c.text2
         }
     }
@@ -260,7 +260,6 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
             }
         }
 
-        XpStrip(st)
         WeightTile(st, onWeight)
         }
     }
@@ -321,45 +320,6 @@ private fun WelcomeBack(chain: Int, onOk: () -> Unit) {
     }
 }
 
-@Composable
-fun XpStrip(st: AppState) {
-    val c = CutTheme.colors
-    val level = st.level
-    val next = ProgramEngine.nextLevelXp(level)
-    val xp = tickedInt(st.xp)
-    val progress by animateFloatAsState(ProgramEngine.levelProgress(st.xp), tween(450), label = "xpbar")
-    Card(Modifier.fillMaxWidth(), padding = PaddingValues(12.dp, 10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(c.accent), contentAlignment = Alignment.Center) {
-                Text("V$level", color = c.onAccent, style = cutStyle(18, 900, 1f, -0.02f))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                    Text("$xp XP", color = c.text, style = cutStyle(12, 700, 1f, 0.08f, tabular = true))
-                    Text(if (next != null) "${next - st.xp} to V${level + 1}" else "maxed", color = c.text2, style = cutStyle(11, 600, 1f, tabular = true))
-                }
-                Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(c.hairline)) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(progress).clip(RoundedCornerShape(4.dp)).background(c.accent))
-                }
-            }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(CutIcons.Shield, null, Modifier.size(12.dp), tint = if (st.chain.securedToday) c.good else c.text2)
-                    Text(
-                        when {
-                            st.chain.securedToday -> "SECURED TODAY"
-                            st.chain.paused -> "CHAIN PAUSED"
-                            else -> "CHAIN OPEN"
-                        },
-                        color = if (st.chain.securedToday) c.good else c.text2, style = cutStyle(10, 800, 1f, 0.1f),
-                    )
-                }
-                val f = st.chain.freezesLeft
-                Text("$f FREEZE" + (if (f == 1) "" else "S") + " LEFT", color = c.text2, style = cutStyle(10, 600, 1f, 0.1f, tabular = true))
-            }
-        }
-    }
-}
 
 /** Past the last day: the route is done, the numbers stay, and the next one starts from onboarding. */
 @Composable

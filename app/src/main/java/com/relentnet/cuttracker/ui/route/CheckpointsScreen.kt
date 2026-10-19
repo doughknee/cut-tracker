@@ -111,16 +111,15 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
                 }
             }
         }
-        if (s.phase == 2) Sub("Phase 2: build calories and the extra lifts until the route ends. Photos keep their 14-day cadence.")
         Column {
             val cps = s.checkpoints.sortedBy { it.date }
-            cps.forEachIndexed { i, cp -> CheckpointRow(cp, st, current, last = i == cps.lastIndex, onStartPhase2 = { vm.setPhase(2) }) }
+            cps.forEachIndexed { i, cp -> CheckpointRow(cp, st, current, last = i == cps.lastIndex) }
         }
     }
 }
 
 @Composable
-private fun CheckpointRow(cp: Checkpoint, st: com.relentnet.cuttracker.data.AppState, current: LocalDate?, last: Boolean, onStartPhase2: () -> Unit) {
+private fun CheckpointRow(cp: Checkpoint, st: com.relentnet.cuttracker.data.AppState, current: LocalDate?, last: Boolean) {
     val c = CutTheme.colors
     val s = st.settings
     val week = ProgramEngine.checkpointWeek(cp, s.startDate, s.lengthWeeks)
@@ -128,7 +127,7 @@ private fun CheckpointRow(cp: Checkpoint, st: com.relentnet.cuttracker.data.AppS
     val isCurrent = !cp.free && cp.localDate == current
     val reached = !st.today.isBefore(cp.localDate)
     val dateLabel = if (cp.days > 1) "${cp.localDate.format(cpFmt)} to ${cp.lastDate.dayOfMonth}" else cp.localDate.format(cpFmt)
-    val title = (cp.label ?: "Week $week") + " · " + dateLabel
+    val title = (cp.label ?: if (cp.free) "Skip" else "Week $week") + " · " + dateLabel
     val titleColor = if (state == CpState.HIT || isCurrent) c.text else c.text2
     Row(Modifier.fillMaxWidth().padding(bottom = if (last) 0.dp else 18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(Modifier.width(26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -144,7 +143,7 @@ private fun CheckpointRow(cp: Checkpoint, st: com.relentnet.cuttracker.data.AppS
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(title, color = titleColor, style = cutStyle(16, 700, 1.1f))
                 val (right, rc) = when {
-                    cp.free -> (if (cp.days > 1) "Free days" else "Free day") to c.text2
+                    cp.free -> (if (cp.days > 1) "Skip days" else "Skip day") to c.text2
                     state == CpState.HIT -> "${ProgramEngine.fmt1(avg!!)} hit" to c.good
                     state == CpState.PASSED -> (if (avg != null) "${ProgramEngine.fmt1(avg)} · aimed ${ProgramEngine.fmt1(cp.target ?: 0.0)}" else ProgramEngine.fmt1(cp.target ?: 0.0)) to c.text2
                     isCurrent -> "${ProgramEngine.fmt1(cp.target ?: 0.0)} · ${ChronoUnit.DAYS.between(st.today, cp.localDate)} days" to c.accent
@@ -153,10 +152,6 @@ private fun CheckpointRow(cp: Checkpoint, st: com.relentnet.cuttracker.data.AppS
                 Text(right, color = rc, style = cutStyle(12, 700, 1f, tabular = true))
             }
             Sub(cp.note, size = 13)
-            val isFinal = cp.localDate == s.checkpoints.filter { !it.free }.maxOfOrNull { it.localDate }
-            if (isFinal && reached && s.phase == 1) {
-                BigButton("Start Phase 2", onClick = onStartPhase2, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), height = 48.dp, fontSize = 13)
-            }
         }
     }
 }

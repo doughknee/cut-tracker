@@ -22,7 +22,6 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
-import kotlin.random.Random
 
 /** Everything the screens read, derived once per change. */
 data class AppState(
@@ -41,8 +40,6 @@ data class AppState(
     val liftSets: List<LiftSet> = emptyList(),
     val badges: Set<String> = emptySet(),
     val photos: List<ProgressPhoto> = emptyList(),
-    val project: WeeklyProject? = null,
-    val projectProgress: Int = 0,
     val xpEvents: List<XpEvent> = emptyList(),
     val logs: List<DayLog> = emptyList(),
     val loaded: Boolean = false,
@@ -54,7 +51,6 @@ data class AppState(
     val done: Set<String> get() = log.doneItemIds
     val freeToday: Boolean get() = settings.checkpoints.any { it.free && it.covers(today) }
     val lastWeighIn: WeighIn? get() = weighIns.maxByOrNull { it.date }
-    val projectSpec: ProjectSpec? get() = project?.let { p -> ProgramSpec.projects.firstOrNull { it.id == p.id } }
     val missedRun: Int get() = ProgramEngine.missedRunBefore(results, today)
     val workoutsThisWeek: Int get() = ProgramEngine.workoutsInWeek(logs, today)
     /** Past the last program day: the route is topped out until a new one starts. */
@@ -81,7 +77,7 @@ data class AppState(
 }
 
 sealed interface UiEvent {
-    data class Send(val bonus: Int) : UiEvent
+    data object Send : UiEvent
     data class LevelUp(val level: Int) : UiEvent
     data class Badge(val id: String, val name: String) : UiEvent
     data class Toast(val text: String) : UiEvent
@@ -100,21 +96,14 @@ object XpKind {
     const val PROJECT = "project"
 }
 
-/** The workouts project follows the Settings target; every other project has a fixed one. */
-fun projectTarget(spec: ProjectSpec, s: Settings): Int = if (spec.id == "workouts") s.workoutsPerWeek else spec.target
-
 object BadgeIds {
     const val FIRST_SEND = "first_send"
-    const val CAME_BACK = "came_back"
     fun chain(n: Int) = "chain_$n"
 
     data class Spec(val id: String, val name: String)
 
-    /** Badge shelf order: 4 across. */
-    val all: List<Spec> = listOf(Spec(FIRST_SEND, "First Send")) +
-        ProgramSpec.CHAIN_BADGES.map { Spec(chain(it), "$it Chain") } +
-        Spec(CAME_BACK, "Came Back") +
-        ProgramSpec.projects.map { Spec(it.badgeId, it.badgeName) }
+    /** Badge shelf order: the first Send, then the chain milestones. */
+    val all: List<Spec> = listOf(Spec(FIRST_SEND, "First Send")) + ProgramSpec.CHAIN_BADGES.map { Spec(chain(it), "$it Chain") }
 
     fun name(id: String) = all.firstOrNull { it.id == id }?.name ?: id
 }
@@ -152,7 +141,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     @Suppress("UNCHECKED_CAST")
     val state: Flow<AppState> = combine(
         settings.flow, todayFlow, db.dayLogs().observeAll(), db.weighIns().observeAll(), db.xp().observeAll(),
-        db.badges().observeAll(), db.projects().observeAll(), db.liftSets().observeAll(), db.photos().observeAll(),
+        db.badges().observeAll(), db.liftSets().observeAll(), db.photos().observeAll(),
     ) { arr ->
         val s = arr[0] as Settings
         val today = arr[1] as LocalDate
@@ -160,14 +149,11 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val weighIns = arr[3] as List<WeighIn>
         val xpEvents = arr[4] as List<XpEvent>
         val badges = arr[5] as List<Badge>
-        val projects = arr[6] as List<WeeklyProject>
-        val liftSets = arr[7] as List<LiftSet>
-        val photos = arr[8] as List<ProgressPhoto>
+        val liftSets = arr[6] as List<LiftSet>
+        val photos = arr[7] as List<ProgressPhoto>
         val log = logs.firstOrNull { it.date == today } ?: DayLog(today)
         val items = ProgramEngine.script(log.mode, s, log.picks)
         val results = ProgramEngine.results(logs, weighIns, s, today)
-        val ws = ProgramEngine.weekStart(today)
-        val project = projects.firstOrNull { it.weekStart == ws }
         AppState(
             settings = s, today = today, log = log, items = items,
             totals = ProgramEngine.totals(items, log.doneItemIds),
@@ -176,7 +162,6 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
             xp = xpEvents.sumOf { it.amount }, results = results,
             chain = ProgramEngine.chain(results, today), sends = ProgramEngine.sends(results),
             weighIns = weighIns, liftSets = liftSets, badges = badges.map { it.id }.toSet(), photos = photos,
-            project = project, projectProgress = project?.let { projectProgress(it, logs, weighIns, liftSets, xpEvents, s, today) } ?: 0,
             xpEvents = xpEvents, logs = logs, loaded = true,
         )
     }
@@ -262,12 +247,9 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         refreshToday()
         write { s, today ->
             val results = ProgramEngine.results(db.dayLogs().all(), db.weighIns().all(), s, today)
-            if (ProgramEngine.missedRunBefore(results, today) >= 2 && s.lastOpenDate != today) awardBadge(BadgeIds.CAME_BACK)
             if (s.lastOpenDate != today) settings.update { it.copy(lastOpenDate = today) }
         }
     }
-
-    suspend fun setPhase(phase: Int) = write { _, _ -> settings.update { it.copy(phase = phase) } }
 
     suspend fun saveSettings(s: Settings) = write { _, _ -> settings.save(s) }
 
@@ -295,7 +277,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     /**
      * Reconciles the XP ledger for [date] with its DayLog: one `item` event per done item, `send` when all items are
-     * done (plus one `bonus` roll, kept until the Send is undone), `min` when it is a Min day but not a Send.
+     * done, `min` when it is a Min day but not a Send.
      */
     private suspend fun syncDay(date: LocalDate) {
         val s = settings.current()
@@ -308,24 +290,15 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val min = ProgramEngine.isMin(items, log.doneItemIds, s.protein)
         if (send) wanted[XpKind.SEND to null] = ProgramSpec.XP_SEND
         if (min && !send) wanted[XpKind.MIN to null] = ProgramSpec.XP_MIN
-        val managed = setOf(XpKind.ITEM, XpKind.SEND, XpKind.MIN, XpKind.BONUS)
-        val stale = existing.filter { e ->
-            e.kind in managed && when (e.kind) {
-                XpKind.BONUS -> !send
-                else -> (e.kind to e.ref) !in wanted
-            }
-        }
+        val managed = setOf(XpKind.ITEM, XpKind.SEND, XpKind.MIN)
+        val stale = existing.filter { e -> e.kind in managed && (e.kind to e.ref) !in wanted }
         if (stale.isNotEmpty()) db.xp().deleteIds(stale.map { it.id })
         val have = existing.filter { it.id !in stale.map { s -> s.id } }.map { it.kind to it.ref }.toSet()
         val now = Instant.now()
         val add = wanted.filter { (k, _) -> k !in have }.map { (k, amt) -> XpEvent(date = date, at = now, kind = k.first, amount = amt, ref = k.second) }
         if (add.isNotEmpty()) db.xp().insertAll(add)
-        if (send && existing.none { it.kind == XpKind.BONUS } && add.any { it.kind == XpKind.SEND }) {
-            val bonus = ProgramEngine.bonus(Random.nextDouble())
-            db.xp().insert(XpEvent(date = date, at = now, kind = XpKind.BONUS, amount = bonus, ref = null))
-            // A late check earns the XP; the takeover is for the live moment only.
-            if (date == todayFlow.value) events.tryEmit(UiEvent.Send(bonus))
-        }
+        // A late check earns the XP; the takeover is for the live moment only.
+        if (send && add.any { it.kind == XpKind.SEND } && date == todayFlow.value) events.tryEmit(UiEvent.Send)
     }
 
     private suspend fun afterWrite(xpBefore: Int) {
@@ -342,7 +315,6 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
             db.xp().insert(XpEvent(date = today, at = Instant.now(), kind = XpKind.WORKOUT_TARGET, amount = ProgramSpec.XP_WORKOUT_TARGET, ref = ws.toString()))
             events.tryEmit(UiEvent.Toast("Workout target hit · +${ProgramSpec.XP_WORKOUT_TARGET} xp"))
         }
-        syncProject(s, today, logs, weighIns)
         val xpAfter = db.xp().total()
         val before = ProgramEngine.level(xpBefore)
         val after = ProgramEngine.level(xpAfter)
@@ -351,55 +323,5 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     private suspend fun awardBadge(id: String) {
         if (db.badges().insert(Badge(id, Instant.now())) != -1L) events.tryEmit(UiEvent.Badge(id, BadgeIds.name(id)))
-    }
-
-    /** Ensures this week has a project (random, never last week's), then scores it and pays out once. */
-    private suspend fun syncProject(s: Settings, today: LocalDate, logs: List<DayLog>, weighIns: List<WeighIn>) {
-        val ws = ProgramEngine.weekStart(today)
-        var p = db.projects().get(ws)
-        if (p == null) {
-            val prev = db.projects().previous(ws)?.id
-            val pool = ProgramSpec.projects.filter { it.id != prev }
-            p = WeeklyProject(ws, pool.random().id)
-            db.projects().upsert(p)
-        }
-        val spec = ProgramSpec.projects.firstOrNull { it.id == p.id } ?: return
-        val progress = projectProgress(p, logs, weighIns, db.liftSets().all(), db.xp().all(), s, today)
-        val done = p.done || progress >= projectTarget(spec, s)
-        if (progress != p.progress || done != p.done) db.projects().upsert(p.copy(progress = progress, done = done))
-        if (done && !p.done) {
-            db.xp().insert(XpEvent(date = today, at = Instant.now(), kind = XpKind.PROJECT, amount = ProgramSpec.XP_PROJECT, ref = ws.toString()))
-            awardBadge(spec.badgeId)
-        }
-    }
-
-    /** Progress toward the week's project, from the week's rows. */
-    fun projectProgress(
-        p: WeeklyProject, logs: List<DayLog>, weighIns: List<WeighIn>, liftSets: List<LiftSet>, xpEvents: List<XpEvent>,
-        s: Settings, today: LocalDate,
-    ): Int {
-        val ws = p.weekStart
-        val we = ws.plusDays(6)
-        fun inWeek(d: LocalDate) = !d.isBefore(ws) && !d.isAfter(we)
-        val weekLogs = logs.filter { inWeek(it.date) }
-        return when (p.id) {
-            "dips3" -> liftSets.filter { inWeek(it.date) && it.exerciseId == "dips" && it.setIndex == 0 }
-                .count { ProgramEngine.beat(it.weightLb to it.reps, ProgramEngine.lastSession(liftSets, "dips", it.date)) }
-            "weigh7" -> weighIns.count { inWeek(it.date) }
-            "sends3" -> {
-                val results = ProgramEngine.results(logs, weighIns, s, today)
-                var best = 0; var run = 0
-                var d = ws
-                while (!d.isAfter(we)) { if (results[d] == DayResult.SEND) { run++; best = maxOf(best, run) } else run = 0; d = d.plusDays(1) }
-                best
-            }
-            "push2" -> weekLogs.count { it.mode == DayMode.CLIMB && ProgramSpec.ITEM_PUSH in it.doneItemIds }
-            "workouts" -> weekLogs.count { ProgramEngine.isWorkout(it) }
-            "protein6" -> weekLogs.count { ProgramEngine.totals(ProgramEngine.script(it.mode, s, it.picks), it.doneItemIds).protein >= s.protein }
-            "offnoon3" -> xpEvents.count {
-                it.kind == XpKind.ITEM && it.ref == ProgramSpec.ITEM_CORE && inWeek(it.date) && it.at.atZone(zone).toLocalTime().isBefore(LocalTime.NOON)
-            }
-            else -> 0
-        }
     }
 }

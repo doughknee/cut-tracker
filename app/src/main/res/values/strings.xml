@@ -2,5 +2,4 @@
 <resources>
     <string name="app_name">Sendline</string>
     <string name="widget_wide_desc">Today\'s mode, what is up next, the Send bar and your chain.</string>
-    <string name="widget_small_desc">Chain and Send bar.</string>
 </resources>

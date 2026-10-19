@@ -42,9 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.AppState
 import com.relentnet.cuttracker.data.BadgeIds
+import com.relentnet.cuttracker.data.Checkpoint
 import com.relentnet.cuttracker.data.DayMode
-import com.relentnet.cuttracker.data.ProgramSpec
-import com.relentnet.cuttracker.data.projectTarget
 import com.relentnet.cuttracker.engine.DayResult
 import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
@@ -59,6 +58,7 @@ import com.relentnet.cuttracker.ui.components.holdNumberColor
 import com.relentnet.cuttracker.ui.components.holdShape
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.Sub
+import com.relentnet.cuttracker.ui.components.TileLabel
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -107,13 +107,23 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
                     Stat("${st.chain.count}", "Chain", c.text, icon = true)
                 }
             }
-            ProjectCard(st)
+            WorkoutsRow(st)
             HoldCalendar(st, current, onDay = { pop = it; haptics.tick() }, onCheckpoints = onCheckpoints)
             NextCheckpoint(st, current, onCheckpoints)
             Legend()
             BadgeShelf(st.badges)
         }
-        pop?.let { date -> HoldPopover(st, date, onClose = { pop = null }, onEdit = { pop = null; onEditDay(date) }) }
+        pop?.let { date ->
+            HoldPopover(
+                st, date, onClose = { pop = null }, onEdit = { pop = null; onEditDay(date) },
+                onToggleSkip = {
+                    val cps = st.settings.checkpoints
+                    val existing = cps.firstOrNull { it.free && it.covers(date) }
+                    vm.saveSettings(st.settings.copy(checkpoints = if (existing != null) cps - existing else cps + Checkpoint(date.toString(), free = true, note = "Planned skip.")))
+                    pop = null
+                },
+            )
+        }
     }
 }
 
@@ -158,9 +168,8 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                         val day = mon.plusDays(d.toLong())
                         val r = st.results[day]
                         val cp = cps[day]
-                        val open = r != null && r != DayResult.FUTURE && r != DayResult.BEFORE
                         val tap: (() -> Unit)? = when {
-                            open -> ({ onDay(day) })
+                            r != null && r != DayResult.BEFORE -> ({ onDay(day) })
                             cp != null -> onCheckpoints
                             else -> null
                         }
@@ -171,13 +180,16 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                             Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                                 when (r) {
                                     null -> Text("${day.dayOfMonth}", color = c.dim.copy(alpha = 0.5f), style = cutStyle(11, 600, 1f, tabular = true))
-                                    DayResult.FUTURE, DayResult.BEFORE -> Text("${day.dayOfMonth}", color = c.dim, style = cutStyle(11, 700, 1f, tabular = true))
+                                    DayResult.FUTURE -> if (cp?.free == true) Hold(HoldShape.PINCH, Color.Transparent, 30.dp, stroke = c.freeze, strokeWidth = 2.dp) {
+                                        Text("${day.dayOfMonth}", color = c.freeze, style = cutStyle(11, 900, 1f, tabular = true))
+                                    } else Text("${day.dayOfMonth}", color = c.dim, style = cutStyle(11, 700, 1f, tabular = true))
+                                    DayResult.BEFORE -> Text("${day.dayOfMonth}", color = c.dim, style = cutStyle(11, 700, 1f, tabular = true))
                                     else -> Hold(
                                         holdShape(modes[day]), holdFill(r, c), if (day == st.today) 32.dp else 30.dp,
                                         stroke = if (day == st.today) c.accent else null, strokeWidth = if (day == st.today) 2.4.dp else 0.dp,
                                     ) { Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(11, 900, 1f, tabular = true)) }
                                 }
-                                if (cp != null) Icon(
+                                if (cp != null && !cp.free) Icon(
                                     CutIcons.Flag, null, Modifier.align(Alignment.TopEnd).offset(5.dp, (-3).dp).size(11.dp),
                                     tint = when {
                                         cp.localDate == current -> c.accent
@@ -228,7 +240,7 @@ private fun Legend() {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Key("Send") { Swatch(c.good) }
             Key("Min") { Swatch(c.goodDim) }
-            Key("Freeze") { Swatch(c.freeze) }
+            Key("Freeze or skip") { Swatch(c.freeze) }
             Key("Missed") { Swatch(c.miss) }
             Key("Today") { Swatch(Color.Transparent, ring = c.accent) }
         }
@@ -250,56 +262,32 @@ private fun Swatch(fill: Color, ring: Color? = null) {
 }
 
 @Composable
-private fun ProjectCard(st: AppState) {
+private fun WorkoutsRow(st: AppState) {
     val c = CutTheme.colors
-    val spec = st.projectSpec
-    Card(Modifier.fillMaxWidth(), border = c.hairline, padding = PaddingValues(14.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Eyebrow("This week's project", color = c.accent, size = 11)
-                if (spec != null) Text("${st.projectProgress.coerceAtMost(projectTarget(spec, st.settings))} / ${projectTarget(spec, st.settings)}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true))
-            }
-            Text(spec?.title ?: "A new project appears Monday.", color = c.text, style = cutStyle(17, 700, 1.2f))
-            if (spec != null) {
-                val filled = if (st.project?.done == true) 3 else (st.projectProgress * 3 / projectTarget(spec, st.settings).coerceAtLeast(1)).coerceIn(0, 3)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (i in 0 until 3) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < filled) c.good else c.hairline))
-                }
-                Sub("+${ProgramSpec.XP_PROJECT} xp and the ${spec.badgeName} badge. New project every Monday.", size = 12)
-            }
-            Box(Modifier.fillMaxWidth().height(1.dp).background(c.hairline))
-            val target = st.settings.workoutsPerWeek
-            val w = st.workoutsThisWeek
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Workouts this week", color = c.text, style = cutStyle(13, 700, 1.2f))
-                Text("$w of $target", color = if (w >= target) c.good else c.text2, style = cutStyle(11, 700, 1f, tabular = true))
+    val target = st.settings.workoutsPerWeek
+    val w = st.workoutsThisWeek
+    Card(Modifier.fillMaxWidth(), padding = PaddingValues(14.dp, 12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                TileLabel("Workouts this week")
+                Text("$w of $target", color = if (w >= target) c.good else c.text, style = cutStyle(18, 800, 1f, tabular = true))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (i in 0 until target.coerceAtLeast(1)) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < w) c.good else c.hairline))
+                for (i in 0 until target.coerceAtLeast(1)) Box(Modifier.width(28.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < w) c.good else c.hairline))
             }
-            Sub("Push block on a Climb day or the core block on an Off day. +${ProgramSpec.XP_WORKOUT_TARGET} xp the week you hit it.", size = 12)
         }
     }
 }
 
-private fun badgeColor(id: String, c: com.relentnet.cuttracker.ui.theme.CutColors): Color = when {
-    id.startsWith("chain_") -> c.good
-    id == BadgeIds.CAME_BACK -> c.freeze
-    else -> c.accent
-}
+private fun badgeColor(id: String, c: com.relentnet.cuttracker.ui.theme.CutColors): Color = if (id.startsWith("chain_")) c.good else c.accent
 
-private fun badgeIcon(id: String): ImageVector = when {
-    id == BadgeIds.FIRST_SEND -> CutIcons.Star
-    id.startsWith("chain_") -> CutIcons.Link
-    id == BadgeIds.CAME_BACK -> CutIcons.Layers
-    else -> CutIcons.Flag
-}
+private fun badgeIcon(id: String): ImageVector = if (id.startsWith("chain_")) CutIcons.Link else CutIcons.Star
 
 @Composable
 fun BadgeShelf(earned: Set<String>) {
     val c = CutTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (row in BadgeIds.all.chunked(4)) {
+        for (row in BadgeIds.all.chunked(3)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (b in row) {
                     val on = b.id in earned
@@ -315,7 +303,7 @@ fun BadgeShelf(earned: Set<String>) {
                         Text(b.name.uppercase(), color = if (on) c.text else c.text2, style = cutStyle(10, 700, 1.2f, 0.06f), textAlign = TextAlign.Center)
                     }
                 }
-                repeat(4 - row.size) { Box(Modifier.weight(1f)) }
+                repeat(3 - row.size) { Box(Modifier.weight(1f)) }
             }
         }
     }
@@ -328,7 +316,7 @@ fun Modifier.dashedBorder(color: Color, radius: Float = 10f) = drawBehind {
 
 /** Bottom popover naming the day, its result with XP, and one line of detail. */
 @Composable
-private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEdit: () -> Unit) {
+private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEdit: () -> Unit, onToggleSkip: () -> Unit) {
     val c = CutTheme.colors
     val r = st.results[date] ?: DayResult.FUTURE
     val log = st.logs.firstOrNull { it.date == date }
@@ -336,19 +324,24 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val items = ProgramEngine.script(log?.mode, st.settings, log?.picks ?: emptyMap())
     val done = log?.doneItemIds?.count { id -> items.any { it.id == id } } ?: 0
     val weight = st.weighIns.firstOrNull { it.date == date }?.lb
+    val skipped = st.settings.checkpoints.any { it.free && it.covers(date) }
     val (title, color) = when (r) {
         DayResult.SEND -> "Send · +$xp xp" to c.good
         DayResult.MIN -> "Min day · +$xp xp" to c.good
         DayResult.FREEZE -> "Freeze · 0 xp" to c.text2
+        DayResult.SKIP -> "Planned skip" to c.freeze
         DayResult.MISSED -> "Missed · 0 xp" to c.text2
         DayResult.TODAY -> "Today · so far" to c.accent
+        DayResult.FUTURE -> (if (skipped) "Planned skip" else "Upcoming") to (if (skipped) c.freeze else c.text2)
         else -> "Upcoming" to c.text2
     }
     val detail = when (r) {
         DayResult.FREEZE -> "Missed. A freeze covered it, chain kept."
+        DayResult.SKIP -> "A day off you planned. Chain kept, no freeze spent."
         DayResult.MISSED -> "Nothing logged. Grey hold, that is all."
         DayResult.TODAY -> "In progress. Finish the script for a Send."
-        DayResult.FUTURE, DayResult.BEFORE -> "Not here yet."
+        DayResult.FUTURE -> if (skipped) "Planned skip. Chain kept, no freeze spent." else "Not here yet. Plan a skip if you know you will be off."
+        DayResult.BEFORE -> "Before the start."
         else -> buildList {
             when (log?.mode) { DayMode.CLIMB -> add("Climb day."); DayMode.OFF -> add("Off day."); DayMode.REST -> add("Rest day."); null -> add("Free day.") }
             if (items.isNotEmpty()) add("$done of ${items.size} items.")
@@ -372,8 +365,10 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
                 }
                 Sub(detail, size = 12)
                 val editable = !date.isAfter(st.today) && !date.isBefore(st.settings.startDate)
+                val plannable = date.isAfter(st.today) && date.isBefore(st.settings.endDate)
                 Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (editable) BigButton(if (date == st.today) "Open today" else "Edit day", onClick = onEdit, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12)
+                    if (plannable || (skipped && !editable)) BigButton(if (skipped) "Unskip" else "Plan a skip", onClick = onToggleSkip, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12)
                     BigButton("Close", onClick = onClose, modifier = Modifier.weight(1f), secondary = true, height = 40.dp, fontSize = 12)
                 }
             }

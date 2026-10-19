@@ -112,22 +112,6 @@ class CutWidget : GlanceAppWidget() {
 }
 
 /** 2x1: chain number and the Send bar only. */
-class CutSmallWidget : GlanceAppWidget() {
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val repo = App.of(context).repo
-        val initial = repo.state.first { it.loaded }
-        provideContent { val st by repo.state.collectAsState(initial); Small(st) }
-    }
-}
-
-class CutWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = CutWidget()
-}
-
-class CutSmallWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = CutSmallWidget()
-}
-
 /** Checks or unchecks an item straight from the widget, with the same haptic, then re-renders. */
 class CheckItemAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
@@ -182,7 +166,6 @@ class PickModeAction : ActionCallback {
 
 suspend fun updateWidgets(context: Context) {
     runCatching { CutWidget().updateAll(context) }
-    runCatching { CutSmallWidget().updateAll(context) }
 }
 
 private fun draftDefault(st: AppState): Double = st.weighInBefore(st.today)?.lb ?: st.lastWeighIn?.lb ?: st.settings.startWeight
@@ -403,7 +386,7 @@ private fun WeekHolds(st: AppState) {
             val color = when (r) {
                 DayResult.SEND -> W.good
                 DayResult.MIN -> W.goodDim
-                DayResult.FREEZE -> W.freeze
+                DayResult.FREEZE, DayResult.SKIP -> W.freeze
                 DayResult.MISSED -> W.miss
                 DayResult.TODAY -> W.accent
                 else -> W.future
@@ -420,23 +403,6 @@ private fun WeekHolds(st: AppState) {
                     Image(ImageProvider(icon), null, GlanceModifier.size(12.dp), colorFilter = ColorFilter.tint(color))
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun Small(st: AppState) {
-    Box(GlanceModifier.fillMaxSize().background(W.ground).cornerRadius(16.dp).padding(12.dp).clickable(actionStartActivity<MainActivity>())) {
-        Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            Image(ImageProvider(R.drawable.ic_notification), null, GlanceModifier.size(14.dp), colorFilter = ColorFilter.tint(W.good))
-            Spacer(GlanceModifier.width(4.dp))
-            Text("${st.chain.count}", style = TextStyle(color = W.text, fontSize = 22.sp, fontWeight = FontWeight.Bold))
-            Spacer(GlanceModifier.width(10.dp))
-            LinearProgressIndicator(
-                progress = if (st.items.isEmpty()) 0f else st.totals.done.toFloat() / st.items.size,
-                modifier = GlanceModifier.defaultWeight().height(6.dp),
-                color = if (st.isSend) W.good else W.accent, backgroundColor = W.hairline,
-            )
         }
     }
 }

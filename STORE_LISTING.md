@@ -18,16 +18,16 @@ The wall
 Your week is seven holds up a wall. Shape is the kind of day, color is how it went, the rope is your chain. Tap any hold to open that day, including the ones you forgot to log. Late checks count.
 
 The route
-Twelve weeks (or however long you choose) as a calendar of holds, with checkpoints on the pace line and badges along the way. Freezes cover two missed days a month so one bad day never costs you the chain.
+Twelve weeks (or however long you choose) as a calendar of holds, with checkpoints on the pace line and chain badges along the way. Freezes cover two missed days a month, and a day off you plan ahead never costs you the chain.
 
 Scoreboard, not a lecture
-XP for every item, grades from V0 to V10, a weekly project, a workout target you set yourself. No ads, no account, no feed.
+XP for every item, grades from V0 to V10, a workout target you set yourself. No ads, no account, no feed.
 
 Yours
 Everything stays on your phone. No internet permission, no analytics, no sign-in. Export a backup whenever you like.
 
 Meals and lifts
-A meal library with recipes and per-slot picks, a lift log with a rest timer that remembers last session, a weight chart with the 7-day average against your pace line, progress photos every two weeks.
+A meal library with recipes and per-slot picks, a lift log that remembers last session and shows the trend, a weight chart with the 7-day average against your pace line, progress photos every two weeks.
 
 Sendline is a logbook and a scoreboard, not medical advice. Set your own targets and check with a doctor before a diet if you have a condition.
 

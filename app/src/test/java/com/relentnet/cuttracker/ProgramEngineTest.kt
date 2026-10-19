@@ -72,14 +72,6 @@ class ProgramEngineTest {
         assertEquals(0.5f, ProgramEngine.levelProgress(150))
     }
 
-    @Test fun bonusRoll() {
-        assertEquals(0, ProgramEngine.bonus(0.0))
-        assertEquals(0, ProgramEngine.bonus(0.59))
-        assertEquals(25, ProgramEngine.bonus(0.6))
-        assertEquals(25, ProgramEngine.bonus(0.89))
-        assertEquals(100, ProgramEngine.bonus(0.9))
-    }
-
     @Test fun minVsSend() {
         val items = ProgramEngine.script(DayMode.CLIMB, s)
         assertEquals(7, items.size)
@@ -156,15 +148,21 @@ class ProgramEngineTest {
         assertEquals(1, ProgramEngine.freezesLeft(r, YearMonth.of(2026, 11)))
     }
 
-    @Test fun freeDaysCountAsSend() {
+    @Test fun plannedSkipsKeepTheChainWithoutAFreeze() {
         val free = s.copy(checkpoints = s.checkpoints + listOf(
             Checkpoint("2026-11-26", free = true, label = "Thanksgiving", note = ""),
             Checkpoint("2026-12-24", free = true, days = 2, label = "Christmas", note = ""),
         ))
         val r = ProgramEngine.results(emptyList(), emptyList(), free, LocalDate.of(2026, 12, 26))
-        assertEquals(DayResult.SEND, r[LocalDate.of(2026, 11, 26)])
-        assertEquals(DayResult.SEND, r[LocalDate.of(2026, 12, 24)])
-        assertEquals(DayResult.SEND, r[LocalDate.of(2026, 12, 25)])
+        assertEquals(DayResult.SKIP, r[LocalDate.of(2026, 11, 26)])
+        assertEquals(DayResult.SKIP, r[LocalDate.of(2026, 12, 24)])
+        assertEquals(DayResult.SKIP, r[LocalDate.of(2026, 12, 25)])
+        // Skips are not Sends, they do count toward the chain, and they never spend a freeze.
+        assertEquals(0, ProgramEngine.sends(r))
+        assertTrue(ProgramEngine.chain(r, LocalDate.of(2026, 12, 26)).count >= 3)
+        // November's two freezes went to the first two missed days, not to the skip.
+        val novFreezes = r.filter { (d, v) -> YearMonth.from(d) == YearMonth.of(2026, 11) && v == DayResult.FREEZE }.keys.sorted()
+        assertEquals(listOf(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 2)), novFreezes)
     }
 
     @Test fun checkpointWeeks() {

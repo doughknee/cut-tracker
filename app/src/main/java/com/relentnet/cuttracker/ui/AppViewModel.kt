@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalTime
 
 sealed interface Takeover {
-    data class Send(val bonus: Int) : Takeover
+    data object Send : Takeover
     data class LevelUp(val level: Int) : Takeover
 }
 
@@ -50,7 +50,7 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         viewModelScope.launch {
             repo.events.collect { e ->
                 when (e) {
-                    is UiEvent.Send -> takeover = Takeover.Send(e.bonus)
+                    is UiEvent.Send -> takeover = Takeover.Send
                     is UiEvent.LevelUp -> if (takeover == null) takeover = Takeover.LevelUp(e.level) else pendingLevelUps.addLast(e.level)
                     is UiEvent.Badge -> showToast("${e.name} badge earned")
                     is UiEvent.Toast -> showToast(e.text)
@@ -88,7 +88,6 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     fun savePhoto(path: String) = viewModelScope.launch { repo.savePhoto(path) }
     fun deletePhoto(date: java.time.LocalDate) = viewModelScope.launch { repo.deletePhoto(date) }
     fun dismissWelcomeBack() = viewModelScope.launch { repo.dismissWelcomeBack() }
-    fun setPhase(phase: Int) = viewModelScope.launch { repo.setPhase(phase) }
     fun saveSettings(s: Settings, then: () -> Unit = {}) = viewModelScope.launch { repo.saveSettings(s); then() }
     fun resetProgram(then: () -> Unit = {}) = viewModelScope.launch { repo.resetProgram(); then() }
 

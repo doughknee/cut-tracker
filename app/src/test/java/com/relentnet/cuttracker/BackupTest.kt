@@ -23,7 +23,7 @@ import kotlin.test.assertTrue
 /** The export must survive a JSON round trip and unknown keys from a newer app; this is what a phone move depends on. */
 class BackupTest {
     private val settings = Settings(
-        onboarded = true, phase = 2, startDate = LocalDate.of(2026, 10, 19), lengthWeeks = 10, startWeight = 182.0, targetWeight = 170.0,
+        onboarded = true, phase = 1, startDate = LocalDate.of(2026, 10, 19), lengthWeeks = 10, startWeight = 182.0, targetWeight = 170.0,
         caloriesP1 = 2150, caloriesP2 = 2600, protein = 150, workoutsPerWeek = 4,
         checkpoints = listOf(Checkpoint("2026-11-02", 180.0, note = "Pace check."), Checkpoint("2026-11-26", free = true, label = "Thanksgiving", note = "")),
         weighInTime = LocalTime.of(7, 45), pickTime = LocalTime.of(20, 0), resetHour = 3, haptics = false, theme = "light",

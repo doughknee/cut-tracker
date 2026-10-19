@@ -46,7 +46,7 @@ data class Settings(
     /** The rules sheet opened itself once on the first Today. */
     val tourSeen: Boolean = false,
 ) {
-    val calories: Int get() = if (phase == 2) caloriesP2 else caloriesP1
+    val calories: Int get() = caloriesP1
     val endDate: LocalDate get() = startDate.plusDays(lengthWeeks * 7L)
     val totalDays: Int get() = lengthWeeks * 7
 }

@@ -64,4 +64,4 @@ Photos stay in app-private storage. Settings > Data has Export JSON, Export with
 
 ## Home screen widgets
 
-Long-press the home screen, Widgets, Sendline. The 4x2 widget shows today's mode, the next item (tap it to check it), the Send bar and the chain. The 2x1 widget shows the chain and the bar.
+Long-press the home screen, Widgets, Sendline. The widget shows this week's holds (tap one to open that day), today's mode, the next item (tap it to check it), the Send bar and the chain.

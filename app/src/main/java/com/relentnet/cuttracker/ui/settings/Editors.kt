@@ -216,7 +216,7 @@ fun CheckpointsEditor(vm: AppViewModel, onBack: () -> Unit) {
     val c = CutTheme.colors
     Screen(bottomInset = true) {
         BackHeader("Settings", "Checkpoints", onBack)
-        Sub("Anchors on the route. A free day has no target weight and pauses the calorie tile for that date.")
+        Sub("Target weights along the route. Days off are planned from the calendar on Route, by tapping the day.")
         Card(Modifier.fillMaxWidth()) {
             key(tick) {
                 rows.forEachIndexed { i, cp ->
@@ -230,10 +230,7 @@ fun CheckpointsEditor(vm: AppViewModel, onBack: () -> Unit) {
                                 }.padding(horizontal = 10.dp),
                                 contentAlignment = Alignment.CenterStart,
                             ) { Text(cp.date, color = c.text, style = cutStyle(14, 700, 1f, tabular = true)) }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                BlockPill("Target", !cp.free) { rows[i] = cp.copy(free = false); tick++ }
-                                BlockPill("Free", cp.free) { rows[i] = cp.copy(free = true); tick++ }
-                            }
+                            if (cp.free) Sub("skip", size = 11)
                             RemoveButton { rows.removeAt(i); tick++ }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {

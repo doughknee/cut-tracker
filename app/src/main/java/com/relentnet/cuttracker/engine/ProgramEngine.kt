@@ -32,7 +32,8 @@ data class ScriptItem(
     val workout: Boolean = false,
 )
 
-enum class DayResult { SEND, MIN, FREEZE, MISSED, TODAY, FUTURE, BEFORE }
+/** SKIP is a planned day off (set from the calendar): chain kept, no freeze spent, not a Send. */
+enum class DayResult { SEND, MIN, FREEZE, SKIP, MISSED, TODAY, FUTURE, BEFORE }
 
 data class DaySummary(val date: LocalDate, val result: DayResult, val xp: Int, val mode: DayMode?, val done: Int, val total: Int, val weight: Double?)
 
@@ -142,13 +143,6 @@ object ProgramEngine {
         return ((xp - floor).toFloat() / (next - floor)).coerceIn(0f, 1f)
     }
 
-    /** Bonus roll: 60% 0, 30% 25, 10% 100. [r] in [0,1). */
-    fun bonus(r: Double): Int = when {
-        r < 0.6 -> 0
-        r < 0.9 -> 25
-        else -> 100
-    }
-
     // Weight
 
     /** Last 7 logged days until 7 exist, then the trailing 7 calendar days with gaps ignored. */
@@ -207,7 +201,7 @@ object ProgramEngine {
 
     /**
      * Result for every program day from start through [today]. Freezes: two per calendar month, auto-applied to the
-     * first two missed days of that month. Today is TODAY unless already Min or Send. Free days count as a Send.
+     * first two missed days of that month. Today is TODAY unless already Min or Send. Planned skips are SKIP.
      */
     fun results(logs: List<DayLog>, weighIns: List<WeighIn>, s: Settings, today: LocalDate): Map<LocalDate, DayResult> {
         val byDate = logs.associateBy { it.date }
@@ -219,7 +213,7 @@ object ProgramEngine {
         while (!d.isAfter(last)) {
             val r: DayResult = when {
                 d.isAfter(today) -> DayResult.FUTURE
-                s.checkpoints.any { it.free && it.covers(d) } -> DayResult.SEND
+                s.checkpoints.any { it.free && it.covers(d) } -> DayResult.SKIP
                 else -> resultOf(byDate[d], d in weighed, s)
             }
             out[d] = when {
@@ -240,11 +234,11 @@ object ProgramEngine {
         (ProgramSpec.FREEZES_PER_MONTH - results.count { (d, r) -> YearMonth.from(d) == month && r == DayResult.FREEZE }).coerceAtLeast(0)
 
     /**
-     * Chain = count of Send, Min and Freeze days. It never resets: a missed day pauses it, the next good day continues
-     * from the same number.
+     * Chain = count of Send, Min, Freeze and Skip days. It never resets: a missed day pauses it, the next good day
+     * continues from the same number.
      */
     fun chain(results: Map<LocalDate, DayResult>, today: LocalDate): ChainState {
-        val count = results.values.count { it == DayResult.SEND || it == DayResult.MIN || it == DayResult.FREEZE }
+        val count = results.values.count { it == DayResult.SEND || it == DayResult.MIN || it == DayResult.FREEZE || it == DayResult.SKIP }
         val todayR = results[today]
         val secured = todayR == DayResult.SEND || todayR == DayResult.MIN
         val lastDone = results.entries.lastOrNull { it.key.isBefore(today) }?.value
@@ -265,9 +259,7 @@ object ProgramEngine {
     // Lifts
 
     fun exercisesFor(block: Block, s: Settings): List<Exercise> =
-        s.exercises.filter { it.block == block && (s.phase == 2 || !it.phase2Only) }
-
-    fun setsFor(e: Exercise, phase: Int) = if (phase == 2) e.setsPhase2 ?: e.sets else e.sets
+        s.exercises.filter { it.block == block && !it.phase2Only }
 
     /** The most recent session (weight, reps) for an exercise before or on [date], excluding [date] when [excludeDate]. */
     fun lastSession(sets: List<LiftSet>, exerciseId: String, before: LocalDate): Pair<Double, Int>? {

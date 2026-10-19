@@ -118,8 +118,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
             lengthWeeks = weeks,
             startWeight = sw.toDoubleOrNull() ?: saved.startWeight,
             targetWeight = tw.toDoubleOrNull() ?: saved.targetWeight,
-            caloriesP1 = if (d.phase == 1) cal.toIntOrNull() ?: saved.caloriesP1 else d.caloriesP1,
-            caloriesP2 = if (d.phase == 2) cal.toIntOrNull() ?: saved.caloriesP2 else d.caloriesP2,
+            caloriesP1 = cal.toIntOrNull() ?: saved.caloriesP1,
             protein = pro.toIntOrNull() ?: saved.protein,
             workoutsPerWeek = wpw.toIntOrNull()?.coerceIn(0, 7) ?: saved.workoutsPerWeek,
         )
@@ -146,11 +145,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
                 Sub("weeks · ends ${d.startDate.plusDays(weeks * 7L).format(shortDate)}")
             }
             SettingsRow("Start weight") { NumField(sw, { sw = it }); Sub("lb") }
-            SettingsRow("Target weight") { NumField(tw, { tw = it }); Sub("lb") }
-            SettingsRow("Phase", last = true) {
-                Pill("1 Cut", d.phase == 1, { d = d.copy(phase = 1); cal = d.caloriesP1.toString() })
-                Pill("2 Build", d.phase == 2, { d = d.copy(phase = 2); cal = d.caloriesP2.toString() })
-            }
+            SettingsRow("Target weight", last = true) { NumField(tw, { tw = it }); Sub("lb") }
         }
         Section("Targets") {
             SettingsRow("Calories") { NumField(cal, { cal = it }, 84.dp) }

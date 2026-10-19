@@ -36,14 +36,14 @@ fun holdShape(mode: DayMode?): HoldShape = when (mode) {
 fun holdFill(r: DayResult, c: CutColors): Color = when (r) {
     DayResult.SEND -> c.good
     DayResult.MIN -> c.goodDim
-    DayResult.FREEZE -> c.freeze
+    DayResult.FREEZE, DayResult.SKIP -> c.freeze
     DayResult.MISSED -> c.miss
     DayResult.TODAY -> c.surface
     DayResult.FUTURE, DayResult.BEFORE -> c.future
 }
 
 fun holdNumberColor(r: DayResult, c: CutColors): Color = when (r) {
-    DayResult.SEND, DayResult.FREEZE -> c.ground
+    DayResult.SEND, DayResult.FREEZE, DayResult.SKIP -> c.ground
     DayResult.MIN, DayResult.TODAY -> c.text
     else -> c.text2
 }
