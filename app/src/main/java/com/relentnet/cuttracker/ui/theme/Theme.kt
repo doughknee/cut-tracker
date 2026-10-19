@@ -52,21 +52,28 @@ val LightCutColors = CutColors(
 
 val LocalCutColors = staticCompositionLocalOf { DarkCutColors }
 
-enum class ThemeMode { SYSTEM, DARK, LIGHT }
+enum class ThemeMode { SYSTEM, DARK, LIGHT, SCHEDULE;
+    companion object { fun of(s: String) = when (s) { "dark" -> DARK; "light" -> LIGHT; "schedule" -> SCHEDULE; else -> SYSTEM } }
+}
 
 object CutTheme {
     val colors: CutColors
         @Composable get() = LocalCutColors.current
 }
 
+/** Whether [mode] means dark right now; [now] matters only for the schedule. */
 @Composable
-fun CutTheme(mode: ThemeMode, content: @Composable () -> Unit) {
-    val dark = when (mode) {
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.DARK -> true
-        ThemeMode.LIGHT -> false
-    }
-    val c = if (dark) DarkCutColors else LightCutColors
+fun isDarkFor(mode: ThemeMode, now: java.time.LocalTime): Boolean = when (mode) {
+    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    ThemeMode.DARK -> true
+    ThemeMode.LIGHT -> false
+    ThemeMode.SCHEDULE -> Palettes.scheduledDark(now)
+}
+
+@Composable
+fun CutTheme(mode: ThemeMode, palette: Palette = Palettes.SANDSTONE, now: java.time.LocalTime = java.time.LocalTime.now(), content: @Composable () -> Unit) {
+    val dark = isDarkFor(mode, now)
+    val c = palette.colors(dark)
     val scheme = if (dark) darkColorScheme(
         primary = c.accent, onPrimary = c.onAccent, background = c.ground, onBackground = c.text,
         surface = c.surface, onSurface = c.text, surfaceVariant = c.surface, onSurfaceVariant = c.text2,

@@ -91,8 +91,8 @@ object Routes {
     const val BETA_TARGETS = "beta/targets"
     const val BETA_WEEK = "beta/week"
     fun betaDay(mode: com.relentnet.cuttracker.data.DayMode) = "beta/day/${mode.name}"
-    const val SETTINGS_SECTION = "settings/{section}"
-    fun settingsSection(key: String) = "settings/$key"
+    const val SETTINGS_SECTION = "settings/{section}/{focus}"
+    fun settingsSection(key: String) = "settings/" + (if ('/' in key) key else "$key/-")
     val tabs = listOf(TODAY, BETA, ROUTE)
 }
 
@@ -156,7 +156,8 @@ fun App(vm: AppViewModel) {
                     composable(Routes.BETA_TARGETS) { TargetsPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA_WEEK) { WeekPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS_SECTION) { entry ->
-                        SettingsSectionScreen(vm, section = entry.arguments?.getString("section") ?: "program", onBack = { nav.popBackStack() })
+                        val focus = entry.arguments?.getString("focus")?.takeIf { it != "-" }
+                        SettingsSectionScreen(vm, section = (entry.arguments?.getString("section") ?: "data") + (if (focus != null) "/$focus" else ""), onBack = { nav.popBackStack() })
                     }
                     composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }

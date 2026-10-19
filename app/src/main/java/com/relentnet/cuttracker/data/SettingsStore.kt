@@ -52,6 +52,10 @@ data class Settings(
     /** Kinds a lift can belong to, in display order. */
     val liftKinds: List<String> = ProgramSpec.LIFT_KINDS,
     /** The master switch for anything that touches the network. Off means the app behaves as if it had no INTERNET permission. */
+    /** The look, by [com.relentnet.cuttracker.ui.theme.Palettes] id. */
+    val palette: String = "sandstone",
+    /** True and the calendar picks the look: a palette per month, holidays on top. */
+    val paletteByCalendar: Boolean = false,
     val onlineFeatures: Boolean = false,
     /** Fetch the page behind a pasted recipe link to fill in the New meal sheet. Only counts while [onlineFeatures] is on. */
     val recipeImport: Boolean = true,
@@ -94,6 +98,8 @@ class SettingsStore(context: Context) {
         val plans = stringPreferencesKey("plans")
         val liftKinds = stringPreferencesKey("liftKinds")
         val onlineFeatures = booleanPreferencesKey("onlineFeatures")
+        val palette = stringPreferencesKey("palette")
+        val paletteByCalendar = booleanPreferencesKey("paletteByCalendar")
         val recipeImport = booleanPreferencesKey("recipeImport")
     }
 
@@ -128,6 +134,8 @@ class SettingsStore(context: Context) {
             plans = plans,
             liftKinds = p[K.liftKinds]?.let { runCatching { json.decodeFromString(ListSerializer(String.serializer()), it) }.getOrNull() } ?: d.liftKinds,
             onlineFeatures = p[K.onlineFeatures] ?: d.onlineFeatures,
+            palette = p[K.palette] ?: d.palette,
+            paletteByCalendar = p[K.paletteByCalendar] ?: d.paletteByCalendar,
             recipeImport = p[K.recipeImport] ?: d.recipeImport,
             checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
             weighInTime = p[K.weighInTime]?.let(LocalTime::parse) ?: d.weighInTime,
@@ -164,6 +172,8 @@ class SettingsStore(context: Context) {
         p[K.plans] = json.encodeToString(MapSerializer(String.serializer(), DayPlan.serializer()), s.plans.mapKeys { it.key.name })
         p[K.liftKinds] = json.encodeToString(ListSerializer(String.serializer()), s.liftKinds)
         p[K.onlineFeatures] = s.onlineFeatures
+        p[K.palette] = s.palette
+        p[K.paletteByCalendar] = s.paletteByCalendar
         p[K.recipeImport] = s.recipeImport
         p[K.weighInTime] = s.weighInTime.toString()
         p[K.pickTime] = s.pickTime.toString()

@@ -7,7 +7,16 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.composed
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,12 +58,12 @@ import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.LocalHaptics
 import com.relentnet.cuttracker.ui.components.BackHeader
 import com.relentnet.cuttracker.ui.components.Card
-import com.relentnet.cuttracker.ui.components.ChipRow
 import com.relentnet.cuttracker.ui.components.KindCard
 import com.relentnet.cuttracker.ui.components.PlainRow
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.components.Switch
+import com.relentnet.cuttracker.ui.theme.Palettes
 import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
@@ -88,18 +97,19 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Today", title = "Settings", onBack = onBack)
         // The privacy line comes first, because it is the one thing every settings page promises.
-        Card(Modifier.fillMaxWidth(), radius = 14.dp, background = c.ground, border = c.hairline, padding = PaddingValues(14.dp)) {
+        Card(Modifier.fillMaxWidth().pressable { onSection(SettingsSections.DATA + "/online") }, radius = 14.dp, background = c.ground, border = c.hairline, padding = PaddingValues(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(CutIcons.Shield, null, Modifier.size(22.dp), tint = if (s.onlineFeatures) c.text2 else c.good)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(if (s.onlineFeatures) "Online features: ${if (s.recipeImport) 1 else 0} on" else "Offline", color = c.text, style = cutStyle(16, 800, 1f, display = true))
                     Text(if (s.onlineFeatures) "Only what you switched on can use the network." else "Nothing leaves the phone.", color = c.text2, style = cutStyle(12, 500, 1.3f))
                 }
+                Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
             }
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp) {
             CategoryRow(CutIcons.Today, "Nudges", if (notifOn) "Weigh-in ${s.weighInTime.format(timeFmt)}, pick a day ${s.pickTime.format(timeFmt)}" else "Notifications are off") { onSection(SettingsSections.NUDGES) }
-            CategoryRow(CutIcons.Layers, "Appearance", when (s.theme) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follows the system" } + (if (s.haptics) ", haptics on" else ", haptics off")) { onSection(SettingsSections.APPEARANCE) }
+            CategoryRow(CutIcons.Layers, "Appearance", appearanceLine(s)) { onSection(SettingsSections.APPEARANCE) }
             CategoryRow(CutIcons.Camera, "Data", "Export, import, online features, reset") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = true) { onSection(SettingsSections.ABOUT) }
         }
@@ -125,9 +135,12 @@ private fun CategoryRow(icon: ImageVector, title: String, sub: String, last: Boo
     }
 }
 
-/** One category page. Every control applies at once, the way the Beta pages do. */
+/** One category page. Every control applies at once, the way the Beta pages do. [section] may carry "/<focus>". */
 @Composable
 fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit) {
+    if (section.substringBefore('/') == SettingsSections.APPEARANCE) { AppearancePage(vm, onBack); return }
+    val focus = section.substringAfter('/', "")
+    val section = section.substringBefore('/')
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
@@ -188,17 +201,6 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     PlainRow("Rolls over at", "a late night still counts as today until then") { TimePick(LocalTime.of(s.resetHour, 0)) { vm.saveSettings(s.copy(resetHour = it.hour)) } }
                 }
             }
-            SettingsSections.APPEARANCE -> {
-                KindCard("Theme", "") {
-                    Box(Modifier.padding(14.dp, 6.dp, 14.dp, 14.dp)) {
-                        ChipRow(listOf("system" to "Follows the system", "dark" to "Dark", "light" to "Light"), s.theme, onSelect = { haptics.tick(); vm.saveSettings(s.copy(theme = it)) })
-                    }
-                }
-                KindCard("Feel", "") {
-                    PlainRow("Haptics and confetti", "a tick on every check, a burst on a Send") { Switch(s.haptics) { vm.saveSettings(s.copy(haptics = !s.haptics)) } }
-                }
-                Sub("Applies at once.", size = 12)
-            }
             SettingsSections.DATA -> {
                 Sub("Everything lives on this phone. Export is how it moves to another one.", size = 12)
                 KindCard("Backup", "") {
@@ -206,7 +208,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     PlainRow("Export with photos", "a zip, bigger") { LinkText("Share") { export(true) } }
                     PlainRow("Import", "a JSON or zip you exported") { LinkText("Pick a file") { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) } }
                 }
-                KindCard("Online features", if (s.onlineFeatures) "on" else "off", sub = "Off, the app never touches the network. Each feature says what it sends and to whom, and nothing about you is ever part of it.") {
+                KindCard("Online features", if (s.onlineFeatures) "on" else "off", sub = "Off, the app never touches the network. Each feature says what it sends and to whom, and nothing about you is ever part of it.", modifier = Modifier.pulseWhen(focus == "online")) {
                     PlainRow("Allow online features", "the master switch") { Switch(s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(onlineFeatures = !s.onlineFeatures)) } }
                     PlainRow("Recipe import by link", "downloads the one page you paste in New meal, straight from that site") {
                         Switch(s.onlineFeatures && s.recipeImport) { if (s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(recipeImport = !s.recipeImport)) } }
@@ -238,6 +240,21 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
     }
 }
 
+/**
+ * Scrolls into view and flashes an accent border once, for the row the user was sent to. Lives on the modifier so the
+ * card's own layout is untouched.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+fun Modifier.pulseWhen(on: Boolean): Modifier = composed {
+    if (!on) return@composed this
+    val c = CutTheme.colors
+    val requester = remember { BringIntoViewRequester() }
+    var lit by remember { mutableStateOf(false) }
+    val alpha by animateFloatAsState(if (lit) 1f else 0f, tween(if (lit) 250 else 900), label = "pulse")
+    LaunchedEffect(Unit) { delay(250); requester.bringIntoView(); lit = true; delay(900); lit = false }
+    bringIntoViewRequester(requester).border(2.dp, c.accent.copy(alpha = alpha), RoundedCornerShape(14.dp))
+}
+
 /** A small accent action at the right of a row. */
 @Composable
 private fun LinkText(label: String, color: Color = CutTheme.colors.accent, onClick: () -> Unit) {
@@ -258,4 +275,11 @@ private fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) { Text(value.format(timeFmt), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
+}
+
+/** What the Appearance row says: the mode, and the look the app wears right now. */
+private fun appearanceLine(s: com.relentnet.cuttracker.data.Settings): String {
+    val mode = when (s.theme) { "dark" -> "Dark"; "light" -> "Light"; "schedule" -> "Dark at night"; else -> "Follows the system" }
+    val look = if (s.paletteByCalendar) Palettes.forDate(LocalDate.now()).first.name + " by the calendar" else Palettes.byId(s.palette).name
+    return "$mode, $look" + (if (s.haptics) "" else ", haptics off")
 }

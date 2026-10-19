@@ -22,6 +22,8 @@ import com.relentnet.cuttracker.ui.Haptics
 import com.relentnet.cuttracker.ui.LocalHaptics
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.ThemeMode
+import com.relentnet.cuttracker.ui.theme.Palettes
+import androidx.compose.runtime.produceState
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels { AppViewModel.factory(App.of(this).repo) }
@@ -35,12 +37,11 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
         setContent {
             val st by vm.state.collectAsStateWithLifecycle()
-            val mode = when (st.settings.theme) {
-                "dark" -> ThemeMode.DARK
-                "light" -> ThemeMode.LIGHT
-                else -> ThemeMode.SYSTEM
-            }
-            CutTheme(mode) {
+            val mode = ThemeMode.of(st.settings.theme)
+            // A minute tick so a scheduled dark and a calendar look change while the app is open.
+            val now by produceState(java.time.LocalDateTime.now()) { while (true) { kotlinx.coroutines.delay(60_000); value = java.time.LocalDateTime.now() } }
+            val palette = if (st.settings.paletteByCalendar) Palettes.forDate(now.toLocalDate()).first else Palettes.byId(st.settings.palette)
+            CutTheme(mode, palette, now.toLocalTime()) {
                 CompositionLocalProvider(LocalHaptics provides remember { haptics }) { App(vm) }
             }
         }
