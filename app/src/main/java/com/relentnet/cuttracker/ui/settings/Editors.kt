@@ -129,7 +129,7 @@ fun CheckpointsEditor(vm: AppViewModel, onBack: () -> Unit) {
         BigButton("Add a checkpoint", secondary = true, modifier = Modifier.fillMaxWidth(), onClick = {
             rows += CpDraft(s.startDate.plusDays(7).toString(), false, "", "", 1, null); rows.sortBy { it.date }; tick++
         })
-        BigButton("Save", modifier = Modifier.fillMaxWidth(), onClick = {
+        BigButton("Save", modifier = Modifier.fillMaxWidth(), confirm = true, onClick = {
             val cps = rows.filter { runCatching { LocalDate.parse(it.date) }.isSuccess }.sortedBy { it.date }
                 .map { Checkpoint(it.date, if (it.free) null else it.target.toDoubleOrNull(), it.free, it.days, it.label, it.note) }
             vm.saveSettings(s.copy(checkpoints = cps)) { vm.showToast("Checkpoints saved"); onBack() }

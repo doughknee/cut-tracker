@@ -58,6 +58,7 @@ import com.relentnet.cuttracker.ui.components.Pill
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.SettingsRow
 import com.relentnet.cuttracker.ui.components.Sub
+import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.components.Switch
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
@@ -108,7 +109,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
 @Composable
 private fun CategoryRow(icon: ImageVector, title: String, sub: String, last: Boolean = false, onClick: () -> Unit) {
     val c = CutTheme.colors
-    Column(Modifier.clickable(onClick = onClick, role = Role.Button)) {
+    Column(Modifier.pressable(onClick = onClick)) {
         Row(Modifier.fillMaxWidth().padding(14.dp, 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(c.ground), contentAlignment = Alignment.Center) {
                 Icon(icon, null, Modifier.size(18.dp), tint = c.accent)
@@ -201,7 +202,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     SettingsRow("Start weight") { NumField(sw, { sw = it }); Sub("lb") }
                     SettingsRow("Target weight", last = true) { NumField(tw, { tw = it }); Sub("lb") }
                 }
-                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth())
+                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth(), confirm = true)
             }
             SettingsSections.TARGETS -> {
                 Sub("Protein is the one that keeps the chain: weigh in and hit it and the day counts.")
@@ -210,7 +211,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     SettingsRow("Protein") { NumField(pro, { pro = it }, 64.dp); Sub("g") }
                     SettingsRow("Workouts per week", last = true) { NumField(wpw, { wpw = it }, 56.dp); Sub("blocks on Climb and Off days") }
                 }
-                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth())
+                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth(), confirm = true)
             }
             SettingsSections.NUDGES -> {
                 Sub("Two notifications a day at most. Nothing about streaks.")
@@ -241,7 +242,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     SettingsRow("\"Pick a day\" if unset") { TimePicker(d.pickTime) { d = d.copy(pickTime = it) } }
                     SettingsRow("Day rolls over at", last = true) { TimePicker(LocalTime.of(d.resetHour, 0)) { d = d.copy(resetHour = it.hour) } }
                 }
-                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth())
+                BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth(), confirm = true)
             }
             SettingsSections.APPEARANCE -> {
                 Card(Modifier.fillMaxWidth()) {

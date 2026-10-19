@@ -1,6 +1,12 @@
 package com.relentnet.cuttracker.ui.route
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -150,6 +156,7 @@ private fun Stat(value: String, label: String, color: Color, icon: Boolean = fal
 private val monthFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM", Locale.US)
 
 /** Twelve Monday-to-Sunday rows. Climbed days are holds (shape = kind of day, fill = result); the rest are numbers. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -> Unit, onCheckpoints: () -> Unit) {
     val c = CutTheme.colors
@@ -159,6 +166,8 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
     val rows = (java.time.temporal.ChronoUnit.DAYS.between(firstMon, s.endDate).toInt() + 6) / 7
     val cps = s.checkpoints.associateBy { it.localDate }
     var lastMonth = -1
+    val thisWeekRequester = remember { BringIntoViewRequester() }
+    LaunchedEffect(Unit) { delay(380); thisWeekRequester.bringIntoView() }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth().padding(start = 34.dp, end = 22.dp)) {
             for (d in "MTWTFSS") Text("$d", Modifier.weight(1f), color = c.dim, style = cutStyle(9, 800, 1f, 0.06f), textAlign = TextAlign.Center)
@@ -170,7 +179,18 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                 val label = if (mid.monthValue != lastMonth) mid.format(monthFmt).uppercase() else ""
                 lastMonth = mid.monthValue
                 val reached = !mon.isAfter(st.today)
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                val thisWeek = !mon.isAfter(st.today) && !mon.plusDays(6).isBefore(st.today)
+                // Rows cascade in on first open, 22ms apart; the current week is where the page lands.
+                var shown by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { delay(40L + w * 22L); shown = true }
+                val rowAlpha by animateFloatAsState(if (shown) 1f else 0f, tween(240), label = "row")
+                val rowLift by animateFloatAsState(if (shown) 0f else 10f, tween(260), label = "rowLift")
+                Row(
+                    Modifier
+                        .graphicsLayer { alpha = rowAlpha; translationY = rowLift }
+                        .then(if (thisWeek) Modifier.bringIntoViewRequester(thisWeekRequester) else Modifier),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(label, Modifier.width(34.dp), color = if (reached) c.text else c.dim, style = cutStyle(10, 800, 1f, 0.06f))
                     for (d in 0 until 7) {
                         val day = mon.plusDays(d.toLong())
@@ -364,15 +384,19 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
     Box(Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose)) {
+        val scrim by animateFloatAsState(if (shown) 0.55f else 0f, tween(200), label = "scrim")
+        Box(Modifier.matchParentSize().background(c.ground.copy(alpha = scrim)))
         AnimatedVisibility(
             shown, Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically(spring(dampingRatio = 0.8f, stiffness = 500f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it } + fadeIn(tween(150)),
         ) {
-        Card(
-            Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp).windowInsetsPadding(WindowInsets.navigationBars).fillMaxWidth(),
-            border = c.mutedBorder, radius = 14.dp, padding = PaddingValues(14.dp),
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)).background(c.surface)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                .padding(20.dp, 10.dp, 20.dp, 16.dp).windowInsetsPadding(WindowInsets.navigationBars),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(36.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.mutedBorder).align(Alignment.CenterHorizontally))
+            Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(date.format(popFmt), color = c.text, style = cutStyle(15, 800, 1f))
                     Text(title, color = color, style = cutStyle(12, 800, 1f, tabular = true))

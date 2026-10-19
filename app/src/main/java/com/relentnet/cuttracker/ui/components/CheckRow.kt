@@ -97,7 +97,7 @@ fun CheckRow(
     Box(Modifier.fillMaxWidth().clip(shape)) {
         if (onSwipeCheck != null && !done) {
             Box(
-                Modifier.matchParentSize().background(c.good).alpha((offset.value / threshold).coerceIn(0f, 1f)),
+                Modifier.matchParentSize().alpha((offset.value / threshold).coerceIn(0f, 1f)).background(c.good),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 Text("DONE", Modifier.padding(start = 18.dp), color = c.ground, style = cutStyle(12, 800, 1f, 0.1f))
@@ -126,8 +126,9 @@ fun CheckRow(
                 .clip(shape)
                 .background(if (done) c.surface.copy(alpha = if (compact) 0f else 0.7f) else c.surface, shape)
                 .then(
-                    if (compact) Modifier
-                    else Modifier.border(1.dp, if (next) c.mutedBorder else c.hairline, shape),
+                    // Up next is the raised row: accent edge. The rest sit flat with no edge at all.
+                    if (compact || !next) Modifier
+                    else Modifier.border(1.5.dp, c.accent.copy(alpha = 0.6f), shape),
                 )
                 .clickable(onClick = onClick, role = Role.Checkbox)
                 .heightIn(min = if (compact) 40.dp else 56.dp)

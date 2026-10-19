@@ -54,6 +54,7 @@ import com.relentnet.cuttracker.ui.components.Hold
 import com.relentnet.cuttracker.ui.components.HoldShape
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.Sub
+import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -96,7 +97,7 @@ fun BetaScreen(vm: AppViewModel, onMeals: () -> Unit, onLifts: () -> Unit, onChe
 @Composable
 private fun HubCard(shape: HoldShape, title: String, sub: String, detail: String, onClick: () -> Unit) {
     val c = CutTheme.colors
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick, role = Role.Button), border = c.hairline, radius = 14.dp, padding = PaddingValues(16.dp)) {
+    Card(Modifier.fillMaxWidth().pressable(onClick = onClick), border = c.hairline, radius = 14.dp, padding = PaddingValues(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(c.ground), contentAlignment = Alignment.Center) { Hold(shape, c.accent, 26.dp) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -246,7 +247,7 @@ private fun ExpandRow(
     Card(Modifier.fillMaxWidth().bringIntoViewRequester(requester).animateContentSize(), border = if (open) c.mutedBorder else c.hairline, radius = 12.dp) {
         Column {
             Row(
-                Modifier.fillMaxWidth().clickable(onClick = onToggle, role = Role.Button).padding(14.dp, 12.dp),
+                Modifier.fillMaxWidth().pressable(onClick = onToggle).padding(14.dp, 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 lead()
@@ -316,7 +317,7 @@ private fun Num(value: String, onChange: (String) -> Unit, width: Int = 64) {
 @Composable
 private fun EditorButtons(onSave: () -> Unit, onRemove: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        BigButton("Done", onClick = onSave, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12)
+        BigButton("Done", onClick = onSave, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12, confirm = true)
         BigButton("Remove", onClick = onRemove, modifier = Modifier.width(110.dp), secondary = true, height = 40.dp, fontSize = 12)
     }
 }

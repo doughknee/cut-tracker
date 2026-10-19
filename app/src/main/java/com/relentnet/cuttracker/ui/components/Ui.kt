@@ -27,6 +27,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,20 +138,28 @@ fun BigButton(
     height: Dp = 56.dp,
     fontSize: Int = 15,
     enabled: Boolean = true,
+    /** Show a green check for a beat before [onClick] runs; for Save and Log, where the page is about to leave. */
+    confirm: Boolean = false,
 ) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(12.dp)
+    var confirming by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val bg by animateColorAsState(if (confirming) c.good else if (secondary) c.surface else c.accent, tween(160), label = "btn")
     Box(
         modifier
             .height(height)
             .clip(shape)
-            .background(if (secondary) c.surface else c.accent, shape)
-            .then(if (secondary) Modifier.border(1.dp, c.mutedBorder, shape) else Modifier)
-            .clickable(enabled = enabled, onClick = onClick, role = Role.Button)
+            .background(bg, shape)
+            .then(if (secondary && !confirming) Modifier.border(1.dp, c.mutedBorder, shape) else Modifier)
+            .pressable(enabled = enabled && !confirming, haptic = false) {
+                if (confirm) { confirming = true; scope.launch { delay(420); onClick(); delay(200); confirming = false } } else onClick()
+            }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
+        if (confirming) Icon(CutIcons.Check, null, Modifier.size((fontSize + 6).dp), tint = c.ground)
+        else Text(
             label.uppercase(), color = if (secondary) c.text else c.onAccent,
             style = cutStyle(fontSize, 800, 1f, 0.06f), textAlign = TextAlign.Center,
         )

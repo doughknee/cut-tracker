@@ -5,6 +5,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.draw.scale
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -35,6 +37,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import com.relentnet.cuttracker.ui.components.Hold
+import com.relentnet.cuttracker.ui.components.HoldShape
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -99,7 +107,7 @@ fun App(vm: AppViewModel) {
     val route = entry?.destination?.route
     val st by vm.state.collectAsStateWithLifecycle()
     val c = CutTheme.colors
-    if (!st.loaded) { Box(Modifier.fillMaxSize().background(c.ground)); return }
+    if (!st.loaded) { Splash(false); return }
     LaunchedEffect(vm.pendingTab, st.settings.onboarded) {
         val t = vm.pendingTab
         if (t != null && st.settings.onboarded) { vm.pendingTab = null; if (t == Routes.WEIGHT) nav.navigate(Routes.WEIGHT) else nav.goTab(t) }
@@ -147,6 +155,7 @@ fun App(vm: AppViewModel) {
                 BottomNav(current = route, onGo = { nav.goTab(it) })
             }
         }
+        Splash(true)
         vm.toast?.let { ToastPill(it, Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp).windowInsetsPadding(WindowInsets.navigationBars)) }
         vm.takeover?.let { TakeoverOverlay(it, confettiOn = st.settings.haptics, onDismiss = { vm.dismissTakeover() }) }
     }
@@ -183,6 +192,22 @@ private fun popExit(from: String?): ExitTransition =
     if (from == Routes.WEIGHT) slideOutVertically(slideSpec) { it / 3 } + fadeOut(fadeSpec)
     else slideOutHorizontally(slideSpec) { it / 3 } + fadeOut(fadeSpec)
 
+/** Cold start: a jug on the ground that fades out once the state is loaded. Sits above the NavHost in the Box. */
+@Composable
+private fun Splash(loaded: Boolean) {
+    val c = CutTheme.colors
+    var shown by remember { mutableStateOf(true) }
+    LaunchedEffect(loaded) { if (loaded) { delay(250); shown = false } }
+    if (!shown) return
+    val alpha by animateFloatAsState(if (loaded) 0f else 1f, tween(220), label = "splashAlpha")
+    Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }.background(c.ground), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Hold(HoldShape.JUG, c.accent, 56.dp)
+            Text("SENDLINE", color = c.text2, style = cutStyle(12, 800, 1f, 0.16f))
+        }
+    }
+}
+
 fun NavHostController.goTab(route: String) = navigate(route) {
     popUpTo(graph.findStartDestination().id) { saveState = true }
     launchSingleTop = true
@@ -202,6 +227,7 @@ fun SendBar(progress: Float, full: Boolean) {
 @Composable
 fun BottomNav(current: String?, onGo: (String) -> Unit) {
     val c = CutTheme.colors
+    val haptics = LocalHaptics.current
     Column(Modifier.fillMaxWidth().background(c.ground)) {
         Row(Modifier.fillMaxWidth().height(66.dp), verticalAlignment = Alignment.CenterVertically) {
             for (t in TABS) {
@@ -213,12 +239,13 @@ fun BottomNav(current: String?, onGo: (String) -> Unit) {
                         .fillMaxHeight()
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() }, indication = null,
-                            role = Role.Tab, onClick = { onGo(t.route) },
+                            role = Role.Tab, onClick = { if (!on) haptics.tick(); onGo(t.route) },
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Icon(t.icon, contentDescription = t.label, Modifier.size(22.dp), tint = tint)
+                    val lift by animateFloatAsState(if (on) 1.12f else 1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow), label = "tab")
+                    Icon(t.icon, contentDescription = t.label, Modifier.size(22.dp).scale(lift), tint = tint)
                     Text(t.label.uppercase(), color = tint, style = cutStyle(11, 700, 1f, 0.06f), modifier = Modifier.padding(top = 4.dp))
                 }
             }

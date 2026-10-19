@@ -20,6 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
@@ -54,6 +61,8 @@ fun Field(
 ) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(radius)
+    var focused by remember { mutableStateOf(false) }
+    val borderColor by animateColorAsState(if (focused) c.accent else border, tween(140), label = "fieldBorder")
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -61,7 +70,8 @@ fun Field(
             .height(height)
             .clip(shape)
             .background(background, shape)
-            .border(borderWidth, border, shape)
+            .border(borderWidth, borderColor, shape)
+            .onFocusChanged { focused = it.isFocused }
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         textStyle = cutStyle(fontSize, weight, 1f, tabular = true).copy(color = c.text, textAlign = if (center) TextAlign.Center else TextAlign.Start),
         singleLine = singleLine,

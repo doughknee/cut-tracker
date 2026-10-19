@@ -50,7 +50,8 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         viewModelScope.launch {
             repo.events.collect { e ->
                 when (e) {
-                    is UiEvent.Send -> takeover = Takeover.Send
+                    // Let the hold fill green on the wall before the takeover covers it.
+                    is UiEvent.Send -> viewModelScope.launch { delay(520); takeover = Takeover.Send }
                     is UiEvent.LevelUp -> if (takeover == null) takeover = Takeover.LevelUp(e.level) else pendingLevelUps.addLast(e.level)
                     is UiEvent.Badge -> showToast("${e.name} badge earned")
                     is UiEvent.Toast -> showToast(e.text)

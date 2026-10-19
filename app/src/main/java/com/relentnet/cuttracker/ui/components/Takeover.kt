@@ -24,6 +24,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -79,9 +84,15 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
         }
     }
 
+    // Rises from the wall rather than cutting in.
+    var up by remember(t) { mutableStateOf(false) }
+    LaunchedEffect(t) { up = true }
+    val rise by animateFloatAsState(if (up) 0f else 1f, spring(dampingRatio = 0.82f, stiffness = 380f), label = "rise")
+    val veil by animateFloatAsState(if (up) 1f else 0f, tween(200), label = "veil")
     Box(
         Modifier
             .fillMaxSize()
+            .graphicsLayer { alpha = veil; translationY = rise * size.height * 0.12f }
             .background(c.ground)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (t is Takeover.LevelUp) onDismiss() },
     ) {

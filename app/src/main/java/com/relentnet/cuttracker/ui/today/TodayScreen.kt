@@ -1,6 +1,15 @@
 package com.relentnet.cuttracker.ui.today
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.key
+import com.relentnet.cuttracker.ui.components.Hold
+import com.relentnet.cuttracker.ui.components.HoldShape
+import com.relentnet.cuttracker.ui.components.holdShape
+import com.relentnet.cuttracker.ui.components.pressable
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -178,20 +187,26 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
 
         if (welcomeBack) WelcomeBack(st.chain.count, onOk = { vm.dismissWelcomeBack() })
 
-        when {
-            st.ended && !past -> ToppedOut(st, onNext = { vm.saveSettings(st.settings.copy(onboarded = false)) })
-            late -> LateCard(
+        AnimatedContent(
+            targetState = when { st.ended && !past -> 0; late -> 1; mode == null -> 2; else -> 3 },
+            transitionSpec = {
+                (fadeIn(tween(220, 60)) + scaleIn(tween(260), initialScale = 0.96f)) togetherWith (fadeOut(tween(140)) + scaleOut(tween(160), targetScale = 0.98f))
+            },
+            label = "modeSection",
+        ) { stage -> when (stage) {
+            0 -> ToppedOut(st, onNext = { vm.saveSettings(st.settings.copy(onboarded = false)) })
+            1 -> LateCard(
                 onRest = { vm.setMode(DayMode.REST) },
                 onClimb = { vm.setMode(DayMode.CLIMB, preCheck = setOf(ProgramSpec.ITEM_CLIMB)) },
             )
-            mode == null -> PickCards(st, onPick = { haptics.tap(); vm.setMode(it, date = editDate) })
+            2 -> PickCards(st, onPick = { haptics.tap(); vm.setMode(it, date = editDate) })
             else -> ModeChipRow(
                 mode, dv, st.settings.protein,
                 onChange = { weighOpen = false; pickOpen = null; vm.setMode(null, date = editDate) },
                 // An Off day with the block unchecked is a Rest day that was logged under the old rules; one tap fixes it.
                 onMakeRest = if (mode == DayMode.OFF && ProgramSpec.ITEM_CORE !in done) ({ haptics.tap(); vm.setMode(DayMode.REST, date = editDate) }) else null,
             )
-        }
+        } }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -207,6 +222,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
             }
             for (it in remaining) {
                 val isNext = it === next
+                key(it.id) { Column(Modifier.animateContentSize(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow))) {
                 CheckRow(
                     label = it.label,
                     sub = if (it.id == ProgramSpec.ITEM_WEIGH && prevWeigh != null) "Last ${ProgramEngine.fmt1(prevWeigh.lb)}. Tap to log." else it.sub,
@@ -240,6 +256,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                     // Saving the session checks the block. Swiping the row checks it without a session.
                     LiftInline(vm, blocks = listOf(if (mode == DayMode.CLIMB) Block.CLIMB else Block.OFF), onSaved = { liftOpen = false; vm.toggleItem(it.id) })
                 }
+                } }
             }
             if (mode == DayMode.REST && !past) {
                 Text(
@@ -378,11 +395,11 @@ private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
     val rest = ProgramEngine.script(DayMode.REST, st.settings)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PickCard(Modifier.weight(1f), CutIcons.Climb, "Climb day", "Climb, then 15 min push at the gym. ${climb.size} items, ${ProgramEngine.totalXp(climb)} xp.") { onPick(DayMode.CLIMB) }
-            PickCard(Modifier.weight(1f), CutIcons.Off, "Off day", "15 min core + push at home. ${off.size} items, ${ProgramEngine.totalXp(off)} xp.") { onPick(DayMode.OFF) }
+            PickCard(Modifier.weight(1f), HoldShape.CRIMP, "Climb day", "Climb, then 15 min push at the gym. ${climb.size} items, ${ProgramEngine.totalXp(climb)} xp.") { onPick(DayMode.CLIMB) }
+            PickCard(Modifier.weight(1f), HoldShape.JUG, "Off day", "15 min core + push at home. ${off.size} items, ${ProgramEngine.totalXp(off)} xp.") { onPick(DayMode.OFF) }
         }
         PickCard(
-            Modifier.fillMaxWidth(), CutIcons.Rest, "Rest day",
+            Modifier.fillMaxWidth(), HoldShape.SLOPER, "Rest day",
             "Weigh in and eat the script. No block. ${rest.size} items, ${ProgramEngine.totalXp(rest)} xp. Workouts ${st.workoutsThisWeek} of ${st.settings.workoutsPerWeek} this week.",
             wide = true,
         ) { onPick(DayMode.REST) }
@@ -390,7 +407,7 @@ private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
 }
 
 @Composable
-private fun PickCard(modifier: Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, sub: String, wide: Boolean = false, onClick: () -> Unit) {
+private fun PickCard(modifier: Modifier, hold: HoldShape, title: String, sub: String, wide: Boolean = false, onClick: () -> Unit) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(14.dp)
     Column(
@@ -399,12 +416,12 @@ private fun PickCard(modifier: Modifier, icon: androidx.compose.ui.graphics.vect
             .clip(shape)
             .background(c.surface, shape)
             .border(2.dp, c.mutedBorder, shape)
-            .clickable(onClick = onClick, role = Role.Button)
+            .pressable(haptic = false, onClick = onClick)
             .padding(14.dp, 16.dp),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(c.ground), contentAlignment = Alignment.Center) {
-            Icon(icon, null, Modifier.size(20.dp), tint = c.accent)
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(11.dp)).background(c.ground), contentAlignment = Alignment.Center) {
+            Hold(hold, c.accent, 26.dp)
         }
         Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(title, color = c.text, style = cutStyle(22, 800, 1f, -0.02f, display = true))
@@ -429,7 +446,7 @@ private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)).background(c.accent), contentAlignment = Alignment.Center) {
-                Icon(when (mode) { DayMode.CLIMB -> CutIcons.Climb; DayMode.REST -> CutIcons.Rest; else -> CutIcons.Off }, null, Modifier.size(13.dp), tint = c.onAccent)
+                Hold(holdShape(mode), c.onAccent, 15.dp)
             }
             Text(when (mode) { DayMode.CLIMB -> "Climb day"; DayMode.REST -> "Rest day"; else -> "Off day" }, color = c.text2, style = cutStyle(12, 600, 1f, 0.04f))
             Text("Change", color = c.accent, style = cutStyle(12, 800, 1f, 0.06f))
