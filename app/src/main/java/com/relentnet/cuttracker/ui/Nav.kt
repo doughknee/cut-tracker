@@ -168,10 +168,16 @@ private val fadeSpec = tween<Float>(180)
 
 private fun tabIndex(route: String?) = Routes.tabs.indexOf(route)
 
+// One tab move. Whether the nav stack calls it a push or a pop (Today is the start destination, so anything -> Today
+// is a pop), the three tabs always slide the same way: leaving tab eases out a quarter width and fades, arriving tab
+// springs in from half a width.
+private fun tabEnter(a: Int, b: Int): EnterTransition = slideInHorizontally(slideSpec) { if (b > a) it / 2 else -it / 2 } + fadeIn(fadeSpec)
+private fun tabExit(a: Int, b: Int): ExitTransition = slideOutHorizontally(slideSpec) { if (b > a) -it / 4 else it / 4 } + fadeOut(fadeSpec)
+
 private fun enter(from: String?, to: String?): EnterTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        a >= 0 && b >= 0 -> slideInHorizontally(slideSpec) { if (b > a) it / 2 else -it / 2 } + fadeIn(fadeSpec)
+        a >= 0 && b >= 0 -> tabEnter(a, b)
         to == Routes.WEIGHT -> slideInVertically(slideSpec) { it / 3 } + fadeIn(fadeSpec)
         else -> slideInHorizontally(slideSpec) { it / 3 } + fadeIn(fadeSpec)
     }
@@ -180,19 +186,19 @@ private fun enter(from: String?, to: String?): EnterTransition {
 private fun exit(from: String?, to: String?): ExitTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        a >= 0 && b >= 0 -> slideOutHorizontally(slideSpec) { if (b > a) -it / 4 else it / 4 } + fadeOut(fadeSpec)
+        a >= 0 && b >= 0 -> tabExit(a, b)
         else -> slideOutHorizontally(slideSpec) { -it / 4 } + fadeOut(fadeSpec)
     }
 }
 
-// Pops mirror the pushes. The back gesture seeks these, so they are fixed-duration slides with no fade on the page
-// that leaves: a spring plus a short fade reads as a fade when scrubbed, because the fade finishes long before the slide.
+// Pops of pushed pages mirror their pushes. The back gesture seeks these, so they are fixed-duration slides with no
+// fade on the page that leaves; a spring plus a short fade reads as a fade when scrubbed.
 private val popSpec = tween<IntOffset>(320, easing = FastOutSlowInEasing)
 
 private fun popEnter(from: String?, to: String?): EnterTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        a >= 0 && b >= 0 -> slideInHorizontally(popSpec) { if (b > a) it / 2 else -it / 2 } + fadeIn(tween(320), initialAlpha = 0.55f)
+        a >= 0 && b >= 0 -> tabEnter(a, b)
         else -> slideInHorizontally(popSpec) { -it / 4 } + fadeIn(tween(320), initialAlpha = 0.55f)
     }
 }
@@ -200,9 +206,7 @@ private fun popEnter(from: String?, to: String?): EnterTransition {
 private fun popExit(from: String?, to: String?): ExitTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        // Today is the start destination, so any tab -> Today is a pop. No fade here, so the leaving tab must travel the
-        // whole width or it stops a quarter of the way and vanishes.
-        a >= 0 && b >= 0 -> slideOutHorizontally(popSpec) { if (b > a) -it else it }
+        a >= 0 && b >= 0 -> tabExit(a, b)
         from == Routes.WEIGHT -> slideOutVertically(popSpec) { it }
         else -> slideOutHorizontally(popSpec) { it }
     }
