@@ -43,6 +43,8 @@ data class Settings(
     /** Program day on which the welcome-back card was dismissed, so it shows once per re-entry. */
     val welcomeBackSeen: LocalDate? = null,
     val library: List<LibMeal> = ProgramSpec.library,
+    /** The rules sheet opened itself once on the first Today. */
+    val tourSeen: Boolean = false,
 ) {
     val calories: Int get() = if (phase == 2) caloriesP2 else caloriesP1
     val endDate: LocalDate get() = startDate.plusDays(lengthWeeks * 7L)
@@ -74,6 +76,7 @@ class SettingsStore(context: Context) {
         val pickTime = stringPreferencesKey("pickTime")
         val resetHour = intPreferencesKey("resetHour")
         val haptics = booleanPreferencesKey("haptics")
+        val tourSeen = booleanPreferencesKey("tourSeen")
         val theme = stringPreferencesKey("theme")
         val lastOpenDate = stringPreferencesKey("lastOpenDate")
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
@@ -106,6 +109,7 @@ class SettingsStore(context: Context) {
             pickTime = p[K.pickTime]?.let(LocalTime::parse) ?: d.pickTime,
             resetHour = p[K.resetHour] ?: d.resetHour,
             haptics = p[K.haptics] ?: d.haptics,
+            tourSeen = p[K.tourSeen] ?: d.tourSeen,
             theme = p[K.theme] ?: d.theme,
             lastOpenDate = p[K.lastOpenDate]?.let(LocalDate::parse),
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
@@ -136,6 +140,7 @@ class SettingsStore(context: Context) {
         p[K.pickTime] = s.pickTime.toString()
         p[K.resetHour] = s.resetHour
         p[K.haptics] = s.haptics
+        p[K.tourSeen] = s.tourSeen
         p[K.theme] = s.theme
         if (s.lastOpenDate != null) p[K.lastOpenDate] = s.lastOpenDate.toString() else p.remove(K.lastOpenDate)
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)

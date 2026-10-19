@@ -51,8 +51,21 @@ fun WallInfoSheet(onDismiss: () -> Unit) {
                     { ColorKey(Color.Transparent, "Today, still open", ring = c.accent) },
                 ),
             )
+            Text("THE THREE RULES", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
+            Rule("Min day keeps the chain.", "Weigh in and hit protein. Even if the rest of the day slips, it counts.")
+            Rule("Two freezes a month.", "They cover your first two missed days automatically. A third miss pauses the chain.")
+            Rule("The chain never resets.", "A miss pauses it; the next good day picks it up at the same number.")
             BigButton("Got it", onClick = onDismiss, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), secondary = true, height = 44.dp, fontSize = 12)
         }
+    }
+}
+
+@Composable
+private fun Rule(title: String, body: String) {
+    val c = CutTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, color = c.text, style = cutStyle(13, 700, 1.2f))
+        Text(body, color = c.text2, style = cutStyle(12, 500, 1.35f))
     }
 }
 

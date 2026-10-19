@@ -100,6 +100,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
     val past = date != st.today
     val editDate: LocalDate? = if (past) date else null
     LaunchedEffect(st.today) { if (vm.viewDate != null && !vm.viewDate!!.isBefore(st.today)) vm.viewDate = null }
+    // First Today after onboarding: open the rules sheet once, then never again on its own.
+    LaunchedEffect(st.settings.tourSeen) { if (!st.settings.tourSeen) { infoOpen = true; vm.saveSettings(st.settings.copy(tourSeen = true)) } }
     val dv = st.day(date)
     val items = dv.items
     val done = dv.log.doneItemIds

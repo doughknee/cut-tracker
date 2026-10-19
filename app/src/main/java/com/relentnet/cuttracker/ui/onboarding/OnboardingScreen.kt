@@ -120,6 +120,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             when (step) {
                 0 -> {
+                    Text("SENDLINE", color = c.accent, style = cutStyle(12, 800, 1f, 0.14f))
                     Big(if (again) "Next route." else "Twelve weeks.\nFour taps a day.")
                     Body(if (again) "Your logs, badges and XP stay. Set a new start, a new target and a new length." else "Weigh in, eat the script, do the block, check it off. The app keeps score so you don't have to. Nothing here resets, ever.")
                     Hint("Not medical advice. A cut is a diet; check with a doctor if you have a condition, and stop if you feel unwell.")
