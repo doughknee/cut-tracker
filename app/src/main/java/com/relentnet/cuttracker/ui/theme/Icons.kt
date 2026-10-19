@@ -49,5 +49,6 @@ object CutIcons {
     val Target = stroke("target", 2f, "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18", "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8", "M12 11a1 1 0 1 0 0 2a1 1 0 1 0 0-2")
     val Week = stroke("week", 2f, "M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M3 10h18", "M8 3v4", "M16 3v4", "M7 14h2", "M11 14h2", "M15 14h2")
     val Beta = stroke("beta", 2f, "M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z", "M8 9h8M8 13h8M8 17h5")
+    val Pen = stroke("pen", 2.2f, "M4 20l4.5-1L19 8.5l-3.5-3.5L5 15.5z", "M13 7.5l3.5 3.5")
     val Info = stroke("info", 2.2f, circle(12f, 12f, 9.5f), "M12 11v6M12 7.5v.5")
 }

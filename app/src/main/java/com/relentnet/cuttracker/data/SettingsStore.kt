@@ -56,6 +56,8 @@ data class Settings(
     val palette: String = "sandstone",
     /** True and the calendar picks the look: a palette per month, holidays on top. */
     val paletteByCalendar: Boolean = false,
+    /** Looks the user chalked; each is picked by its id like a built-in one. */
+    val customLooks: List<CustomLook> = emptyList(),
     val onlineFeatures: Boolean = false,
     /** Fetch the page behind a pasted recipe link to fill in the New meal sheet. Only counts while [onlineFeatures] is on. */
     val recipeImport: Boolean = true,
@@ -100,6 +102,7 @@ class SettingsStore(context: Context) {
         val onlineFeatures = booleanPreferencesKey("onlineFeatures")
         val palette = stringPreferencesKey("palette")
         val paletteByCalendar = booleanPreferencesKey("paletteByCalendar")
+        val customLooks = stringPreferencesKey("customLooks")
         val recipeImport = booleanPreferencesKey("recipeImport")
     }
 
@@ -136,6 +139,7 @@ class SettingsStore(context: Context) {
             onlineFeatures = p[K.onlineFeatures] ?: d.onlineFeatures,
             palette = p[K.palette] ?: d.palette,
             paletteByCalendar = p[K.paletteByCalendar] ?: d.paletteByCalendar,
+            customLooks = p[K.customLooks]?.let { runCatching { json.decodeFromString(ListSerializer(CustomLook.serializer()), it) }.getOrNull() } ?: d.customLooks,
             recipeImport = p[K.recipeImport] ?: d.recipeImport,
             checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
             weighInTime = p[K.weighInTime]?.let(LocalTime::parse) ?: d.weighInTime,
@@ -174,6 +178,7 @@ class SettingsStore(context: Context) {
         p[K.onlineFeatures] = s.onlineFeatures
         p[K.palette] = s.palette
         p[K.paletteByCalendar] = s.paletteByCalendar
+        p[K.customLooks] = json.encodeToString(ListSerializer(CustomLook.serializer()), s.customLooks)
         p[K.recipeImport] = s.recipeImport
         p[K.weighInTime] = s.weighInTime.toString()
         p[K.pickTime] = s.pickTime.toString()

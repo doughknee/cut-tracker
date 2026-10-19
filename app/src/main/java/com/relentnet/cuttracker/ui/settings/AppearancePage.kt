@@ -29,6 +29,20 @@ import com.relentnet.cuttracker.ui.components.drawWallDecor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import com.relentnet.cuttracker.data.CustomLook
+import com.relentnet.cuttracker.ui.components.Field
+import com.relentnet.cuttracker.ui.theme.CutIcons
+import com.relentnet.cuttracker.ui.theme.palette
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.LocalHaptics
@@ -64,8 +78,8 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
     val s = st.settings
     val haptics = LocalHaptics.current
     val today = LocalDate.now()
-    val (calPalette, calReason) = Palettes.forDate(today)
-    val current = if (s.paletteByCalendar) calPalette else Palettes.byId(s.palette)
+    val calReason = Palettes.forDate(today).second
+    val current = Palettes.of(s, today)
     val dark = c.isDark
     Screen(bottomInset = true) {
         BackHeader("Settings", "Appearance", onBack)
@@ -111,15 +125,41 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
             }
         }
 
-        KindCard("Looks", "${Palettes.all.size}", sub = if (s.paletteByCalendar) "Pick one and the calendar lets go." else null) {
+        var sheet by remember { mutableStateOf<String?>(null) }
+        var code by remember { mutableStateOf("") }
+        val looks = s.customLooks
+        fun add(look: CustomLook) { haptics.tick(); vm.saveSettings(s.copy(customLooks = looks.filter { it.id != look.id } + look, palette = look.id, paletteByCalendar = false)) }
+        KindCard("Looks", "${Palettes.all.size + looks.size}", sub = if (s.paletteByCalendar) "Pick one and the calendar lets go." else null) {
             Column(Modifier.padding(14.dp, 6.dp, 14.dp, 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (row in Palettes.all.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (p in row) PaletteTile(p, dark, selected = !s.paletteByCalendar && p.id == s.palette, Modifier.weight(1f)) {
-                        haptics.tick(); vm.saveSettings(s.copy(palette = p.id, paletteByCalendar = false))
+                val tiles: List<Any?> = Palettes.all + looks + listOf(null)
+                for (row in tiles.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (t in row) when (t) {
+                        is Palette -> PaletteTile(t, dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f)) {
+                            haptics.tick(); vm.saveSettings(s.copy(palette = t.id, paletteByCalendar = false))
+                        }
+                        is CustomLook -> PaletteTile(
+                            t.palette(), dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f),
+                            onEdit = { sheet = t.id },
+                            onDelete = { haptics.tick(); vm.saveSettings(s.copy(customLooks = looks.filter { it.id != t.id }, palette = if (s.palette == t.id) "sandstone" else s.palette)) },
+                        ) { haptics.tick(); vm.saveSettings(s.copy(palette = t.id, paletteByCalendar = false)) }
+                        else -> NewLookTile(Modifier.weight(1f)) { sheet = "" }
                     }
                     if (row.size == 1) Box(Modifier.weight(1f))
                 }
+                Field(
+                    code, { v -> code = v.take(8); CustomLook.fromCode(v, CustomLook.PREFIX + System.currentTimeMillis().toString(36))?.let { add(it); code = "" } },
+                    Modifier.fillMaxWidth(), height = 44.dp, fontSize = 14, weight = 700, keyboard = KeyboardType.Ascii, placeholder = "Paste a code, SL-7K2Q", borderWidth = 1.dp, radius = 10.dp,
+                )
+                if (code.length >= 7 && CustomLook.decode(code) == null) Sub("Not a Sendline code. Four letters after SL-, and a typo is refused.", size = 11)
             }
+        }
+        sheet?.let { id ->
+            val editing = looks.firstOrNull { it.id == id }
+            ChalkSheet(
+                editing, dark, onDismiss = { sheet = null },
+                onSave = { add(it.copy(id = editing?.id ?: (CustomLook.PREFIX + System.currentTimeMillis().toString(36)))); sheet = null },
+                onDelete = if (editing != null) ({ vm.saveSettings(s.copy(customLooks = looks.filter { it.id != editing.id }, palette = if (s.palette == editing.id) "sandstone" else s.palette)); sheet = null }) else null,
+            )
         }
 
         KindCard("Feel", "") {
@@ -174,9 +214,9 @@ private fun Preview(palette: Palette, dark: Boolean, line: String) {
     }
 }
 
-/** One look in the grid, drawn in its own stone so the grid is the preview. */
+/** One look in the grid, drawn in its own stone so the grid is the preview. A chalked look carries its pen and its bin. */
 @Composable
-private fun PaletteTile(p: Palette, dark: Boolean, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun PaletteTile(p: Palette, dark: Boolean, selected: Boolean, modifier: Modifier, onEdit: (() -> Unit)? = null, onDelete: (() -> Unit)? = null, onClick: () -> Unit) {
     val outer = CutTheme.colors
     CompositionLocalProvider(LocalCutColors provides p.colors(dark), LocalDecor provides p.decor) {
         val c = CutTheme.colors
@@ -190,10 +230,28 @@ private fun PaletteTile(p: Palette, dark: Boolean, selected: Boolean, modifier: 
                 Swatch(c.good, 12); Swatch(c.freeze, 12); Swatch(c.surface, 12, c.mutedBorder)
                 Box(Modifier.weight(1f))
                 if (selected) Text("ON", color = outer.accent, style = cutStyle(9, 800, 1f, 0.1f))
+                if (onEdit != null) Icon(CutIcons.Pen, "Edit", Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button, onClick = onEdit).padding(5.dp), tint = c.text2)
+                if (onDelete != null) Icon(CutIcons.Trash, "Delete", Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button, onClick = onDelete).padding(5.dp), tint = c.text2)
             }
-            Text(p.name, color = c.text, style = cutStyle(15, 800, 1f, display = true))
+            Text(p.name, color = c.text, style = cutStyle(15, 800, 1f, display = true), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(p.line, color = c.text2, style = cutStyle(10, 500, 1.3f), maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+/** The empty tile at the end of the grid: a dashed frame and a plus. */
+@Composable
+private fun NewLookTile(modifier: Modifier, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    Column(
+        modifier.clip(RoundedCornerShape(12.dp)).drawBehind {
+            drawRoundRect(c.mutedBorder, style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx()))), cornerRadius = CornerRadius(12.dp.toPx()))
+        }.pressable(onClick = onClick).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(16.dp).clip(RoundedCornerShape(8.dp)).border(1.5.dp, c.accent, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) { Icon(CutIcons.Plus, null, Modifier.size(10.dp), tint = c.accent) }
+        Text("Chalk your own", color = c.text, style = cutStyle(15, 800, 1f, display = true))
+        Text("Your hue on your stone, with a code to share.", color = c.text2, style = cutStyle(10, 500, 1.3f), maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

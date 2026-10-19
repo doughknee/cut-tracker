@@ -3,6 +3,7 @@ package com.relentnet.cuttracker
 import com.relentnet.cuttracker.data.Backup
 import com.relentnet.cuttracker.data.BadgeDto
 import com.relentnet.cuttracker.data.Checkpoint
+import com.relentnet.cuttracker.data.CustomLook
 import com.relentnet.cuttracker.data.DayLogDto
 import com.relentnet.cuttracker.data.LibMeal
 import com.relentnet.cuttracker.data.LiftSetDto
@@ -29,6 +30,7 @@ class BackupTest {
         weighInTime = LocalTime.of(7, 45), pickTime = LocalTime.of(20, 0), resetHour = 3, haptics = false, theme = "light",
         lastOpenDate = LocalDate.of(2026, 10, 25), welcomeBackSeen = LocalDate.of(2026, 10, 24),
         library = listOf(LibMeal("lib_x", "Eggs + toast", 30, 400, "Three eggs, two slices.")),
+        customLooks = listOf(CustomLook("custom_a", "Mine", 200, 2)), palette = "custom_a",
     )
 
     private val backup = Backup(

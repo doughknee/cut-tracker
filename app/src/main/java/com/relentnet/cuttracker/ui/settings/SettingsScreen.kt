@@ -280,6 +280,6 @@ private fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
 /** What the Appearance row says: the mode, and the look the app wears right now. */
 private fun appearanceLine(s: com.relentnet.cuttracker.data.Settings): String {
     val mode = when (s.theme) { "dark" -> "Dark"; "light" -> "Light"; "schedule" -> "Dark at night"; else -> "Follows the system" }
-    val look = if (s.paletteByCalendar) Palettes.forDate(LocalDate.now()).first.name + " by the calendar" else Palettes.byId(s.palette).name
+    val look = Palettes.of(s, LocalDate.now()).name + if (s.paletteByCalendar) " by the calendar" else ""
     return "$mode, $look" + (if (s.haptics) "" else ", haptics off")
 }

@@ -30,6 +30,7 @@ data class SettingsDto(
     val liftKinds: List<String> = ProgramSpec.LIFT_KINDS,
     val onlineFeatures: Boolean = false, val recipeImport: Boolean = true,
     val palette: String = "sandstone", val paletteByCalendar: Boolean = false,
+    val customLooks: List<CustomLook> = emptyList(),
     // Last on purpose: a v1 export ends its settings with the library, and the test for that cuts the file there.
     val library: List<LibMeal> = ProgramSpec.library,
 )
@@ -47,7 +48,7 @@ val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyP
 fun Settings.toDto() = SettingsDto(
     onboarded, phase, startDate.toString(), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
     weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
-    plans.mapKeys { it.key.name }, liftKinds, onlineFeatures, recipeImport, palette, paletteByCalendar, library,
+    plans.mapKeys { it.key.name }, liftKinds, onlineFeatures, recipeImport, palette, paletteByCalendar, customLooks, library,
 )
 
 fun SettingsDto.toSettings() = Settings(
@@ -55,7 +56,7 @@ fun SettingsDto.toSettings() = Settings(
     java.time.LocalTime.parse(weighInTime), java.time.LocalTime.parse(pickTime), resetHour, haptics, theme,
     lastOpenDate?.let(LocalDate::parse), welcomeBackSeen?.let(LocalDate::parse), library,
     plans = plans?.mapKeys { DayMode.valueOf(it.key) } ?: ProgramSpec.defaultPlans(meals, exercises), liftKinds = liftKinds,
-    onlineFeatures = onlineFeatures, recipeImport = recipeImport, palette = palette, paletteByCalendar = paletteByCalendar,
+    onlineFeatures = onlineFeatures, recipeImport = recipeImport, palette = palette, paletteByCalendar = paletteByCalendar, customLooks = customLooks,
 )
 
 suspend fun Repo.buildBackup(): Backup = Backup(

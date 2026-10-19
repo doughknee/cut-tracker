@@ -2,6 +2,8 @@ package com.relentnet.cuttracker.ui.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import com.relentnet.cuttracker.data.CustomLook
+import com.relentnet.cuttracker.data.Settings
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.Month
@@ -112,7 +114,11 @@ object Palettes {
     /** What the palette grid shows, in order. Holiday looks sit at the end so they can be picked by hand too. */
     val all: List<Palette> = listOf(SANDSTONE, GRANITE, MOSS, CHALK, EMBER, DUSK, GLACIER, HARVEST, HALLOWEEN, WINTER, NEW_YEAR, ROSE, FOURTH)
 
-    fun byId(id: String): Palette = all.firstOrNull { it.id == id } ?: SANDSTONE
+    fun byId(id: String, custom: List<CustomLook> = emptyList()): Palette =
+        all.firstOrNull { it.id == id } ?: custom.firstOrNull { it.id == id }?.palette() ?: SANDSTONE
+
+    /** The look the settings ask for on [date]: the calendar's pick, a chalked look, or a built-in one. */
+    fun of(s: Settings, date: LocalDate): Palette = if (s.paletteByCalendar) forDate(date).first else byId(s.palette, s.customLooks)
 
     /** A holiday window: inclusive month-days, the look, and the line the Appearance page shows. */
     data class Holiday(val name: String, val from: MonthDay, val to: MonthDay, val palette: Palette) {
@@ -153,4 +159,13 @@ object Palettes {
 
     /** Dark from 19:00 to 07:00 when the mode is a schedule. */
     fun scheduledDark(t: LocalTime): Boolean = t.hour >= 19 || t.hour < 7
+}
+
+/** A chalked look as a palette. The line is the share code, so the grid tile shows it. */
+fun CustomLook.palette(): Palette {
+    fun f(d: CustomLook.FaceInts) = Face(
+        Color(d.ground), Color(d.surface), Color(d.hairline), Color(d.muted), Color(d.wall),
+        Color(d.accent), Color(d.onAccent), Color(d.good), Color(d.goodDim), Color(d.freeze), Color(d.miss), Color(d.future),
+    )
+    return Palette(id, name.ifBlank { autoName }, "Your chalk. Code $code.", f(face(true)), f(face(false)))
 }

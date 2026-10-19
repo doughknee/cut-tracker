@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
             val mode = ThemeMode.of(st.settings.theme)
             // A minute tick so a scheduled dark and a calendar look change while the app is open.
             val now by produceState(java.time.LocalDateTime.now()) { while (true) { kotlinx.coroutines.delay(60_000); value = java.time.LocalDateTime.now() } }
-            val palette = if (st.settings.paletteByCalendar) Palettes.forDate(now.toLocalDate()).first else Palettes.byId(st.settings.palette)
+            val palette = Palettes.of(st.settings, now.toLocalDate())
             CutTheme(mode, palette, now.toLocalTime()) {
                 CompositionLocalProvider(LocalHaptics provides remember { haptics }) { App(vm) }
             }
