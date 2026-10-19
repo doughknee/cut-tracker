@@ -24,6 +24,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import com.relentnet.cuttracker.ui.components.drawWallDecor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -141,7 +143,7 @@ private fun Preview(palette: Palette, dark: Boolean, line: String) {
     CompositionLocalProvider(LocalCutColors provides live, LocalDecor provides palette.decor) {
         val c = CutTheme.colors
         Card(Modifier.fillMaxWidth(), radius = 16.dp, background = c.ground, border = c.hairline) {
-            Box(Modifier.fillMaxWidth().height(86.dp).background(c.wall)) {
+            Box(Modifier.fillMaxWidth().height(86.dp).background(c.wall).drawBehind { drawWallDecor(palette.decor, c, 64.dp.toPx()) }) {
                 Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.CenterVertically) {
                     Hold(HoldShape.JUG, c.good, 30.dp); Hold(HoldShape.CRIMP, c.goodDim, 26.dp); Hold(HoldShape.SLOPER, c.freeze, 28.dp); Hold(HoldShape.PINCH, c.accent, 30.dp)
                 }

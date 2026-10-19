@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -97,53 +98,139 @@ fun DrawScope.drawHold(shape: HoldShape, fill: Color, stroke: Color? = null, str
  */
 fun DrawScope.drawDecor(decor: Decor, shape: HoldShape, fill: Color, c: CutColors) {
     val s = size.minDimension / 24f
-    // Where the top of the silhouette sits, per shape, so the hat sits on the hold and not above it.
+    // Where the top and bottom of the silhouette sit, per shape, so the hat sits on the hold and the grin inside it.
     val top = when (shape) { HoldShape.JUG -> 2.2f; HoldShape.CRIMP -> 6.5f; HoldShape.SLOPER -> 7.2f; HoldShape.PINCH -> 3.4f }
+    val bottom = when (shape) { HoldShape.JUG -> 21.5f; HoldShape.CRIMP -> 17.5f; HoldShape.SLOPER -> 20f; HoldShape.PINCH -> 21f }
     when (decor) {
         Decor.NONE -> Unit
         Decor.PUMPKIN -> {
-            // A stem, and two eyes cut into the hold just under the top edge.
-            drawRoundRect(c.goodDim, Offset(10.9f * s, (top - 2.2f) * s), Size(2.2f * s, 2.8f * s), CornerRadius(0.8f * s))
-            val eye = Path().apply { moveTo(7.2f * s, (top + 5.2f) * s); lineTo(9.8f * s, (top + 5.2f) * s); lineTo(8.5f * s, (top + 2.9f) * s); close() }
-            val eye2 = Path().apply { moveTo(14.2f * s, (top + 5.2f) * s); lineTo(16.8f * s, (top + 5.2f) * s); lineTo(15.5f * s, (top + 2.9f) * s); close() }
-            drawPath(eye, c.ground); drawPath(eye2, c.ground)
+            // Stem, two eyes under the top edge, and a jagged grin along the bottom. The number sits between the eyes and the grin.
+            drawRoundRect(c.goodDim, Offset(10.6f * s, (top - 3f) * s), Size(2.8f * s, 3.6f * s), CornerRadius(1f * s))
+            val cut = c.ground
+            fun eye(cx: Float) = Path().apply { moveTo((cx - 2f) * s, (top + 5.6f) * s); lineTo((cx + 2f) * s, (top + 5.6f) * s); lineTo(cx * s, (top + 2.4f) * s); close() }
+            drawPath(eye(8.2f), cut); drawPath(eye(15.8f), cut)
+            val grin = Path().apply {
+                val y0 = (bottom - 4.2f) * s; val y1 = (bottom - 1.6f) * s
+                moveTo(5.5f * s, y0)
+                var x = 5.5f; var up = false
+                while (x < 18.5f) { x += 1.6f; lineTo(x * s, if (up) y0 else y1); up = !up }
+                lineTo(18.5f * s, y0); lineTo(18.5f * s, y0 - 0.8f * s); lineTo(5.5f * s, y0 - 0.8f * s); close()
+            }
+            drawPath(grin, cut)
         }
         Decor.SNOW -> {
-            // Three soft blobs along the top edge.
-            val snow = c.text.copy(alpha = 0.9f)
-            drawCircle(snow, 2.6f * s, Offset(8f * s, (top + 0.6f) * s))
-            drawCircle(snow, 3.2f * s, Offset(12.4f * s, (top + 0.2f) * s))
-            drawCircle(snow, 2.3f * s, Offset(16.4f * s, (top + 0.9f) * s))
+            val snow = c.text.copy(alpha = 0.92f)
+            drawCircle(snow, 3.4f * s, Offset(7.4f * s, (top + 0.6f) * s))
+            drawCircle(snow, 4.2f * s, Offset(12.4f * s, (top + 0.1f) * s))
+            drawCircle(snow, 3f * s, Offset(17f * s, (top + 0.9f) * s))
         }
         Decor.HEART -> {
-            // A small heart at the top right.
-            val cx = 17.2f * s; val cy = (top + 2.2f) * s; val r = 1.6f * s
+            val cx = 17f * s; val cy = (top + 3f) * s; val r = 2.3f * s
             drawCircle(c.accent, r, Offset(cx - r * 0.9f, cy - r * 0.4f))
             drawCircle(c.accent, r, Offset(cx + r * 0.9f, cy - r * 0.4f))
-            val tip = Path().apply { moveTo(cx - r * 1.8f, cy); lineTo(cx + r * 1.8f, cy); lineTo(cx, cy + r * 2.1f); close() }
+            val tip = Path().apply { moveTo(cx - r * 1.85f, cy); lineTo(cx + r * 1.85f, cy); lineTo(cx, cy + r * 2.2f); close() }
             drawPath(tip, c.accent)
         }
         Decor.STARS -> {
-            // A four-point spark at the top right and a smaller one at the top left.
             fun spark(cx: Float, cy: Float, r: Float) {
                 val p = Path().apply {
                     moveTo(cx, cy - r); quadraticTo(cx, cy, cx + r, cy); quadraticTo(cx, cy, cx, cy + r); quadraticTo(cx, cy, cx - r, cy); quadraticTo(cx, cy, cx, cy - r); close()
                 }
                 drawPath(p, c.accent)
             }
-            spark(17.6f * s, (top + 2.4f) * s, 3.2f * s)
-            spark(6.4f * s, (top + 1.6f) * s, 1.9f * s)
+            spark(18f * s, (top + 2.6f) * s, 4.4f * s)
+            spark(6f * s, (top + 1.4f) * s, 2.6f * s)
         }
         Decor.BUNTING -> {
-            // Three little flags hung from the top edge.
             val cols = listOf(c.accent, c.text, c.freeze)
             for (i in 0..2) {
-                val x = (7f + i * 5f) * s
-                val p = Path().apply { moveTo(x - 1.6f * s, (top + 0.6f) * s); lineTo(x + 1.6f * s, (top + 0.6f) * s); lineTo(x, (top + 4.2f) * s); close() }
+                val x = (6.5f + i * 5.5f) * s
+                val p = Path().apply { moveTo(x - 2.2f * s, (top + 0.4f) * s); lineTo(x + 2.2f * s, (top + 0.4f) * s); lineTo(x, (top + 5.2f) * s); close() }
                 drawPath(p, cols[i])
             }
         }
     }
+}
+
+/**
+ * The wall behind the week joins in: motifs scattered over the panel in the look's accent, faint enough to sit behind
+ * the holds. Deterministic jitter so the wall does not twitch on recomposition.
+ */
+fun DrawScope.drawWallDecor(decor: Decor, c: CutColors, cell: Float) {
+    if (decor == Decor.NONE) return
+    val ink = c.accent.copy(alpha = if (c.isDark) 0.22f else 0.24f)
+    val pale = c.text.copy(alpha = if (c.isDark) 0.16f else 0.22f)
+    var row = 0
+    var y = cell * 0.5f
+    while (y < size.height) {
+        var col = 0
+        var x = if (row % 2 == 0) cell * 0.5f else cell
+        while (x < size.width) {
+            val j = ((row * 7 + col * 13) % 5 - 2) * cell * 0.08f
+            val cx = x + j; val cy = y - j
+            val r = cell * 0.11f
+            when (decor) {
+                Decor.PUMPKIN -> bat(cx, cy, r * 1.4f, ink)
+                Decor.SNOW -> flake(cx, cy, r, pale)
+                Decor.HEART -> heart(cx, cy, r * 0.8f, ink)
+                Decor.STARS -> spark(cx, cy, r * 1.1f, ink)
+                Decor.BUNTING -> star(cx, cy, r, if ((row + col) % 2 == 0) ink else pale)
+                Decor.NONE -> Unit
+            }
+            x += cell; col++
+        }
+        y += cell * 0.86f; row++
+    }
+}
+
+private fun DrawScope.bat(cx: Float, cy: Float, r: Float, color: Color) {
+    val p = Path().apply {
+        moveTo(cx - 2f * r, cy)
+        quadraticTo(cx - 1.4f * r, cy - 1.2f * r, cx - 0.6f * r, cy - 0.5f * r)
+        quadraticTo(cx - 0.3f * r, cy - 1.1f * r, cx, cy - 0.7f * r)
+        quadraticTo(cx + 0.3f * r, cy - 1.1f * r, cx + 0.6f * r, cy - 0.5f * r)
+        quadraticTo(cx + 1.4f * r, cy - 1.2f * r, cx + 2f * r, cy)
+        quadraticTo(cx + 1.1f * r, cy + 0.1f, cx + 0.7f * r, cy + 0.7f * r)
+        quadraticTo(cx + 0.3f * r, cy + 0.2f * r, cx, cy + 0.6f * r)
+        quadraticTo(cx - 0.3f * r, cy + 0.2f * r, cx - 0.7f * r, cy + 0.7f * r)
+        quadraticTo(cx - 1.1f * r, cy + 0.1f, cx - 2f * r, cy)
+        close()
+    }
+    drawPath(p, color)
+}
+
+private fun DrawScope.flake(cx: Float, cy: Float, r: Float, color: Color) {
+    for (k in 0 until 3) rotate(k * 60f, Offset(cx, cy)) {
+        drawLine(color, Offset(cx, cy - r), Offset(cx, cy + r), r * 0.22f, StrokeCap.Round)
+        drawLine(color, Offset(cx - r * 0.35f, cy - r * 0.55f), Offset(cx, cy - r * 0.25f), r * 0.18f, StrokeCap.Round)
+        drawLine(color, Offset(cx + r * 0.35f, cy - r * 0.55f), Offset(cx, cy - r * 0.25f), r * 0.18f, StrokeCap.Round)
+    }
+}
+
+private fun DrawScope.heart(cx: Float, cy: Float, r: Float, color: Color) {
+    drawCircle(color, r, Offset(cx - r * 0.9f, cy - r * 0.4f))
+    drawCircle(color, r, Offset(cx + r * 0.9f, cy - r * 0.4f))
+    val tip = Path().apply { moveTo(cx - r * 1.85f, cy); lineTo(cx + r * 1.85f, cy); lineTo(cx, cy + r * 2.2f); close() }
+    drawPath(tip, color)
+}
+
+private fun DrawScope.spark(cx: Float, cy: Float, r: Float, color: Color) {
+    val p = Path().apply {
+        moveTo(cx, cy - r); quadraticTo(cx, cy, cx + r, cy); quadraticTo(cx, cy, cx, cy + r); quadraticTo(cx, cy, cx - r, cy); quadraticTo(cx, cy, cx, cy - r); close()
+    }
+    drawPath(p, color)
+}
+
+private fun DrawScope.star(cx: Float, cy: Float, r: Float, color: Color) {
+    val p = Path()
+    for (i in 0 until 10) {
+        val rr = if (i % 2 == 0) r else r * 0.45f
+        val a = Math.toRadians((i * 36 - 90).toDouble())
+        val px = cx + (rr * Math.cos(a)).toFloat(); val py = cy + (rr * Math.sin(a)).toFloat()
+        if (i == 0) p.moveTo(px, py) else p.lineTo(px, py)
+    }
+    p.close()
+    drawPath(p, color)
 }
 
 /** A hold with optional centered content (the day number). Wears the current look's decor. */

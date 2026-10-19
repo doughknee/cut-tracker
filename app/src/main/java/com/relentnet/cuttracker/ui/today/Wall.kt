@@ -58,6 +58,7 @@ import com.relentnet.cuttracker.ui.components.Hold
 import com.relentnet.cuttracker.ui.components.holdFill
 import com.relentnet.cuttracker.ui.components.holdNumberColor
 import com.relentnet.cuttracker.ui.components.holdShape
+import com.relentnet.cuttracker.ui.components.drawWallDecor
 import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
@@ -112,6 +113,7 @@ fun Wall(
 
     // Short screens get a shorter wall so the date headline still lands above the fold.
     val ys = (LocalConfiguration.current.screenHeightDp / 860f).coerceIn(0.72f, 1f)
+    val decor = com.relentnet.cuttracker.ui.theme.LocalDecor.current
     BoxWithConstraints(Modifier.fillMaxWidth().height(WALL_HEIGHT * ys + statusTop).background(c.wall)) {
         val xs = maxWidth / MOCK_WIDTH.dp
         fun ax(i: Int): Dp = ANCHORS[i].first.dp * xs
@@ -136,6 +138,7 @@ fun Wall(
                     drawLine(stripe, Offset(x0, 0f), Offset(x0 + size.height, size.height), 2.dp.toPx())
                     x0 += gap
                 }
+                drawWallDecor(decor, c, 96.dp.toPx())
                 for (seam in listOf(226.dp, 366.dp)) {
                     val sy = seam.toPx() * ys + statusTop.toPx()
                     drawLine(c.text.copy(alpha = 0.07f), Offset(0f, sy), Offset(size.width, sy), 1.dp.toPx())
