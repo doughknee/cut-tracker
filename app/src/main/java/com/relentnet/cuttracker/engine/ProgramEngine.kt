@@ -52,9 +52,9 @@ object ProgramEngine {
 
     fun weekStart(day: LocalDate): LocalDate = day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
-    /** Checkpoint "Week N" label and anchor row: whole weeks elapsed since the start. */
+    /** Checkpoint "Week N" label: the nearest whole week since the start, so a checkpoint 13 days in reads Week 2. */
     fun checkpointWeek(cp: Checkpoint, start: LocalDate, weeks: Int): Int =
-        (ChronoUnit.DAYS.between(start, cp.localDate).toInt() / 7).coerceIn(1, weeks)
+        ((ChronoUnit.DAYS.between(start, cp.localDate).toInt() + 3) / 7).coerceIn(1, weeks)
 
     // Script
 

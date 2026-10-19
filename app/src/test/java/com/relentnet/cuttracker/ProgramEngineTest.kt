@@ -182,6 +182,8 @@ class ProgramEngineTest {
         assertEquals(175.0, five.last().target)
         val seven = ProgramSpec.defaultCheckpoints(start, 180.0, 175.0, 7)
         assertEquals(listOf(2, 4, 6, 7), seven.map { ProgramEngine.checkpointWeek(it, start, 7) })
+        // A hand-set date 13 days in rounds to week 2, not week 1.
+        assertEquals(2, ProgramEngine.checkpointWeek(Checkpoint(start.plusDays(13).toString(), 180.0, note = ""), start, 12))
     }
 
     @Test fun rateAndProjection() {

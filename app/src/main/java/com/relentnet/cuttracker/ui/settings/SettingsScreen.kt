@@ -155,7 +155,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
         Section("Targets") {
             SettingsRow("Calories") { NumField(cal, { cal = it }, 84.dp) }
             SettingsRow("Protein") { NumField(pro, { pro = it }, 64.dp); Sub("g") }
-            SettingsRow("Workouts per week") { NumField(wpw, { wpw = it }, 56.dp); Sub("the plan assumed 5 to 6") }
+            SettingsRow("Workouts per week") { NumField(wpw, { wpw = it }, 56.dp); Sub("blocks on Climb and Off days") }
             SettingsRow("Meals", onClick = onMeals) { Sub("${saved.meals.size} items ›") }
             SettingsRow("Exercises", onClick = onExercises) { Sub("${saved.exercises.size} items ›") }
             SettingsRow("Checkpoints and free days", last = true, onClick = onCheckpoints) { Sub("${saved.checkpoints.size} ›") }
@@ -184,7 +184,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
                 )
             }
             SettingsRow("Weigh-in reminder") { TimePicker(d.weighInTime) { d = d.copy(weighInTime = it) } }
-            SettingsRow("\"Climb or off?\" if unset") { TimePicker(d.pickTime) { d = d.copy(pickTime = it) } }
+            SettingsRow("\"Pick a day\" if unset") { TimePicker(d.pickTime) { d = d.copy(pickTime = it) } }
             SettingsRow("Day rolls over at", last = true) { TimePicker(LocalTime.of(d.resetHour, 0)) { d = d.copy(resetHour = it.hour) } }
         }
         Section("Data") {
@@ -198,6 +198,12 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
                     if (resetStage < 2) resetStage++ else { resetStage = 0; vm.resetProgram { vm.showToast("Program reset") } }
                 },
             ) { Sub(if (resetStage == 0) "double confirm" else "${2 - resetStage + 1} more") }
+        }
+        Section("About") {
+            val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
+            SettingsRow("Sendline") { Sub(version) }
+            SettingsRow("Privacy policy", onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://doughknee.github.io/cut-tracker/privacy.html"))) }) { Sub("›") }
+            SettingsRow("Everything stays on this phone", last = true) { Sub("no account, no network") }
         }
         BigButton("Save", onClick = ::save, modifier = Modifier.fillMaxWidth())
     }

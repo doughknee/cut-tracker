@@ -19,7 +19,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 /**
- * Two daily alarms: "Weigh in" at the weigh-in time, "Climb or off?" at the pick time (posted only when no mode is set).
+ * Two daily alarms: "Weigh in" at the weigh-in time, "Pick a day" at the pick time (posted only when no mode is set).
  * Exact when the OS allows it, otherwise an inexact while-idle alarm. Nothing else, no streak nagging.
  */
 object Reminders {
@@ -70,7 +70,7 @@ object Reminders {
         )
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(if (kind == KIND_WEIGH) "Weigh in" else "Climb or off?")
+            .setContentTitle(if (kind == KIND_WEIGH) "Weigh in" else "Pick a day")
             .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "It's 7pm and no day is picked. Guessing Rest day. Weigh in and hit protein and the chain is safe.")
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
