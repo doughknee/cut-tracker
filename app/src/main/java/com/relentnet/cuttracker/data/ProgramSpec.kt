@@ -125,14 +125,22 @@ object ProgramSpec {
         Exercise("pullover", "DB pullover", Block.OFF, 2, "12", 5.0, "Lb"),
     )
 
-    val checkpoints = listOf(
-        Checkpoint("2026-10-28", 179.5, note = "Stop tracking food. You know the portions now."),
-        Checkpoint("2026-11-11", 177.5, note = "Upper abs clear in bathroom light. Dips +10 lb or 15 bodyweight reps. Behind? Cut 200 cal."),
-        Checkpoint("2026-11-26", free = true, label = "Thanksgiving", note = "Eat whatever. One day. Script resumes the 27th."),
-        Checkpoint("2026-12-09", 174.0, note = "4-pack standing relaxed. Floor press up 20+ lb."),
-        Checkpoint("2026-12-24", free = true, days = 2, label = "Christmas", note = "Two days. Then back."),
-        Checkpoint("2027-01-06", 170.0, note = "6-pack or close. Cut ends regardless. Phase 2 unlocks."),
-    )
+    /** Checkpoints are generated from the program: one every two weeks on the pace line, the last one at the target. */
+    fun defaultCheckpoints(start: LocalDate, startWeight: Double, targetWeight: Double, weeks: Int): List<Checkpoint> {
+        val every = if (weeks >= 6) 2 else 1
+        val marks = (every..weeks step every).toMutableList().apply { if (lastOrNull() != weeks) add(weeks) }
+        return marks.map { w ->
+            val target = startWeight - (startWeight - targetWeight) * w / weeks
+            val rounded = kotlin.math.round(target * 2) / 2
+            Checkpoint(
+                start.plusDays(7L * w).toString(), rounded,
+                note = if (w == weeks) "Cut ends. Phase 2 unlocks." else "Pace check. Photo day.",
+            )
+        }
+    }
+
+    /** The defaults before onboarding; onboarding replaces them with the user's own. */
+    val checkpoints: List<Checkpoint> get() = defaultCheckpoints(PHASE_1_START, START_WEIGHT, TARGET_WEIGHT, LENGTH_WEEKS)
 
     val projects = listOf(
         ProjectSpec("dips3", "Beat last week's dips three times", "overhang", "Overhang", 3),

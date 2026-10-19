@@ -2,7 +2,12 @@ package com.relentnet.cuttracker.ui.settings
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.app.AlarmManager
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -144,7 +149,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
             SettingsRow("Target weight") { NumField(tw, { tw = it }); Sub("lb") }
             SettingsRow("Phase", last = true) {
                 Pill("1 Cut", d.phase == 1, { d = d.copy(phase = 1); cal = d.caloriesP1.toString() })
-                Pill("2 Chest", d.phase == 2, { d = d.copy(phase = 2); cal = d.caloriesP2.toString() })
+                Pill("2 Build", d.phase == 2, { d = d.copy(phase = 2); cal = d.caloriesP2.toString() })
             }
         }
         Section("Targets") {
@@ -156,6 +161,28 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
             SettingsRow("Checkpoints and free days", last = true, onClick = onCheckpoints) { Sub("${saved.checkpoints.size} ›") }
         }
         Section("Nudges") {
+            // Re-read on every resume so coming back from system settings updates the row.
+            var tick by remember { mutableIntStateOf(0) }
+            LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose { } }
+            val notifOn = remember(tick) { NotificationManagerCompat.from(context).areNotificationsEnabled() }
+            val exactOn = remember(tick) { Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms() }
+            SettingsRow(
+                "Reminders",
+                onClick = when {
+                    !notifOn -> ({ context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)) })
+                    !exactOn && Build.VERSION.SDK_INT >= 31 -> ({ context.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName))) })
+                    else -> null
+                },
+            ) {
+                Sub(
+                    when {
+                        !notifOn -> "Off. Allow notifications ›"
+                        !exactOn -> "On, timing may drift. Allow exact alarms ›"
+                        else -> "On"
+                    },
+                    color = if (notifOn) c.text2 else c.accent,
+                )
+            }
             SettingsRow("Weigh-in reminder") { TimePicker(d.weighInTime) { d = d.copy(weighInTime = it) } }
             SettingsRow("\"Climb or off?\" if unset") { TimePicker(d.pickTime) { d = d.copy(pickTime = it) } }
             SettingsRow("Day rolls over at", last = true) { TimePicker(LocalTime.of(d.resetHour, 0)) { d = d.copy(resetHour = it.hour) } }

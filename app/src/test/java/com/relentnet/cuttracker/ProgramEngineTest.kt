@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker
 
+import com.relentnet.cuttracker.data.Checkpoint
 import com.relentnet.cuttracker.data.DayLog
 import com.relentnet.cuttracker.data.DayMode
 import com.relentnet.cuttracker.data.ProgramSpec
@@ -156,18 +157,31 @@ class ProgramEngineTest {
     }
 
     @Test fun freeDaysCountAsSend() {
-        val r = ProgramEngine.results(emptyList(), emptyList(), s, LocalDate.of(2026, 12, 26))
+        val free = s.copy(checkpoints = s.checkpoints + listOf(
+            Checkpoint("2026-11-26", free = true, label = "Thanksgiving", note = ""),
+            Checkpoint("2026-12-24", free = true, days = 2, label = "Christmas", note = ""),
+        ))
+        val r = ProgramEngine.results(emptyList(), emptyList(), free, LocalDate.of(2026, 12, 26))
         assertEquals(DayResult.SEND, r[LocalDate.of(2026, 11, 26)])
         assertEquals(DayResult.SEND, r[LocalDate.of(2026, 12, 24)])
         assertEquals(DayResult.SEND, r[LocalDate.of(2026, 12, 25)])
     }
 
     @Test fun checkpointWeeks() {
-        val cps = ProgramSpec.checkpoints
+        val cps = ProgramSpec.defaultCheckpoints(start, 181.8, 170.0, 12)
+        assertEquals(6, cps.size)
         assertEquals(2, ProgramEngine.checkpointWeek(cps[0], start, 12))
         assertEquals(4, ProgramEngine.checkpointWeek(cps[1], start, 12))
         assertEquals(8, ProgramEngine.checkpointWeek(cps[3], start, 12))
         assertEquals(12, ProgramEngine.checkpointWeek(cps[5], start, 12))
+        assertEquals(170.0, cps[5].target)
+        assertEquals(180.0, cps[0].target)
+        // Odd lengths still end on the target.
+        val five = ProgramSpec.defaultCheckpoints(start, 180.0, 175.0, 5)
+        assertEquals(5, five.size)
+        assertEquals(175.0, five.last().target)
+        val seven = ProgramSpec.defaultCheckpoints(start, 180.0, 175.0, 7)
+        assertEquals(listOf(2, 4, 6, 7), seven.map { ProgramEngine.checkpointWeek(it, start, 7) })
     }
 
     @Test fun photoCadence() {

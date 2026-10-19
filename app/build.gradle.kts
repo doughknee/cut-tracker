@@ -20,8 +20,9 @@ android {
         applicationId = "com.relentnet.cuttracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        // Bump both for every Play upload; versionCode only ever goes up.
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     signingConfigs {

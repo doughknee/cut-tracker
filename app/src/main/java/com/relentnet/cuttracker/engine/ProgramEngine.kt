@@ -63,7 +63,7 @@ object ProgramEngine {
         val weigh = ScriptItem(ProgramSpec.ITEM_WEIGH, "Weigh in", "Before food. Log it, ignore the number.", "8:30", ProgramSpec.XP_WEIGH)
         val workout = when (mode) {
             DayMode.CLIMB -> listOf(
-                ScriptItem(ProgramSpec.ITEM_CLIMB, "Climb", "Climb Nashville East. Before lunch.", "11:00", ProgramSpec.XP_CLIMB, workout = true),
+                ScriptItem(ProgramSpec.ITEM_CLIMB, "Climb", "Climbing session. Before lunch.", "11:00", ProgramSpec.XP_CLIMB, workout = true),
                 ScriptItem(ProgramSpec.ITEM_PUSH, "Push block", "Dips 3x, push-ups 2x. Last 15 min at the gym.", "12:15", ProgramSpec.XP_PUSH, workout = true),
             )
             DayMode.OFF -> listOf(

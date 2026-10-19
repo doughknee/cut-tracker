@@ -111,7 +111,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
                 }
             }
         }
-        if (s.phase == 2) Sub("Phase 2, no fixed end. Photos keep their 14-day cadence.")
+        if (s.phase == 2) Sub("Phase 2: build calories and the extra lifts until the route ends. Photos keep their 14-day cadence.")
         Column {
             val cps = s.checkpoints.sortedBy { it.date }
             cps.forEachIndexed { i, cp -> CheckpointRow(cp, st, current, last = i == cps.lastIndex, onStartPhase2 = { vm.setPhase(2) }) }

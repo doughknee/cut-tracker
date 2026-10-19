@@ -57,6 +57,8 @@ data class AppState(
     val projectSpec: ProjectSpec? get() = project?.let { p -> ProgramSpec.projects.firstOrNull { it.id == p.id } }
     val missedRun: Int get() = ProgramEngine.missedRunBefore(results, today)
     val workoutsThisWeek: Int get() = ProgramEngine.workoutsInWeek(logs, today)
+    /** Past the last program day: the route is topped out until a new one starts. */
+    val ended: Boolean get() = settings.onboarded && !today.isBefore(settings.endDate)
 
     /** Everything Today needs about one program day, past or present. */
     data class DayView(

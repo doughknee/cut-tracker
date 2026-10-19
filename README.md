@@ -1,6 +1,6 @@
 # Cut Tracker
 
-Personal Android app for a fixed 12-week cut (Oct 14 2026 to Jan 6 2027) and the chest phase after it. Offline, local-only, no accounts, no network. Kotlin, Jetpack Compose, Room, DataStore, CameraX, Glance.
+Android app for a cut, any length, built for climbers: every day is a hold, the week is a wall, the program is a route. Offline, local-only, no accounts, no network. Kotlin, Jetpack Compose, Room, DataStore, CameraX, Glance.
 
 The spec is `CUT_TRACKER_HANDOFF.md`; the look and copy come from `cut-tracker-prototype.html`. Build notes and decisions are in `PROGRESS.md`.
 
@@ -44,6 +44,14 @@ Then:
 ```
 
 The signed APK lands at `app/build/outputs/apk/release/app-release.apk`.
+
+For Google Play build the bundle instead; `STORE_LISTING.md` has the listing copy, the Data safety answers and the release checklist, and `docs/privacy.html` is the privacy policy to host:
+
+```bash
+./gradlew :app:bundleRelease
+```
+
+Before installing a release on a phone, install it on the emulator first: R8 has stripped reflective classes (Glance, WorkManager) more than once, and debug builds never show it.
 
 ## Sideload
 

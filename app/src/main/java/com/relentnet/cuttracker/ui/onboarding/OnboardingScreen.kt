@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.components.BigButton
@@ -69,23 +70,38 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     var start by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
     var weeks by rememberSaveable { mutableStateOf(s.lengthWeeks.toString()) }
     var time by rememberSaveable { mutableStateOf(s.weighInTime.toString()) }
+    var cal by rememberSaveable { mutableStateOf("") }
+    var pro by rememberSaveable { mutableStateOf("") }
+    // Starting the next route keeps every log, badge and XP; only the program changes.
+    val again = st.logs.isNotEmpty() || st.weighIns.isNotEmpty()
     var swMissing by remember { mutableStateOf(false) }
     val swFocus = remember { FocusRequester() }
 
     fun next() {
         when (step) {
             1 -> if (sw.toDoubleOrNull() == null) { swMissing = true; swFocus.requestFocus(); return }
-            3 -> {
+            2 -> {
+                // Prefill the targets once, from the weights: a common starting point, not a prescription.
+                val a = sw.toDoubleOrNull() ?: s.startWeight
+                val b = tw.toDoubleOrNull() ?: s.targetWeight
+                if (cal.isBlank()) cal = ((a * 12 / 50).toInt() * 50).coerceIn(1200, 4000).toString()
+                if (pro.isBlank()) pro = ((b * 0.9 / 5).toInt() * 5).coerceIn(80, 300).toString()
+            }
+            4 -> {
                 val startWeight = sw.toDouble()
+                val targetWeight = tw.toDoubleOrNull() ?: s.targetWeight
                 val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
                 val w = weeks.toIntOrNull()?.coerceIn(1, 52) ?: 12
                 vm.saveSettings(
                     s.copy(
-                        onboarded = true, startWeight = startWeight, targetWeight = tw.toDoubleOrNull() ?: s.targetWeight,
+                        onboarded = true, phase = 1, startWeight = startWeight, targetWeight = targetWeight,
                         startDate = startDate, lengthWeeks = w, weighInTime = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime),
+                        caloriesP1 = cal.toIntOrNull() ?: s.caloriesP1, protein = pro.toIntOrNull() ?: s.protein,
+                        checkpoints = ProgramSpec.defaultCheckpoints(startDate, startWeight, targetWeight, w),
+                        welcomeBackSeen = null, lastOpenDate = null,
                     ),
                 ) {
-                    vm.repo.scope.launch { vm.repo.logWeight(startWeight); vm.showToast("Day 1. Pick a day.") }
+                    vm.repo.scope.launch { if (!startDate.isAfter(LocalDate.now())) vm.repo.logWeight(startWeight); vm.showToast("Day 1. Pick a day.") }
                     onDone()
                 }
                 return
@@ -99,13 +115,14 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (i in 0..3) Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(if (i <= step) c.accent else c.hairline))
+            for (i in 0..4) Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(if (i <= step) c.accent else c.hairline))
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             when (step) {
                 0 -> {
-                    Big("Twelve weeks.\nFour taps a day.")
-                    Body("Weigh in, eat the script, do the block, check it off. The app keeps score so you don't have to. Nothing here resets, ever.")
+                    Big(if (again) "Next route." else "Twelve weeks.\nFour taps a day.")
+                    Body(if (again) "Your logs, badges and XP stay. Set a new start, a new target and a new length." else "Weigh in, eat the script, do the block, check it off. The app keeps score so you don't have to. Nothing here resets, ever.")
+                    Hint("Not medical advice. A cut is a diet; check with a doctor if you have a condition, and stop if you feel unwell.")
                 }
                 1 -> {
                     Big("Where you're starting.")
@@ -131,6 +148,16 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     val w = weeks.toIntOrNull() ?: 12
                     Hint("Ends ${d.plusDays(w * 7L).format(longDate)}. ${w * 7} holds on the route.")
                 }
+                3 -> {
+                    Big("The daily targets.")
+                    Fld("Calories") {
+                        Field(cal, { cal = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, imeAction = ImeAction.Next, onDone = { })
+                    }
+                    Fld("Protein, grams") {
+                        Field(pro, { pro = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
+                    }
+                    Hint("Prefilled from your weights as a common starting point. Protein is the one that keeps the chain: weigh in and hit it, and the day counts even when the rest slips. Change both any time in Settings.")
+                }
                 else -> {
                     Big("One nudge a day.")
                     val t = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime)
@@ -143,7 +170,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BigButton("Back", onClick = { if (step > 0) step-- }, modifier = Modifier.width(120.dp).alpha(if (step > 0) 1f else 0f), secondary = true, enabled = step > 0)
-            BigButton(when (step) { 0 -> "Let's go"; 3 -> "Start the route"; else -> "Next" }, onClick = ::next, modifier = Modifier.weight(1f))
+            BigButton(when (step) { 0 -> "Let's go"; 4 -> "Start the route"; else -> "Next" }, onClick = ::next, modifier = Modifier.weight(1f))
         }
     }
 }

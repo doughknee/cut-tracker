@@ -87,7 +87,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
                     if (avg != null) {
                         val delta = avg - s.startWeight
                         Text(
-                            (if (delta < 0) "" else "+") + ProgramEngine.fmt1(delta) + " lb since start · " + (if (onPace) "on pace" else "behind, cut 200 cal"),
+                            (if (delta < 0) "" else "+") + ProgramEngine.fmt1(delta) + " lb since start · " + (if (onPace) "on pace" else "behind pace"),
                             color = if (onPace) c.good else c.accent, style = cutStyle(13, 600, 1.2f, tabular = true), modifier = Modifier.padding(top = 4.dp),
                         )
                     } else Sub("Log a weigh-in to start the average.", Modifier.padding(top = 4.dp), size = 12)

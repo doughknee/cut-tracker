@@ -98,7 +98,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
                 Column {
                     Eyebrow("The Route · ${s.lengthWeeks} weeks")
                     Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
-                        Text("Day ${st.dayN}", color = c.text, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
+                        Text("Day ${st.dayN.coerceAtMost(s.totalDays)}", color = c.text, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
                         Text(" / ${s.totalDays}", color = c.dim, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
                     }
                 }
@@ -158,14 +158,17 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                         val day = mon.plusDays(d.toLong())
                         val r = st.results[day]
                         val cp = cps[day]
-                        Box(Modifier.weight(1f).height(34.dp), contentAlignment = Alignment.Center) {
+                        val open = r != null && r != DayResult.FUTURE && r != DayResult.BEFORE
+                        Box(
+                            Modifier.weight(1f).height(34.dp).then(if (open) Modifier.clickable(onClick = { onDay(day) }, role = Role.Button) else Modifier),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                                 when (r) {
                                     null -> Text("${day.dayOfMonth}", color = c.dim.copy(alpha = 0.5f), style = cutStyle(11, 600, 1f, tabular = true))
                                     DayResult.FUTURE, DayResult.BEFORE -> Text("${day.dayOfMonth}", color = c.dim, style = cutStyle(11, 700, 1f, tabular = true))
                                     else -> Hold(
                                         holdShape(modes[day]), holdFill(r, c), if (r == DayResult.TODAY) 32.dp else 30.dp,
-                                        Modifier.clickable(onClick = { onDay(day) }, role = Role.Button),
                                         stroke = if (r == DayResult.TODAY) c.accent else null, strokeWidth = if (r == DayResult.TODAY) 2.4.dp else 0.dp,
                                     ) { Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(11, 900, 1f, tabular = true)) }
                                 }

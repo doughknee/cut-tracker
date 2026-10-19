@@ -120,6 +120,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
     }
     val total = st.settings.protein
     val (stateLine, stateColor) = when {
+        st.ended && !past -> "Route complete" to c.good
         !past && dv.isSend -> "Sent" to c.good
         !past && dv.isMin -> "Chain safe · today" to c.good
         !past && mode == null -> "Today · pick a day" to c.accent
@@ -163,12 +164,13 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                 }
             }
             Text(date.format(dayFmt), color = c.text, style = cutStyle(48, 800, 1f, -0.03f, display = true), maxLines = 1)
-            Sub("Day ${ProgramEngine.dayNumber(date, st.settings.startDate)} of ${st.settings.totalDays}", size = 12)
+            Sub("Day ${ProgramEngine.dayNumber(date, st.settings.startDate).coerceAtMost(st.settings.totalDays)} of ${st.settings.totalDays}", size = 12)
         }
 
         if (welcomeBack) WelcomeBack(st.chain.count, onOk = { vm.dismissWelcomeBack() })
 
         when {
+            st.ended && !past -> ToppedOut(st, onNext = { vm.saveSettings(st.settings.copy(onboarded = false)) })
             late -> LateCard(
                 onRest = { vm.setMode(DayMode.REST) },
                 onClimb = { vm.setMode(DayMode.CLIMB, preCheck = setOf(ProgramSpec.ITEM_CLIMB)) },
@@ -284,7 +286,7 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
                 if (avg != null) {
                     val delta = avg - s.startWeight
                     Text(
-                        (if (delta < 0) "" else "+") + ProgramEngine.fmt1(delta) + " · " + (if (onPace) "on pace" else "behind, cut 200 cal"),
+                        (if (delta < 0) "" else "+") + ProgramEngine.fmt1(delta) + " · " + (if (onPace) "on pace" else "behind pace"),
                         color = if (onPace) c.good else c.accent, style = cutStyle(12, 700, 1f, tabular = true),
                     )
                 } else Text("No readings yet", color = c.text2, style = cutStyle(12, 600, 1f))
@@ -355,6 +357,24 @@ fun XpStrip(st: AppState) {
                     color = c.text2, style = cutStyle(10, 600, 1f, 0.1f),
                 )
             }
+        }
+    }
+}
+
+/** Past the last day: the route is done, the numbers stay, and the next one starts from onboarding. */
+@Composable
+private fun ToppedOut(st: AppState, onNext: () -> Unit) {
+    val c = CutTheme.colors
+    val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
+    Card(Modifier.fillMaxWidth(), border = c.good, borderWidth = 2.dp, radius = 14.dp, padding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Topped out.", color = c.text, style = cutStyle(22, 800, 1.1f, -0.02f, display = true))
+            Sub(
+                "${st.settings.totalDays} days, ${st.sends} send" + (if (st.sends == 1) "" else "s") + ", chain ${st.chain.count}" +
+                    (if (avg != null) ", ${ProgramEngine.fmt1(avg)} lb on the last average." else ".") +
+                    " Everything you logged stays. Start the next route whenever you are ready.",
+            )
+            BigButton("Start the next route", onClick = onNext, modifier = Modifier.fillMaxWidth(), height = 48.dp, fontSize = 13)
         }
     }
 }

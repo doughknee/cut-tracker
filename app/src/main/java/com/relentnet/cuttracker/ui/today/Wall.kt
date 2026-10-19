@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -97,10 +98,12 @@ fun Wall(
     val canEarlier = weekStart.minusDays(1) >= st.settings.startDate
     val canLater = weekStart.plusDays(7) <= st.today
 
-    BoxWithConstraints(Modifier.fillMaxWidth().height(WALL_HEIGHT + statusTop).background(c.wall)) {
+    // Short screens get a shorter wall so the date headline still lands above the fold.
+    val ys = (LocalConfiguration.current.screenHeightDp / 860f).coerceIn(0.72f, 1f)
+    BoxWithConstraints(Modifier.fillMaxWidth().height(WALL_HEIGHT * ys + statusTop).background(c.wall)) {
         val xs = maxWidth / MOCK_WIDTH.dp
         fun ax(i: Int): Dp = ANCHORS[i].first.dp * xs
-        fun ay(i: Int): Dp = ANCHORS[i].second.dp + statusTop
+        fun ay(i: Int): Dp = ANCHORS[i].second.dp * ys + statusTop
         val sel = days.indexOf(selected)
 
         // Back layer: panel texture and seams, slowest.
@@ -122,7 +125,7 @@ fun Wall(
                     x0 += gap
                 }
                 for (seam in listOf(226.dp, 366.dp)) {
-                    val sy = seam.toPx() + statusTop.toPx()
+                    val sy = seam.toPx() * ys + statusTop.toPx()
                     drawLine(c.text.copy(alpha = 0.07f), Offset(0f, sy), Offset(size.width, sy), 1.dp.toPx())
                 }
             },
@@ -181,7 +184,7 @@ fun Wall(
 
         // Front layer: route tag and the week chrome, full speed.
         Box(
-            Modifier.offset((-6).dp, 186.dp + statusTop).rotate(-8f).background(c.accent).padding(16.dp, 5.dp, 12.dp, 5.dp),
+            Modifier.offset((-6).dp, 186.dp * ys + statusTop).rotate(-8f).background(c.accent).padding(16.dp, 5.dp, 12.dp, 5.dp),
         ) { Text("V${st.level} · WEEK ${ProgramEngine.weekOf(selected, st.settings.startDate).coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true)) }
         Row(
             Modifier.fillMaxWidth().padding(top = 16.dp + statusTop).padding(horizontal = 20.dp),
@@ -192,15 +195,9 @@ fun Wall(
                 Text(weekLabel(weekStart), color = c.text, style = cutStyle(12, 800, 1f, 0.08f, tabular = true))
                 ChromeButton(CutIcons.Forward, "Later week", enabled = canLater) { onWeek(1) }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ChromeButton(CutIcons.Info, "How to read the wall", onClick = onInfo)
-                Row(
-                    Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onSettings, role = Role.Button),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(if (st.settings.phase == 2) "PHASE 2 CHEST" else "PHASE 1 CUT", color = c.accent, style = cutStyle(12, 800, 1f, 0.06f))
-                    Icon(CutIcons.Gear, contentDescription = "Open settings", Modifier.size(16.dp), tint = c.accent)
-                }
+                ChromeButton(CutIcons.Gear, "Open settings", tint = c.accent, onClick = onSettings)
             }
         }
     }
@@ -215,12 +212,12 @@ private fun weekLabel(monday: LocalDate): String {
 }
 
 @Composable
-private fun ChromeButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
+private fun ChromeButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean = true, tint: Color? = null, onClick: () -> Unit) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(9.dp)
     Box(
         Modifier.size(32.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape)
             .clickable(enabled = enabled, onClick = onClick, role = Role.Button),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, contentDescription = label, Modifier.size(15.dp), tint = if (enabled) c.text2 else c.dim) }
+    ) { Icon(icon, contentDescription = label, Modifier.size(15.dp), tint = if (!enabled) c.dim else tint ?: c.text2) }
 }
