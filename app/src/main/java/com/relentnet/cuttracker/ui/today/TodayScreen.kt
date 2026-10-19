@@ -273,7 +273,7 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     val shown = tickedFloat((avg ?: s.startWeight).toFloat())
-    val onPace = avg != null && ProgramEngine.onPace(avg, st.dayN, s)
+    val onPace = avg != null && ProgramEngine.onPace(avg, st.dayN, s, ProgramEngine.paceAnchor(st.weighIns, s))
     Card(Modifier.fillMaxWidth().clickable(onClick = onWeight, role = Role.Button), padding = PaddingValues(14.dp, 12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {

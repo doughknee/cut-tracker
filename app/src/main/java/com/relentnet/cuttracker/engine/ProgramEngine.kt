@@ -154,11 +154,21 @@ object ProgramEngine {
         return pool.map { it.lb }.average()
     }
 
-    /** Linear line from start to target weight over the program; the "on pace" threshold at [dayN]. */
-    fun paceWeight(dayN: Int, s: Settings): Double =
-        s.startWeight - (s.startWeight - s.targetWeight) * dayN.toDouble() / s.totalDays
+    /**
+     * Where the pace line starts: the mean of the first seven readings once they exist, otherwise the typed start
+     * weight. A typed number is a guess; the first week is the truth, water and all.
+     */
+    fun paceAnchor(weighIns: List<WeighIn>, s: Settings): Double {
+        val first = weighIns.filter { !it.date.isBefore(s.startDate) }.sortedBy { it.date }.take(MIN_RATE_READINGS)
+        return if (first.size < MIN_RATE_READINGS) s.startWeight else first.map { it.lb }.average()
+    }
 
-    fun onPace(avg: Double, dayN: Int, s: Settings): Boolean = avg <= paceWeight(dayN, s) + ProgramSpec.PACE_TOLERANCE_LB
+    /** Linear line from the anchor to the target weight over the program; the "on pace" threshold at [dayN]. */
+    fun paceWeight(dayN: Int, s: Settings, anchor: Double = s.startWeight): Double =
+        anchor - (anchor - s.targetWeight) * dayN.toDouble() / s.totalDays
+
+    fun onPace(avg: Double, dayN: Int, s: Settings, anchor: Double = s.startWeight): Boolean =
+        avg <= paceWeight(dayN, s, anchor) + ProgramSpec.PACE_TOLERANCE_LB
 
     /**
      * Trend in lb per day: a least-squares line through the raw readings of the last [window] days. The fit does the

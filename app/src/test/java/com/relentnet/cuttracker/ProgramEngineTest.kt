@@ -184,6 +184,16 @@ class ProgramEngineTest {
         assertEquals(2, ProgramEngine.checkpointWeek(Checkpoint(start.plusDays(13).toString(), 180.0, note = ""), start, 12))
     }
 
+    @Test fun paceAnchorsToTheFirstWeek() {
+        val s = Settings(startDate = start, startWeight = 180.0, targetWeight = 170.0)
+        val six = (1..6).map { WeighIn(d(it), 182.0) }
+        assertEquals(180.0, ProgramEngine.paceAnchor(six, s))
+        val seven = six + WeighIn(d(7), 182.7)
+        assertEquals(182.1, ProgramEngine.paceAnchor(seven, s), 0.001)
+        assertEquals(182.1, ProgramEngine.paceWeight(0, s, 182.1), 0.001)
+        assertEquals(170.0, ProgramEngine.paceWeight(84, s, 182.1), 0.001)
+    }
+
     @Test fun rateAndProjection() {
         // One pound a week, logged daily for two weeks.
         val w = (0 until 14).map { i -> WeighIn(d(i), 182.0 - i / 7.0) }

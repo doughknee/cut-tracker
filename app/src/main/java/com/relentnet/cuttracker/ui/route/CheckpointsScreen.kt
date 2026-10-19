@@ -64,6 +64,8 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
     val due = ProgramEngine.photoDue(st.photos.map { it.date }, st.today, s.startDate)
     val current = currentCheckpointDate(st)
     var confirmDelete by remember { mutableStateOf<LocalDate?>(null) }
+    // Right-hand photo of the compare pair; the left is always the first one.
+    var compare by remember { mutableStateOf<LocalDate?>(null) }
 
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Route", title = "Checkpoints", onBack = onBack)
@@ -84,7 +86,25 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
             }
         } else if (st.photos.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Sub("Photos. Next one in ${ProgramSpec.PHOTO_INTERVAL_DAYS - ChronoUnit.DAYS.between(st.photos.maxOf { it.date }, st.today)} days. Hold one to delete.", size = 12)
+                val sorted = st.photos.sortedBy { it.date }
+                if (sorted.size >= 2) {
+                    val first = sorted.first()
+                    val right = sorted.firstOrNull { it.date == compare } ?: sorted.last()
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((p, label) in listOf(first to "Day 1", right to "Day ${ProgramEngine.dayNumber(right.date, s.startDate)}")) {
+                            val bmp = remember(p.path) { runCatching { BitmapFactory.decodeFile(p.path, BitmapFactory.Options().apply { inSampleSize = 4 }) }.getOrNull() }
+                            Box(Modifier.weight(1f).aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp)).background(c.surface)) {
+                                if (bmp != null) Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
+                                Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
+                                    Text(label.uppercase(), color = c.text, style = cutStyle(11, 800, 1f, 0.08f))
+                                    Text(p.date.format(cpFmt), color = c.text2, style = cutStyle(11, 600, 1f))
+                                }
+                            }
+                        }
+                    }
+                    Sub("First photo against the latest. Tap any photo below to put it on the right.", size = 12)
+                }
+                Sub("Next one in ${ProgramSpec.PHOTO_INTERVAL_DAYS - ChronoUnit.DAYS.between(st.photos.maxOf { it.date }, st.today)} days. Hold one to delete.", size = 12)
                 for (row in st.photos.sortedByDescending { it.date }.chunked(4)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         for (p in row) {
@@ -93,7 +113,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
                             }
                             Box(
                                 Modifier.weight(1f).aspectRatio(3f / 4f).clip(RoundedCornerShape(8.dp)).background(c.surface)
-                                    .combinedClickable(onClick = {}, onLongClick = { haptics.tap(); confirmDelete = p.date }),
+                                    .combinedClickable(onClick = { compare = p.date }, onLongClick = { haptics.tap(); confirmDelete = p.date }),
                             ) {
                                 if (bmp != null) Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
                                 Text(p.date.format(cpFmt), Modifier.align(Alignment.BottomStart).padding(6.dp), color = c.text, style = cutStyle(10, 700, 1f))

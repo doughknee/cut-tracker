@@ -47,6 +47,8 @@ import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Field
+import com.relentnet.cuttracker.ui.components.Hold
+import com.relentnet.cuttracker.ui.components.HoldShape
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
 import kotlinx.coroutines.launch
@@ -123,7 +125,12 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Text("SENDLINE", color = c.accent, style = cutStyle(12, 800, 1f, 0.14f))
                     Big(if (again) "Next route." else "Twelve weeks.\nFour taps a day.")
                     Body(if (again) "Your logs, badges and XP stay. Set a new start, a new target and a new length." else "Weigh in, eat the script, do the block, check it off. The app keeps score so you don't have to. Nothing here resets, ever.")
-                    Hint("Not medical advice. A cut is a diet; check with a doctor if you have a condition, and stop if you feel unwell.")
+                    Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        HoldKey(HoldShape.CRIMP, "Climb day", "session + push block")
+                        HoldKey(HoldShape.JUG, "Off day", "core block at home")
+                        HoldKey(HoldShape.SLOPER, "Rest day", "weigh in, eat the script")
+                    }
+                    Hint("Every day is a hold. Pick which kind, finish the script, and the hold goes green. Not medical advice; check with a doctor if you have a condition, and stop if you feel unwell.")
                 }
                 1 -> {
                     Big("Where you're starting.")
@@ -173,6 +180,16 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
             BigButton("Back", onClick = { if (step > 0) step-- }, modifier = Modifier.width(120.dp).alpha(if (step > 0) 1f else 0f), secondary = true, enabled = step > 0)
             BigButton(when (step) { 0 -> "Let's go"; 4 -> "Start the route"; else -> "Next" }, onClick = ::next, modifier = Modifier.weight(1f))
         }
+    }
+}
+
+@Composable
+private fun HoldKey(shape: HoldShape, title: String, sub: String) {
+    val c = CutTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Hold(shape, c.good, 40.dp)
+        Text(title, color = c.text, style = cutStyle(13, 700, 1.1f))
+        Text(sub, color = c.text2, style = cutStyle(11, 500, 1.25f), modifier = Modifier.widthIn(max = 96.dp))
     }
 }
 

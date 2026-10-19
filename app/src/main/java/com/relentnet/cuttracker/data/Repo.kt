@@ -170,11 +170,10 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: LocalDate? = null) = write(date) { s, d ->
         val log = db.dayLogs().get(d) ?: DayLog(d)
-        val keep = if (mode == null) emptySet() else {
-            val mealIds = s.meals.map { it.id }.toSet() + ProgramSpec.ITEM_WEIGH
-            log.doneItemIds.filter { it in mealIds }.toSet()
-        }
-        db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, picks = if (mode == null) emptyMap() else log.picks))
+        // Weigh-in and meals are the same items on every kind of day; only the block changes with the mode.
+        val shared = s.meals.map { it.id }.toSet() + ProgramSpec.ITEM_WEIGH
+        val keep = log.doneItemIds.filter { it in shared }.toSet()
+        db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, picks = log.picks))
     }
 
     /** Checks or unchecks an item. A meal checked this way logs the slot's current pick, or its default. */

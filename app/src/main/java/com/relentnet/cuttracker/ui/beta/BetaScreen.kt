@@ -1,6 +1,9 @@
 package com.relentnet.cuttracker.ui.beta
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +57,7 @@ import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
+import kotlinx.coroutines.delay
 
 /**
  * Beta: the plan for the route. The meal slots Today runs, the library they log from, and the lifts in each block.
@@ -172,6 +177,7 @@ private fun SectionHead(title: String, sub: String, shape: HoldShape? = null) {
 }
 
 /** A Today-style row: lead chip, title and sub, optional trailing note, chevron; the editor unfolds beneath it. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ExpandRow(
     open: Boolean, onToggle: () -> Unit,
@@ -180,7 +186,9 @@ private fun ExpandRow(
     editor: @Composable () -> Unit,
 ) {
     val c = CutTheme.colors
-    Card(Modifier.fillMaxWidth().animateContentSize(), border = if (open) c.mutedBorder else c.hairline, radius = 12.dp) {
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(open) { if (open) { delay(120); requester.bringIntoView() } }
+    Card(Modifier.fillMaxWidth().bringIntoViewRequester(requester).animateContentSize(), border = if (open) c.mutedBorder else c.hairline, radius = 12.dp) {
         Column {
             Row(
                 Modifier.fillMaxWidth().clickable(onClick = onToggle, role = Role.Button).padding(14.dp, 12.dp),

@@ -74,12 +74,13 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     val shownAvg = tickedFloat((avg ?: s.startWeight).toFloat())
-    val onPace = avg != null && ProgramEngine.onPace(avg, st.dayN, s)
+    val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
+    val onPace = avg != null && ProgramEngine.onPace(avg, st.dayN, s, anchor)
     val prefill = st.lastWeighIn?.lb ?: s.startWeight
     var text by rememberSaveable(prefill) { mutableStateOf(ProgramEngine.fmt1(prefill)) }
     fun log() { text.toDoubleOrNull()?.takeIf { it > 0 }?.let { haptics.tap(); vm.logWeight(it) } }
 
-    val pace = ProgramEngine.paceWeight(st.dayN, s)
+    val pace = ProgramEngine.paceWeight(st.dayN, s, anchor)
     val gap = avg?.let { it - pace }
     val rate = ProgramEngine.rate(st.weighIns, st.today)
     val projected = ProgramEngine.projectedAt(st.weighIns, st.today, s.endDate)
@@ -99,7 +100,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
                     }
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    TileLabel("Pace today")
+                    TileLabel(if (anchor != s.startWeight) "Pace today · from week 1" else "Pace today")
                     Text(ProgramEngine.fmt1(pace), color = c.text2, style = cutStyle(22, 800, 1f, tabular = true))
                 }
             }
@@ -218,8 +219,9 @@ fun WeightChart(st: AppState) {
             drawLine(c.hairline, Offset(left, yOf(v)), Offset(right, yOf(v)), 1.dp.toPx())
             drawText(measurer, ProgramEngine.fmt1(v).removeSuffix(".0"), Offset(0f, yOf(v) - 6.dp.toPx()), labelStyle)
         }
+        val anchor = ProgramEngine.paceAnchor(sorted, s)
         drawLine(
-            c.mutedBorder, Offset(xOf(1), yOf(s.startWeight)), Offset(xOf(s.totalDays), yOf(s.targetWeight)), 2.dp.toPx(),
+            c.mutedBorder, Offset(xOf(1), yOf(anchor)), Offset(xOf(s.totalDays), yOf(s.targetWeight)), 2.dp.toPx(),
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx())),
         )
         // Today's column and the checkpoint targets, so the chart says where you are, not only where you were.
