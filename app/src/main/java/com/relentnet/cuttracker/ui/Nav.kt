@@ -2,6 +2,7 @@ package com.relentnet.cuttracker.ui
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -120,6 +121,9 @@ fun App(vm: AppViewModel) {
                     exitTransition = { exit(initialState.destination.route, targetState.destination.route) },
                     popEnterTransition = { popEnter(initialState.destination.route, targetState.destination.route) },
                     popExitTransition = { popExit(initialState.destination.route, targetState.destination.route) },
+                    // The back gesture seeks these two, not the pop transitions above; without them it plays the library default.
+                    predictivePopEnterTransition = { popEnter(initialState.destination.route, targetState.destination.route) },
+                    predictivePopExitTransition = { popExit(initialState.destination.route, targetState.destination.route) },
                 ) {
                     composable(Routes.ONBOARDING) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(Routes.ONBOARDING) { inclusive = true } } })
@@ -181,21 +185,24 @@ private fun exit(from: String?, to: String?): ExitTransition {
     }
 }
 
-// Pops mirror the pushes, so the back gesture (which seeks these) slides the page off under your finger.
+// Pops mirror the pushes. The back gesture seeks these, so they are fixed-duration slides with no fade on the page
+// that leaves: a spring plus a short fade reads as a fade when scrubbed, because the fade finishes long before the slide.
+private val popSpec = tween<IntOffset>(320, easing = FastOutSlowInEasing)
+
 private fun popEnter(from: String?, to: String?): EnterTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        a >= 0 && b >= 0 -> slideInHorizontally(slideSpec) { if (b > a) it / 2 else -it / 2 } + fadeIn(fadeSpec)
-        else -> slideInHorizontally(slideSpec) { -it / 4 } + fadeIn(fadeSpec)
+        a >= 0 && b >= 0 -> slideInHorizontally(popSpec) { if (b > a) it / 2 else -it / 2 }
+        else -> slideInHorizontally(popSpec) { -it / 4 } + fadeIn(tween(320), initialAlpha = 0.55f)
     }
 }
 
 private fun popExit(from: String?, to: String?): ExitTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
-        a >= 0 && b >= 0 -> slideOutHorizontally(slideSpec) { if (b > a) -it / 4 else it / 4 } + fadeOut(fadeSpec)
-        from == Routes.WEIGHT -> slideOutVertically(slideSpec) { it } + fadeOut(fadeSpec)
-        else -> slideOutHorizontally(slideSpec) { it } + fadeOut(fadeSpec)
+        a >= 0 && b >= 0 -> slideOutHorizontally(popSpec) { if (b > a) -it / 4 else it / 4 }
+        from == Routes.WEIGHT -> slideOutVertically(popSpec) { it }
+        else -> slideOutHorizontally(popSpec) { it }
     }
 }
 
