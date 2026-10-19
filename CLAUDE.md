@@ -1,4 +1,4 @@
-# Cut Tracker
+# Sendline (repo cut-tracker)
 
 Personal Android app for one user. Offline, local-only, no accounts, no network. Package `com.relentnet.cuttracker`.
 

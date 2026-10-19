@@ -36,13 +36,13 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-        <receiver android:name=".widget.CutWidgetReceiver" android:exported="true" android:label="Cut Tracker">
+        <receiver android:name=".widget.CutWidgetReceiver" android:exported="true" android:label="Sendline">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_4x2" />
         </receiver>
-        <receiver android:name=".widget.CutSmallWidgetReceiver" android:exported="true" android:label="Cut Tracker chain">
+        <receiver android:name=".widget.CutSmallWidgetReceiver" android:exported="true" android:label="Sendline chain">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

@@ -4,15 +4,15 @@ Everything the Play Console asks for, in one place. Copy from here; edit freely.
 
 ## App name
 
-Cut Tracker
+Sendline
 
 ## Short description (max 80 characters)
 
-A 12-week cut for climbers. Weigh in, eat the script, send the day.
+The cut for climbers. Weigh in, eat the script, send the day.
 
 ## Full description (max 4000 characters)
 
-Cut Tracker turns a diet into a route. Every day is a hold on the wall: pick the kind of day (Climb, Off or Rest), weigh in, eat the script, do the block, check it off. Finish everything and the day is a Send. Weigh in and hit protein and it is a Min day, which keeps your chain alive even when the rest slips.
+Sendline turns a diet into a route. Every day is a hold on the wall: pick the kind of day (Climb, Off or Rest), weigh in, eat the script, do the block, check it off. Finish everything and the day is a Send. Weigh in and hit protein and it is a Min day, which keeps your chain alive even when the rest slips.
 
 The wall
 Your week is seven holds up a wall. Shape is the kind of day, color is how it went, the rope is your chain. Tap any hold to open that day, including the ones you forgot to log. Late checks count.
@@ -29,11 +29,15 @@ Everything stays on your phone. No internet permission, no analytics, no sign-in
 Meals and lifts
 A meal library with recipes and per-slot picks, a lift log with a rest timer that remembers last session, a weight chart with the 7-day average against your pace line, progress photos every two weeks.
 
-Cut Tracker is a logbook and a scoreboard, not medical advice. Set your own targets and check with a doctor before a diet if you have a condition.
+Sendline is a logbook and a scoreboard, not medical advice. Set your own targets and check with a doctor before a diet if you have a condition.
 
 ## Category
 
 Health & Fitness
+
+## Title on Play (max 30 characters)
+
+Sendline: the cut for climbers
 
 ## Tags
 

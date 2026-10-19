@@ -100,7 +100,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
     fun export(withPhotos: Boolean) = scope.launch {
         val file = withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "export").apply { mkdirs() }
-            val name = "cut-tracker-" + LocalDate.now()
+            val name = "sendline-" + LocalDate.now()
             if (withPhotos) File(dir, "$name.zip").also { vm.repo.writeZip(it) }
             else File(dir, "$name.json").apply { writeText(backupJson.encodeToString(Backup.serializer(), vm.repo.buildBackup())) }
         }
@@ -109,7 +109,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
             type = if (withPhotos) "application/zip" else "application/json"
             putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, "Export Cut Tracker"))
+        context.startActivity(Intent.createChooser(send, "Export Sendline"))
     }
 
     fun save() {
