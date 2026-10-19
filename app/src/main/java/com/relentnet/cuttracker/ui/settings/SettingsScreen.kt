@@ -71,7 +71,7 @@ private val shortDate: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", 
 private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 
 @Composable
-fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, onExercises: () -> Unit, onCheckpoints: () -> Unit) {
+fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val saved = st.settings
@@ -151,9 +151,8 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onMeals: () -> Unit, on
             SettingsRow("Calories") { NumField(cal, { cal = it }, 84.dp) }
             SettingsRow("Protein") { NumField(pro, { pro = it }, 64.dp); Sub("g") }
             SettingsRow("Workouts per week") { NumField(wpw, { wpw = it }, 56.dp); Sub("blocks on Climb and Off days") }
-            SettingsRow("Meals", onClick = onMeals) { Sub("${saved.meals.size} items ›") }
-            SettingsRow("Exercises", onClick = onExercises) { Sub("${saved.exercises.size} items ›") }
-            SettingsRow("Checkpoints and free days", last = true, onClick = onCheckpoints) { Sub("${saved.checkpoints.size} ›") }
+            SettingsRow("Meals and lifts") { Sub("on the Beta tab") }
+            SettingsRow("Checkpoints", last = true, onClick = onCheckpoints) { Sub("${saved.checkpoints.size} ›") }
         }
         Section("Nudges") {
             // Re-read on every resume so coming back from system settings updates the row.

@@ -267,6 +267,11 @@ object ProgramEngine {
         return last.weightLb to last.reps
     }
 
+    /** The last [n] sessions of one exercise before [before], oldest first, as (weight, reps). */
+    fun sessions(sets: List<LiftSet>, exerciseId: String, before: LocalDate, n: Int = 4): List<Pair<Double, Int>> =
+        sets.filter { it.exerciseId == exerciseId && it.date.isBefore(before) }
+            .groupBy { it.date }.toSortedMap().values.map { s -> s.first().weightLb to s.first().reps }.takeLast(n)
+
     fun beat(now: Pair<Double, Int>, last: Pair<Double, Int>?): Boolean =
         last != null && (now.first > last.first || now.second > last.second)
 

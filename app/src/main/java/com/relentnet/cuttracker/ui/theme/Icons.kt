@@ -45,5 +45,6 @@ object CutIcons {
     val Trash = stroke("trash", 2f, "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3")
     val Flag = stroke("flag", 2.4f, "M5 21V4h12l-2 4 2 4H5")
     val Zap = stroke("zap", 2.4f, "M13 2L4 14h7l-1 8 9-12h-7z")
+    val Beta = stroke("beta", 2f, "M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z", "M8 9h8M8 13h8M8 17h5")
     val Info = stroke("info", 2.2f, circle(12f, 12f, 9.5f), "M12 11v6M12 7.5v.5")
 }

@@ -57,12 +57,7 @@ fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
     val exercises = blocks.flatMap { ProgramEngine.exercisesFor(it, s) }
     val last = remember(st.liftSets, st.today) { exercises.associate { it.id to ProgramEngine.lastSession(st.liftSets, it.id, st.today) } }
     // The last four sessions per exercise, oldest first, so the card shows where the number has been going.
-    val history = remember(st.liftSets, st.today) {
-        exercises.associate { e ->
-            e.id to st.liftSets.filter { it.exerciseId == e.id && it.date.isBefore(st.today) }
-                .groupBy { it.date }.toSortedMap().values.map { sets -> sets.first().weightLb to sets.first().reps }.takeLast(4)
-        }
-    }
+    val history = remember(st.liftSets, st.today) { exercises.associate { e -> e.id to ProgramEngine.sessions(st.liftSets, e.id, st.today) } }
     val values = remember { mutableStateMapOf<String, Entry>() }
     // Prefill from the last session; a fresh exercise starts at 0 lb × 10 reps.
     LaunchedEffect(last, st.today) {

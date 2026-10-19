@@ -41,10 +41,9 @@ import com.relentnet.cuttracker.ui.components.ToastPill
 import com.relentnet.cuttracker.ui.route.CameraScreen
 import com.relentnet.cuttracker.ui.route.CheckpointsScreen
 import com.relentnet.cuttracker.ui.route.RouteScreen
+import com.relentnet.cuttracker.ui.beta.BetaScreen
 import com.relentnet.cuttracker.ui.onboarding.OnboardingScreen
 import com.relentnet.cuttracker.ui.settings.CheckpointsEditor
-import com.relentnet.cuttracker.ui.settings.ExercisesEditor
-import com.relentnet.cuttracker.ui.settings.MealsEditor
 import com.relentnet.cuttracker.ui.settings.SettingsScreen
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
@@ -55,21 +54,21 @@ import com.relentnet.cuttracker.ui.weight.WeightScreen
 object Routes {
     const val TODAY = "today"
     const val WEIGHT = "weight"
+    const val BETA = "beta"
     const val ROUTE = "route"
     const val SETTINGS = "settings"
     const val CHECKPOINTS = "checkpoints"
     const val CAMERA = "camera"
     const val ONBOARDING = "onboarding"
-    const val MEALS = "settings/meals"
-    const val EXERCISES = "settings/exercises"
     const val CHECKPOINT_EDITOR = "settings/checkpoints"
-    val tabs = listOf(TODAY, ROUTE)
+    val tabs = listOf(TODAY, BETA, ROUTE)
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
 private val TABS = listOf(
     Tab(Routes.TODAY, "Today", CutIcons.Today),
+    Tab(Routes.BETA, "Beta", CutIcons.Beta),
     Tab(Routes.ROUTE, "Route", CutIcons.Route),
 )
 
@@ -99,17 +98,13 @@ fun App(vm: AppViewModel) {
                         TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) })
                     }
                     composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.BETA) { BetaScreen(vm) }
                     composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS) {
-                        SettingsScreen(
-                            vm, onBack = { nav.popBackStack() }, onMeals = { nav.navigate(Routes.MEALS) },
-                            onExercises = { nav.navigate(Routes.EXERCISES) }, onCheckpoints = { nav.navigate(Routes.CHECKPOINT_EDITOR) },
-                        )
+                        SettingsScreen(vm, onBack = { nav.popBackStack() }, onCheckpoints = { nav.navigate(Routes.CHECKPOINT_EDITOR) })
                     }
-                    composable(Routes.MEALS) { MealsEditor(vm, onBack = { nav.popBackStack() }) }
-                    composable(Routes.EXERCISES) { ExercisesEditor(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.CHECKPOINT_EDITOR) { CheckpointsEditor(vm, onBack = { nav.popBackStack() }) }
                 }
             }
