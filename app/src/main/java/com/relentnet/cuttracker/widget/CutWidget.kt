@@ -111,7 +111,10 @@ class CutWidget : GlanceAppWidget() {
     }
 }
 
-/** 2x1: chain number and the Send bar only. */
+class CutWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = CutWidget()
+}
+
 /** Checks or unchecks an item straight from the widget, with the same haptic, then re-renders. */
 class CheckItemAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {

@@ -1,6 +1,19 @@
 package com.relentnet.cuttracker.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,9 +55,12 @@ import com.relentnet.cuttracker.ui.route.CameraScreen
 import com.relentnet.cuttracker.ui.route.CheckpointsScreen
 import com.relentnet.cuttracker.ui.route.RouteScreen
 import com.relentnet.cuttracker.ui.beta.BetaScreen
+import com.relentnet.cuttracker.ui.beta.LiftsPage
+import com.relentnet.cuttracker.ui.beta.MealsPage
 import com.relentnet.cuttracker.ui.onboarding.OnboardingScreen
 import com.relentnet.cuttracker.ui.settings.CheckpointsEditor
 import com.relentnet.cuttracker.ui.settings.SettingsScreen
+import com.relentnet.cuttracker.ui.settings.SettingsSectionScreen
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -60,7 +76,11 @@ object Routes {
     const val CHECKPOINTS = "checkpoints"
     const val CAMERA = "camera"
     const val ONBOARDING = "onboarding"
-    const val CHECKPOINT_EDITOR = "settings/checkpoints"
+    const val CHECKPOINT_EDITOR = "beta/checkpoints"
+    const val BETA_MEALS = "beta/meals"
+    const val BETA_LIFTS = "beta/lifts"
+    const val SETTINGS_SECTION = "settings/{section}"
+    fun settingsSection(key: String) = "settings/$key"
     val tabs = listOf(TODAY, BETA, ROUTE)
 }
 
@@ -90,7 +110,13 @@ fun App(vm: AppViewModel) {
     Box(Modifier.fillMaxSize().background(c.ground)) {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) {
-                NavHost(nav, startDestination = if (st.settings.onboarded) Routes.TODAY else Routes.ONBOARDING) {
+                NavHost(
+                    nav, startDestination = if (st.settings.onboarded) Routes.TODAY else Routes.ONBOARDING,
+                    enterTransition = { enter(initialState.destination.route, targetState.destination.route) },
+                    exitTransition = { exit(initialState.destination.route, targetState.destination.route) },
+                    popEnterTransition = { popEnter(targetState.destination.route) },
+                    popExitTransition = { popExit(initialState.destination.route) },
+                ) {
                     composable(Routes.ONBOARDING) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(Routes.ONBOARDING) { inclusive = true } } })
                     }
@@ -98,12 +124,19 @@ fun App(vm: AppViewModel) {
                         TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) })
                     }
                     composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }) }
-                    composable(Routes.BETA) { BetaScreen(vm) }
+                    composable(Routes.BETA) {
+                        BetaScreen(vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onCheckpoints = { nav.navigate(Routes.CHECKPOINT_EDITOR) })
+                    }
+                    composable(Routes.BETA_MEALS) { MealsPage(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.BETA_LIFTS) { LiftsPage(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.SETTINGS_SECTION) { entry ->
+                        SettingsSectionScreen(vm, section = entry.arguments?.getString("section") ?: "program", onBack = { nav.popBackStack() })
+                    }
                     composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS) {
-                        SettingsScreen(vm, onBack = { nav.popBackStack() }, onCheckpoints = { nav.navigate(Routes.CHECKPOINT_EDITOR) })
+                        SettingsScreen(vm, onBack = { nav.popBackStack() }, onSection = { nav.navigate(Routes.settingsSection(it)) })
                     }
                     composable(Routes.CHECKPOINT_EDITOR) { CheckpointsEditor(vm, onBack = { nav.popBackStack() }) }
                 }
@@ -118,6 +151,37 @@ fun App(vm: AppViewModel) {
         vm.takeover?.let { TakeoverOverlay(it, confettiOn = st.settings.haptics, onDismiss = { vm.dismissTakeover() }) }
     }
 }
+
+// ---- Motion. Tabs slide sideways in the direction you moved; pushed pages slide up from the right and settle on a
+// spring; the Weight sheet rises from the bottom. Pops reverse. Nothing fades in from nowhere.
+
+private val slideSpec = spring<IntOffset>(dampingRatio = 0.86f, stiffness = 420f, visibilityThreshold = IntOffset.VisibilityThreshold)
+private val fadeSpec = tween<Float>(180)
+
+private fun tabIndex(route: String?) = Routes.tabs.indexOf(route)
+
+private fun enter(from: String?, to: String?): EnterTransition {
+    val a = tabIndex(from); val b = tabIndex(to)
+    return when {
+        a >= 0 && b >= 0 -> slideInHorizontally(slideSpec) { if (b > a) it / 2 else -it / 2 } + fadeIn(fadeSpec)
+        to == Routes.WEIGHT -> slideInVertically(slideSpec) { it / 3 } + fadeIn(fadeSpec)
+        else -> slideInHorizontally(slideSpec) { it / 3 } + fadeIn(fadeSpec)
+    }
+}
+
+private fun exit(from: String?, to: String?): ExitTransition {
+    val a = tabIndex(from); val b = tabIndex(to)
+    return when {
+        a >= 0 && b >= 0 -> slideOutHorizontally(slideSpec) { if (b > a) -it / 4 else it / 4 } + fadeOut(fadeSpec)
+        else -> fadeOut(tween(150)) + scaleOut(tween(220), targetScale = 0.96f)
+    }
+}
+
+private fun popEnter(to: String?): EnterTransition = fadeIn(fadeSpec) + scaleIn(tween(220), initialScale = 0.96f)
+
+private fun popExit(from: String?): ExitTransition =
+    if (from == Routes.WEIGHT) slideOutVertically(slideSpec) { it / 3 } + fadeOut(fadeSpec)
+    else slideOutHorizontally(slideSpec) { it / 3 } + fadeOut(fadeSpec)
 
 fun NavHostController.goTab(route: String) = navigate(route) {
     popUpTo(graph.findStartDestination().id) { saveState = true }

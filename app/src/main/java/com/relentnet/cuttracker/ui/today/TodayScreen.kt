@@ -1,6 +1,13 @@
 package com.relentnet.cuttracker.ui.today
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -215,13 +222,13 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                     },
                     onSwipeCheck = { haptics.tap(); vm.toggleItem(it.id, date = editDate) },
                 )
-                if (it.id == ProgramSpec.ITEM_WEIGH && weighOpen) {
+                Unfold(it.id == ProgramSpec.ITEM_WEIGH && weighOpen) {
                     WeighInline(
                         prefill = prevWeigh?.lb ?: st.settings.startWeight,
                         onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) },
                     )
                 }
-                if (it.pick && pickOpen == it.id) {
+                Unfold(it.pick && pickOpen == it.id) {
                     val slot = st.settings.meals.firstOrNull { m -> m.id == it.id }
                     if (slot != null) MealPicker(
                         st, slot, current = dv.log.picks[it.id],
@@ -229,7 +236,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                         onSaveLib = { m -> vm.saveLibraryMeal(m) },
                     )
                 }
-                if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && liftOpen && !past) {
+                Unfold(it.workout && it.id != ProgramSpec.ITEM_CLIMB && liftOpen && !past) {
                     // Saving the session checks the block. Swiping the row checks it without a session.
                     LiftInline(vm, blocks = listOf(if (mode == DayMode.CLIMB) Block.CLIMB else Block.OFF), onSaved = { liftOpen = false; vm.toggleItem(it.id) })
                 }
@@ -251,12 +258,12 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                     Text("DONE · ${finished.size}", color = c.text2, style = cutStyle(11, 700, 1f, 0.1f))
                     Box(Modifier.weight(1f).height(1.dp).background(c.hairline))
                 }
-                if (doneOpen) Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Unfold(doneOpen) { Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     for (it in finished) CheckRow(
                         label = it.label, sub = null, time = null, xp = it.xp, done = true, compact = true,
                         onClick = { vm.toggleItem(it.id, date = editDate) },
                     )
-                }
+                } }
             }
         }
 
@@ -320,6 +327,16 @@ private fun WelcomeBack(chain: Int, onOk: () -> Unit) {
     }
 }
 
+
+/** Inline panels grow out of their row and shrink back, instead of popping. */
+@Composable
+private fun Unfold(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible,
+        enter = expandVertically(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(160)),
+        exit = shrinkVertically(tween(180)) + fadeOut(tween(120)),
+    ) { content() }
+}
 
 /** Past the last day: the route is done, the numbers stay, and the next one starts from onboarding. */
 @Composable

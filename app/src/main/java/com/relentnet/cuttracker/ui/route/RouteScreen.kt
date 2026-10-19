@@ -1,5 +1,11 @@
 package com.relentnet.cuttracker.ui.route
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.AppState
@@ -353,9 +361,15 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
             }
         }.joinToString(" ")
     }
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
     Box(Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose)) {
+        AnimatedVisibility(
+            shown, Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(spring(dampingRatio = 0.8f, stiffness = 500f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it } + fadeIn(tween(150)),
+        ) {
         Card(
-            Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp).padding(bottom = 12.dp).windowInsetsPadding(WindowInsets.navigationBars).fillMaxWidth(),
+            Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp).windowInsetsPadding(WindowInsets.navigationBars).fillMaxWidth(),
             border = c.mutedBorder, radius = 14.dp, padding = PaddingValues(14.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -372,6 +386,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
                     BigButton("Close", onClick = onClose, modifier = Modifier.weight(1f), secondary = true, height = 40.dp, fontSize = 12)
                 }
             }
+        }
         }
     }
 }

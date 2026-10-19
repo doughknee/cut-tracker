@@ -99,7 +99,7 @@ fun CheckpointsEditor(vm: AppViewModel, onBack: () -> Unit) {
     var tick by remember { mutableStateOf(0) }
     val c = CutTheme.colors
     Screen(bottomInset = true) {
-        BackHeader("Settings", "Checkpoints", onBack)
+        BackHeader("Beta", "Checkpoints", onBack)
         Sub("Target weights along the route. Days off are planned from the calendar on Route, by tapping the day.")
         Card(Modifier.fillMaxWidth()) {
             key(tick) {

@@ -2,8 +2,6 @@ package com.relentnet.cuttracker.ui.beta
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -37,7 +37,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.relentnet.cuttracker.data.AppState
 import com.relentnet.cuttracker.data.Block
 import com.relentnet.cuttracker.data.Exercise
 import com.relentnet.cuttracker.data.LibMeal
@@ -45,6 +44,7 @@ import com.relentnet.cuttracker.data.Meal
 import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.LocalHaptics
+import com.relentnet.cuttracker.ui.components.BackHeader
 import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.Eyebrow
@@ -58,13 +58,61 @@ import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
 import kotlinx.coroutines.delay
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/**
- * Beta: the plan for the route. The meal slots Today runs, the library they log from, and the lifts in each block.
- * Every row expands in place and saves when you tap Done; adds and removes save at once. No Save button.
- */
+private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
+
+/** Beta: the plan for the route. Three cards, each its own page. */
 @Composable
-fun BetaScreen(vm: AppViewModel) {
+fun BetaScreen(vm: AppViewModel, onMeals: () -> Unit, onLifts: () -> Unit, onCheckpoints: () -> Unit) {
+    val st by vm.state.collectAsStateWithLifecycle()
+    val s = st.settings
+    val next = s.checkpoints.filter { !it.free }.map { it.localDate }.sorted().firstOrNull { !st.today.isAfter(it) }
+    Screen {
+        Column {
+            Eyebrow("Your plan for the route")
+            H1("Beta")
+            Sub("What you eat, what you lift, where the route checks in. Change it here and Today follows.", Modifier.padding(top = 8.dp))
+        }
+        HubCard(
+            shape = HoldShape.JUG, title = "Meals", onClick = onMeals,
+            sub = "${s.meals.size} slots on the script · ${s.library.size} in the library",
+            detail = s.meals.joinToString("  ·  ") { it.name },
+        )
+        HubCard(
+            shape = HoldShape.CRIMP, title = "Lifts", onClick = onLifts,
+            sub = "${s.exercises.count { it.block == Block.CLIMB && !it.phase2Only }} on Climb days · ${s.exercises.count { it.block == Block.OFF && !it.phase2Only }} on Off days",
+            detail = s.exercises.filter { !it.phase2Only }.joinToString("  ·  ") { it.name },
+        )
+        HubCard(
+            shape = HoldShape.SLOPER, title = "Checkpoints", onClick = onCheckpoints,
+            sub = "${s.checkpoints.count { !it.free }} targets on the pace line",
+            detail = if (next != null) "Next: ${next.format(cpFmt)}" + (s.checkpoints.firstOrNull { it.localDate == next }?.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "") else "None ahead",
+        )
+    }
+}
+
+@Composable
+private fun HubCard(shape: HoldShape, title: String, sub: String, detail: String, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick, role = Role.Button), border = c.hairline, radius = 14.dp, padding = PaddingValues(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(c.ground), contentAlignment = Alignment.Center) { Hold(shape, c.accent, 26.dp) }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, color = c.text, style = cutStyle(20, 800, 1f, -0.02f, display = true))
+                Text(sub, color = c.text2, style = cutStyle(12, 600, 1.2f, tabular = true))
+                Text(detail, color = c.dim, style = cutStyle(12, 500, 1.3f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Icon(CutIcons.Forward, null, Modifier.size(14.dp), tint = c.text2)
+        }
+    }
+}
+
+// ---- Meals page: the slots Today runs and the library they log from
+
+@Composable
+fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
@@ -72,26 +120,22 @@ fun BetaScreen(vm: AppViewModel) {
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     fun open(id: String?) { editing = if (editing == id) null else id }
 
-    Screen {
-        Column {
-            Eyebrow("Your plan for the route")
-            H1("Beta")
-            Sub("What you eat and what you lift. Change it here and Today follows from the next day you open.", Modifier.padding(top = 8.dp))
-        }
-
-        // ---- Meals: the slots
-        SectionHead("Meals", "${s.meals.size} slots on the script")
+    Screen(bottomInset = true) {
+        BackHeader("Beta", "Meals", onBack)
+        Sub("Slots are the rows on Today, in order. A swipe logs the default; a tap picks anything from the library or a one-off.")
+        SectionHead("Slots", "${s.meals.size} on the script")
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (m in s.meals) {
                 val def = ProgramEngine.defaultChoice(m, s)
                 val picks = st.logs.count { it.picks.containsKey(m.id) || m.id in it.doneItemIds }
                 ExpandRow(
                     open = editing == m.id, onToggle = { open(m.id) },
-                    lead = { TimeChip(m.time) },
+                    lead = { Chip(m.time.ifBlank { "any" }) },
                     title = m.name, sub = def.name + "  ·  ${def.protein}g · ${def.calories} cal",
                     trail = if (picks > 0) "$picks logged" else null,
                 ) {
-                    SlotEditor(m, s.library, onSave = { nm -> vm.saveSettings(s.copy(meals = s.meals.map { if (it.id == m.id) nm else it })); editing = null },
+                    SlotEditor(m, s.library,
+                        onSave = { nm -> vm.saveSettings(s.copy(meals = s.meals.map { if (it.id == m.id) nm else it })); editing = null },
                         onRemove = { haptics.tap(); vm.saveSettings(s.copy(meals = s.meals.filter { it.id != m.id })); editing = null })
                 }
             }
@@ -101,8 +145,6 @@ fun BetaScreen(vm: AppViewModel) {
                 editing = id
             }
         }
-
-        // ---- Library
         SectionHead("Library", "what a slot can log")
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (l in s.library) {
@@ -128,8 +170,22 @@ fun BetaScreen(vm: AppViewModel) {
                 editing = id
             }
         }
+    }
+}
 
-        // ---- Lifts: one list per block
+// ---- Lifts page: one list per block
+
+@Composable
+fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
+    val st by vm.state.collectAsStateWithLifecycle()
+    val s = st.settings
+    val haptics = LocalHaptics.current
+    var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    fun open(id: String?) { editing = if (editing == id) null else id }
+
+    Screen(bottomInset = true) {
+        BackHeader("Beta", "Lifts", onBack)
+        Sub("The block each kind of day ends with. Log a session on Today and the last four show up under the lift; beat the last number and the chip goes green.")
         for (block in listOf(Block.CLIMB, Block.OFF)) {
             val lifts = s.exercises.filter { it.block == block && !it.phase2Only }
             SectionHead(
@@ -143,7 +199,7 @@ fun BetaScreen(vm: AppViewModel) {
                     val history = ProgramEngine.sessions(st.liftSets, e.id, st.today.plusDays(1))
                     ExpandRow(
                         open = editing == e.id, onToggle = { open(e.id) },
-                        lead = { SetsChip(e.sets) },
+                        lead = { Chip("${e.sets}×") },
                         title = e.name, sub = (if (bw) "bodyweight" else "+${fmtStep(e.step)} lb steps") + (if (e.repTarget.isNotBlank()) "  ·  ${e.repTarget} reps" else ""),
                         trail = null,
                         under = if (history.isNotEmpty()) ({ Trend(history, bw) }) else null,
@@ -160,7 +216,6 @@ fun BetaScreen(vm: AppViewModel) {
                 }
             }
         }
-        Sub("Lifts you log on Today show their last sessions here. Beat the last number and the chip goes green.", size = 12)
     }
 }
 
@@ -218,18 +273,10 @@ private fun AddRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun TimeChip(time: String) {
+private fun Chip(text: String) {
     val c = CutTheme.colors
     Box(Modifier.width(46.dp).height(28.dp).clip(RoundedCornerShape(7.dp)).background(c.ground), contentAlignment = Alignment.Center) {
-        Text(time.ifBlank { "any" }, color = c.text, style = cutStyle(11, 800, 1f, tabular = true))
-    }
-}
-
-@Composable
-private fun SetsChip(sets: Int) {
-    val c = CutTheme.colors
-    Box(Modifier.width(46.dp).height(28.dp).clip(RoundedCornerShape(7.dp)).background(c.ground), contentAlignment = Alignment.Center) {
-        Text("$sets×", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
+        Text(text, color = c.text, style = cutStyle(11, 800, 1f, tabular = true))
     }
 }
 
@@ -285,20 +332,18 @@ private fun SlotEditor(m: Meal, library: List<LibMeal>, onSave: (Meal) -> Unit, 
         Num(time, { time = it }, 72)
     }
     Label("Default · what a swipe logs")
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (row in library.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (l in row) {
-                    val on = def == l.id
-                    val shape = RoundedCornerShape(8.dp)
-                    Text(
-                        l.name, color = if (on) c.onAccent else c.text, style = cutStyle(12, 700, 1.1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).clip(shape).background(if (on) c.accent else c.surface).border(1.dp, if (on) c.accent else c.mutedBorder, shape)
-                            .clickable(role = Role.Button) { def = l.id }.padding(10.dp, 9.dp),
-                    )
-                }
-                if (row.size == 1) Box(Modifier.weight(1f))
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (row in library.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (l in row) {
+                val on = def == l.id
+                val shape = RoundedCornerShape(8.dp)
+                Text(
+                    l.name, color = if (on) c.onAccent else c.text, style = cutStyle(12, 700, 1.1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).clip(shape).background(if (on) c.accent else c.surface).border(1.dp, if (on) c.accent else c.mutedBorder, shape)
+                        .clickable(role = Role.Button) { def = l.id }.padding(10.dp, 9.dp),
+                )
             }
+            if (row.size == 1) Box(Modifier.weight(1f))
         }
     }
     EditorButtons(onSave = { onSave(m.copy(name = name.ifBlank { m.name }, time = time.trim(), defaultLib = def)) }, onRemove = onRemove)
