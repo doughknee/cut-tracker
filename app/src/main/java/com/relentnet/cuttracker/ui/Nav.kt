@@ -9,8 +9,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.ui.draw.scale
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -120,8 +118,8 @@ fun App(vm: AppViewModel) {
                     nav, startDestination = if (st.settings.onboarded) Routes.TODAY else Routes.ONBOARDING,
                     enterTransition = { enter(initialState.destination.route, targetState.destination.route) },
                     exitTransition = { exit(initialState.destination.route, targetState.destination.route) },
-                    popEnterTransition = { popEnter(targetState.destination.route) },
-                    popExitTransition = { popExit(initialState.destination.route) },
+                    popEnterTransition = { popEnter(initialState.destination.route, targetState.destination.route) },
+                    popExitTransition = { popExit(initialState.destination.route, targetState.destination.route) },
                 ) {
                     composable(Routes.ONBOARDING) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(Routes.ONBOARDING) { inclusive = true } } })
@@ -179,15 +177,27 @@ private fun exit(from: String?, to: String?): ExitTransition {
     val a = tabIndex(from); val b = tabIndex(to)
     return when {
         a >= 0 && b >= 0 -> slideOutHorizontally(slideSpec) { if (b > a) -it / 4 else it / 4 } + fadeOut(fadeSpec)
-        else -> fadeOut(tween(150)) + scaleOut(tween(220), targetScale = 0.96f)
+        else -> slideOutHorizontally(slideSpec) { -it / 4 } + fadeOut(fadeSpec)
     }
 }
 
-private fun popEnter(to: String?): EnterTransition = fadeIn(fadeSpec) + scaleIn(tween(220), initialScale = 0.96f)
+// Pops mirror the pushes, so the back gesture (which seeks these) slides the page off under your finger.
+private fun popEnter(from: String?, to: String?): EnterTransition {
+    val a = tabIndex(from); val b = tabIndex(to)
+    return when {
+        a >= 0 && b >= 0 -> slideInHorizontally(slideSpec) { if (b > a) it / 2 else -it / 2 } + fadeIn(fadeSpec)
+        else -> slideInHorizontally(slideSpec) { -it / 4 } + fadeIn(fadeSpec)
+    }
+}
 
-private fun popExit(from: String?): ExitTransition =
-    if (from == Routes.WEIGHT) slideOutVertically(slideSpec) { it / 3 } + fadeOut(fadeSpec)
-    else slideOutHorizontally(slideSpec) { it / 3 } + fadeOut(fadeSpec)
+private fun popExit(from: String?, to: String?): ExitTransition {
+    val a = tabIndex(from); val b = tabIndex(to)
+    return when {
+        a >= 0 && b >= 0 -> slideOutHorizontally(slideSpec) { if (b > a) -it / 4 else it / 4 } + fadeOut(fadeSpec)
+        from == Routes.WEIGHT -> slideOutVertically(slideSpec) { it } + fadeOut(fadeSpec)
+        else -> slideOutHorizontally(slideSpec) { it } + fadeOut(fadeSpec)
+    }
+}
 
 /** Cold start: a jug on the ground that fades out once the state is loaded. Sits above the NavHost in the Box. */
 @Composable
