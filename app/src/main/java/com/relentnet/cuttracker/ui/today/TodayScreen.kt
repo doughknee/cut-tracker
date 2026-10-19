@@ -142,6 +142,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
         !past && dv.isSend -> "Sent" to c.good
         !past && dv.isMin -> "Chain safe · today" to c.good
         !past && mode == null -> "Today · pick a day" to c.accent
+        !past && ProgramSpec.ITEM_WEIGH !in done && dv.totals.protein < total -> "Today · weigh in + ${total - dv.totals.protein}g to safe" to c.accent
         !past && dv.totals.protein < total -> "Today · ${total - dv.totals.protein}g to safe" to c.accent
         !past -> "Today · weigh in to safe" to c.accent
         else -> "${resultName(dv.result)} · earlier day" to when (dv.result) {
