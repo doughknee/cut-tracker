@@ -63,6 +63,9 @@ import com.relentnet.cuttracker.ui.route.CheckpointsScreen
 import com.relentnet.cuttracker.ui.route.RouteScreen
 import com.relentnet.cuttracker.ui.beta.BetaScreen
 import com.relentnet.cuttracker.ui.beta.LiftsPage
+import com.relentnet.cuttracker.ui.beta.DayPlanPage
+import com.relentnet.cuttracker.ui.beta.TargetsPage
+import com.relentnet.cuttracker.ui.beta.WeekPage
 import com.relentnet.cuttracker.ui.beta.MealsPage
 import com.relentnet.cuttracker.ui.onboarding.OnboardingScreen
 import com.relentnet.cuttracker.ui.settings.SettingsScreen
@@ -84,6 +87,10 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val BETA_MEALS = "beta/meals"
     const val BETA_LIFTS = "beta/lifts"
+    const val BETA_DAY = "beta/day/{mode}"
+    const val BETA_TARGETS = "beta/targets"
+    const val BETA_WEEK = "beta/week"
+    fun betaDay(mode: com.relentnet.cuttracker.data.DayMode) = "beta/day/${mode.name}"
     const val SETTINGS_SECTION = "settings/{section}"
     fun settingsSection(key: String) = "settings/$key"
     val tabs = listOf(TODAY, BETA, ROUTE)
@@ -135,10 +142,19 @@ fun App(vm: AppViewModel) {
                     }
                     composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA) {
-                        BetaScreen(vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) })
+                        BetaScreen(
+                            vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onDay = { nav.navigate(Routes.betaDay(it)) },
+                            onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onTargets = { nav.navigate(Routes.BETA_TARGETS) }, onWeek = { nav.navigate(Routes.BETA_WEEK) },
+                        )
                     }
                     composable(Routes.BETA_MEALS) { MealsPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA_LIFTS) { LiftsPage(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.BETA_DAY) { entry ->
+                        val mode = runCatching { com.relentnet.cuttracker.data.DayMode.valueOf(entry.arguments?.getString("mode") ?: "") }.getOrDefault(com.relentnet.cuttracker.data.DayMode.CLIMB)
+                        DayPlanPage(vm, mode, onBack = { nav.popBackStack() })
+                    }
+                    composable(Routes.BETA_TARGETS) { TargetsPage(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.BETA_WEEK) { WeekPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS_SECTION) { entry ->
                         SettingsSectionScreen(vm, section = entry.arguments?.getString("section") ?: "program", onBack = { nav.popBackStack() })
                     }

@@ -1,9 +1,9 @@
 package com.relentnet.cuttracker.engine
 
-import com.relentnet.cuttracker.data.Block
 import com.relentnet.cuttracker.data.Checkpoint
 import com.relentnet.cuttracker.data.DayLog
 import com.relentnet.cuttracker.data.DayMode
+import com.relentnet.cuttracker.data.DayPlan
 import com.relentnet.cuttracker.data.LibMeal
 import com.relentnet.cuttracker.data.Exercise
 import com.relentnet.cuttracker.data.LiftSet
@@ -59,20 +59,30 @@ object ProgramEngine {
 
     // Script
 
+    fun plan(mode: DayMode, s: Settings): DayPlan = s.plans[mode] ?: DayPlan()
+
+    /** The block item id a day's lifts check: Climb days keep the push block id, every other day the core block id. */
+    fun blockItemId(mode: DayMode) = if (mode == DayMode.CLIMB) ProgramSpec.ITEM_PUSH else ProgramSpec.ITEM_CORE
+
+    /** The lifts in [mode]'s block, in plan order. */
+    fun exercisesFor(mode: DayMode, s: Settings): List<Exercise> =
+        plan(mode, s).lifts.mapNotNull { id -> s.exercises.firstOrNull { it.id == id } }
+
+    /** The block row for a day, or null when the plan has no lifts. */
+    fun blockItem(mode: DayMode, s: Settings): ScriptItem? {
+        val lifts = exercisesFor(mode, s)
+        if (lifts.isEmpty()) return null
+        val names = lifts.joinToString(", ") { it.name }
+        return if (mode == DayMode.CLIMB) ScriptItem(ProgramSpec.ITEM_PUSH, "Push block", "$names. Last 15 min at the gym.", "12:15", ProgramSpec.XP_PUSH, workout = true)
+        else ScriptItem(ProgramSpec.ITEM_CORE, "Core + push block", "$names. 15 min at home.", "any", ProgramSpec.XP_CORE, workout = true)
+    }
+
     fun script(mode: DayMode?, s: Settings, picks: Map<String, String> = emptyMap()): List<ScriptItem> {
         if (mode == null) return emptyList()
+        val plan = plan(mode, s)
         val weigh = ScriptItem(ProgramSpec.ITEM_WEIGH, "Weigh in", "Before food. Log it, ignore the number.", "8:30", ProgramSpec.XP_WEIGH)
-        val workout = when (mode) {
-            DayMode.CLIMB -> listOf(
-                ScriptItem(ProgramSpec.ITEM_CLIMB, "Climb", "Climbing session. Before lunch.", "11:00", ProgramSpec.XP_CLIMB, workout = true),
-                ScriptItem(ProgramSpec.ITEM_PUSH, "Push block", "Dips 3x, push-ups 2x. Last 15 min at the gym.", "12:15", ProgramSpec.XP_PUSH, workout = true),
-            )
-            DayMode.OFF -> listOf(
-                ScriptItem(ProgramSpec.ITEM_CORE, "Core + push block", "Ab roller, leg raises, floor press, pullover. 15 min at home.", "any", ProgramSpec.XP_CORE, workout = true),
-            )
-            DayMode.REST -> emptyList()
-        }
-        val meals = s.meals.map { m -> mealItem(m, picks[m.id], s) }
+        val workout = plan.items.filter { it.on }.map { ScriptItem(it.id, it.label, it.sub, it.time, it.xp, workout = it.id == ProgramSpec.ITEM_CLIMB) } + listOfNotNull(blockItem(mode, s))
+        val meals = s.meals.filter { it.id in plan.slots }.map { m -> mealItem(m, picks[m.id], s) }
         return if (meals.isEmpty()) listOf(weigh) + workout
         else listOf(weigh, meals.first()) + workout + meals.drop(1)
     }
@@ -267,9 +277,6 @@ object ProgramEngine {
     }
 
     // Lifts
-
-    fun exercisesFor(block: Block, s: Settings): List<Exercise> =
-        s.exercises.filter { it.block == block && !it.phase2Only }
 
     /** The most recent session (weight, reps) for an exercise before or on [date], excluding [date] when [excludeDate]. */
     fun lastSession(sets: List<LiftSet>, exerciseId: String, before: LocalDate): Pair<Double, Int>? {

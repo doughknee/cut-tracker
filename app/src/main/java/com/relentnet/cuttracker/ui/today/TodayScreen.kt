@@ -67,7 +67,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.AppState
-import com.relentnet.cuttracker.data.Block
 import com.relentnet.cuttracker.data.LibMeal
 import com.relentnet.cuttracker.data.Meal
 import com.relentnet.cuttracker.ui.components.Switch
@@ -255,7 +254,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                 }
                 Unfold(it.workout && it.id != ProgramSpec.ITEM_CLIMB && liftOpen && !past) {
                     // Saving the session checks the block. Swiping the row checks it without a session.
-                    LiftInline(vm, blocks = listOf(if (mode == DayMode.CLIMB) Block.CLIMB else Block.OFF), onSaved = { liftOpen = false; vm.toggleItem(it.id) })
+                    LiftInline(vm, mode = mode ?: DayMode.OFF, onSaved = { liftOpen = false; vm.toggleItem(it.id) })
                 }
                 } }
             }
@@ -265,7 +264,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                     color = c.text2, style = cutStyle(11, 800, 1f, 0.1f),
                     modifier = Modifier.clip(RoundedCornerShape(6.dp)).pressable { liftOpen = !liftOpen }.padding(horizontal = 4.dp, vertical = 6.dp),
                 )
-                if (liftOpen) LiftInline(vm, blocks = listOf(Block.CLIMB, Block.OFF), onSaved = { liftOpen = false })
+                if (liftOpen) LiftInline(vm, mode = DayMode.OFF, onSaved = { liftOpen = false })
             }
             if (finished.isNotEmpty()) {
                 Row(
@@ -504,7 +503,8 @@ private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (Stri
     val s = st.settings
     val def = ProgramEngine.defaultChoice(slot, s)
     val counts = st.logs.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
-    val sorted = s.library.sortedByDescending { counts["lib:" + it.id] ?: 0 }.let { l ->
+    // The slot's own kind first, then whatever gets picked most.
+    val sorted = s.library.sortedWith(compareByDescending<LibMeal> { it.kind == slot.id }.thenByDescending { counts["lib:" + it.id] ?: 0 }).let { l ->
         val d = l.firstOrNull { "lib:" + it.id == def.ref }
         if (d != null) listOf(d) + l.filter { it !== d } else l
     }

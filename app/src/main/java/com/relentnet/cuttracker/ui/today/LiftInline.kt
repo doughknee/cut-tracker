@@ -29,7 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.relentnet.cuttracker.data.Block
 import com.relentnet.cuttracker.data.DayMode
 import com.relentnet.cuttracker.data.Exercise
 import com.relentnet.cuttracker.data.ProgramSpec
@@ -49,12 +48,12 @@ private data class Entry(val weight: Double, val reps: Int)
 
 /** The exercise cards, rest timer and Save session, rendered inside Today under the workout row. */
 @Composable
-fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
+fun LiftInline(vm: AppViewModel, mode: DayMode, onSaved: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val haptics = LocalHaptics.current
-    val exercises = blocks.flatMap { ProgramEngine.exercisesFor(it, s) }
+    val exercises = ProgramEngine.exercisesFor(mode, s)
     val last = remember(st.liftSets, st.today) { exercises.associate { it.id to ProgramEngine.lastSession(st.liftSets, it.id, st.today) } }
     // The last four sessions per exercise, oldest first, so the card shows where the number has been going.
     val history = remember(st.liftSets, st.today) { exercises.associate { e -> e.id to ProgramEngine.sessions(st.liftSets, e.id, st.today) } }
@@ -69,15 +68,12 @@ fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
 
     Column(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Eyebrow("Lift · Week ${st.weekN} · beat the last number")
-        for (b in blocks) {
-            if (blocks.size > 1) Eyebrow(if (b == Block.CLIMB) "Climb day block" else "Off day block")
-            for (e in ProgramEngine.exercisesFor(b, s)) {
-                val v = values[e.id] ?: Entry(last[e.id]?.first ?: 0.0, last[e.id]?.second ?: 10)
-                ExerciseCard(
-                    e, v, last[e.id], history[e.id] ?: emptyList(), sets = e.sets,
-                    onChange = { values[e.id] = it; haptics.tick() },
-                )
-            }
+        for (e in exercises) {
+            val v = values[e.id] ?: Entry(last[e.id]?.first ?: 0.0, last[e.id]?.second ?: 10)
+            ExerciseCard(
+                e, v, last[e.id], history[e.id] ?: emptyList(), sets = e.sets,
+                onChange = { values[e.id] = it; haptics.tick() },
+            )
         }
         BigButton("Save session · checks the block", modifier = Modifier.fillMaxWidth(), height = 48.dp, fontSize = 13, onClick = {
             haptics.pattern(0, 20)

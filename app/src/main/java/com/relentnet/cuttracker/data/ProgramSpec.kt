@@ -25,7 +25,19 @@ data class Meal(
 
 /** A named meal in the library: what a slot can log, with an optional recipe or notes. */
 @Serializable
-data class LibMeal(val id: String, val name: String, val protein: Int, val calories: Int, val recipe: String = "")
+data class LibMeal(
+    val id: String, val name: String, val protein: Int, val calories: Int, val recipe: String = "",
+    /** The slot (meal kind) this belongs to: a [Meal.id]. Blank means Other. */
+    val kind: String = "",
+)
+
+/** One non-meal line of a day's script, like the climbing session. Weigh-in is always there and is not a PlanItem. */
+@Serializable
+data class PlanItem(val id: String, val label: String, val sub: String = "", val time: String = "", val xp: Int = 10, val on: Boolean = true)
+
+/** What one kind of day asks for: which meal slots, which lifts make its block, and the rest of the script. */
+@Serializable
+data class DayPlan(val slots: List<String> = emptyList(), val lifts: List<String> = emptyList(), val items: List<PlanItem> = emptyList())
 
 @Serializable
 data class Exercise(
@@ -41,6 +53,8 @@ data class Exercise(
     /** Phase 2 overrides sets for some lifts; null means same as phase 1. */
     val setsPhase2: Int? = null,
     val phase2Only: Boolean = false,
+    /** Push, Pull, Legs, Core or a kind of your own. Blank means Other. */
+    val kind: String = "",
 )
 
 @Serializable
@@ -103,23 +117,48 @@ object ProgramSpec {
     )
 
     val library = listOf(
-        LibMeal("lib_b", "Greek yogurt + whey + banana", 48, 430),
-        LibMeal("lib_l", "Chicken or turkey + rice + veg", 55, 620),
-        LibMeal("lib_s", "String cheese + apple or shake", 20, 250),
-        LibMeal("lib_d1", "Burrito bowl", 46, 820),
-        LibMeal("lib_d2", "Salmon + potatoes", 44, 760),
-        LibMeal("lib_d3", "Steak + salad", 48, 900),
+        LibMeal("lib_b", "Greek yogurt + whey + banana", 48, 430, kind = "b"),
+        LibMeal("lib_l", "Chicken or turkey + rice + veg", 55, 620, kind = "l"),
+        LibMeal("lib_s", "String cheese + apple or shake", 20, 250, kind = "s"),
+        LibMeal("lib_d1", "Burrito bowl", 46, 820, kind = "d"),
+        LibMeal("lib_d2", "Salmon + potatoes", 44, 760, kind = "d"),
+        LibMeal("lib_d3", "Steak + salad", 48, 900, kind = "d"),
     )
 
+    /** A library meal saved before kinds existed gets one from its id, then from the slot that defaults to it. */
+    fun inferMealKind(m: LibMeal, slots: List<Meal>): String = when {
+        m.kind.isNotBlank() -> m.kind
+        m.id.startsWith("lib_d") -> "d"
+        m.id.startsWith("lib_b") -> "b"
+        m.id.startsWith("lib_l") -> "l"
+        m.id.startsWith("lib_s") -> "s"
+        else -> slots.firstOrNull { it.defaultLib == m.id }?.id ?: ""
+    }
+
+    val LIFT_KINDS = listOf("Push", "Pull", "Legs", "Core")
+
     val exercises = listOf(
-        Exercise("dips", "Dips", Block.CLIMB, 3, "6 to 10", 5.0, "Lb added", setsPhase2 = 4),
-        Exercise("pushups", "Push-ups", Block.CLIMB, 2, "to 2 shy of failure", 0.0, "", bwLabel = "Body"),
-        Exercise("roller", "Ab roller", Block.OFF, 3, "12 to 15", 0.0, "Reach", bwLabel = "Knees", setsPhase2 = 1),
-        Exercise("legraise", "Lying leg raise", Block.OFF, 3, "15", 0.0, "Tempo", bwLabel = "Slow"),
-        Exercise("floorpress", "DB floor press", Block.OFF, 3, "8 to 12", 5.0, "Lb / side", setsPhase2 = 4),
-        Exercise("inclinepress", "Incline DB press", Block.OFF, 3, "8 to 12", 5.0, "Lb / side", phase2Only = true),
-        Exercise("pullover", "DB pullover", Block.OFF, 2, "12", 5.0, "Lb"),
+        Exercise("dips", "Dips", Block.CLIMB, 3, "6 to 10", 5.0, "Lb added", setsPhase2 = 4, kind = "Push"),
+        Exercise("pushups", "Push-ups", Block.CLIMB, 2, "to 2 shy of failure", 0.0, "", bwLabel = "Body", kind = "Push"),
+        Exercise("roller", "Ab roller", Block.OFF, 3, "12 to 15", 0.0, "Reach", bwLabel = "Knees", setsPhase2 = 1, kind = "Core"),
+        Exercise("legraise", "Lying leg raise", Block.OFF, 3, "15", 0.0, "Tempo", bwLabel = "Slow", kind = "Core"),
+        Exercise("floorpress", "DB floor press", Block.OFF, 3, "8 to 12", 5.0, "Lb / side", setsPhase2 = 4, kind = "Push"),
+        Exercise("inclinepress", "Incline DB press", Block.OFF, 3, "8 to 12", 5.0, "Lb / side", phase2Only = true, kind = "Push"),
+        Exercise("pullover", "DB pullover", Block.OFF, 2, "12", 5.0, "Lb", kind = "Pull"),
     )
+
+    fun inferLiftKind(e: Exercise): String = if (e.kind.isNotBlank()) e.kind else exercises.firstOrNull { it.id == e.id }?.kind ?: ""
+
+    /** The plans a fresh install starts with, and what an older install gets from its exercises' blocks. */
+    fun defaultPlans(meals: List<Meal> = this.meals, exercises: List<Exercise> = this.exercises): Map<DayMode, DayPlan> {
+        val slots = meals.map { it.id }
+        fun block(b: Block) = exercises.filter { it.block == b && !it.phase2Only }.map { it.id }
+        return mapOf(
+            DayMode.CLIMB to DayPlan(slots, block(Block.CLIMB), listOf(PlanItem(ITEM_CLIMB, "Climb", "Climbing session. Before lunch.", "11:00", XP_CLIMB))),
+            DayMode.OFF to DayPlan(slots, block(Block.OFF)),
+            DayMode.REST to DayPlan(slots),
+        )
+    }
 
     /** Checkpoints are generated from the program: one every two weeks on the pace line, the last one at the target. */
     fun defaultCheckpoints(start: LocalDate, startWeight: Double, targetWeight: Double, weeks: Int): List<Checkpoint> {

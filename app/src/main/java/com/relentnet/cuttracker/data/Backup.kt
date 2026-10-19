@@ -26,6 +26,9 @@ data class SettingsDto(
     val caloriesP1: Int, val caloriesP2: Int, val protein: Int, val meals: List<Meal>, val exercises: List<Exercise>, val checkpoints: List<Checkpoint>,
     val weighInTime: String, val pickTime: String, val resetHour: Int, val haptics: Boolean, val theme: String,
     val lastOpenDate: String? = null, val welcomeBackSeen: String? = null, val workoutsPerWeek: Int = 3,
+    val plans: Map<String, DayPlan>? = null,
+    val liftKinds: List<String> = ProgramSpec.LIFT_KINDS,
+    // Last on purpose: a v1 export ends its settings with the library, and the test for that cuts the file there.
     val library: List<LibMeal> = ProgramSpec.library,
 )
 
@@ -41,13 +44,15 @@ val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyP
 
 fun Settings.toDto() = SettingsDto(
     onboarded, phase, startDate.toString(), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
-    weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek, library,
+    weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
+    plans.mapKeys { it.key.name }, liftKinds, library,
 )
 
 fun SettingsDto.toSettings() = Settings(
     onboarded, phase, LocalDate.parse(startDate), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, workoutsPerWeek, meals, exercises, checkpoints,
     java.time.LocalTime.parse(weighInTime), java.time.LocalTime.parse(pickTime), resetHour, haptics, theme,
     lastOpenDate?.let(LocalDate::parse), welcomeBackSeen?.let(LocalDate::parse), library,
+    plans = plans?.mapKeys { DayMode.valueOf(it.key) } ?: ProgramSpec.defaultPlans(meals, exercises), liftKinds = liftKinds,
 )
 
 suspend fun Repo.buildBackup(): Backup = Backup(

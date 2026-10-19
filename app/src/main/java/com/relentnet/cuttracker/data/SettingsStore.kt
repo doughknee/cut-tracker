@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import java.time.LocalTime
@@ -45,6 +47,10 @@ data class Settings(
     val library: List<LibMeal> = ProgramSpec.library,
     /** The rules sheet opened itself once on the first Today. */
     val tourSeen: Boolean = false,
+    /** What each kind of day asks for. */
+    val plans: Map<DayMode, DayPlan> = ProgramSpec.defaultPlans(),
+    /** Kinds a lift can belong to, in display order. */
+    val liftKinds: List<String> = ProgramSpec.LIFT_KINDS,
 ) {
     val calories: Int get() = caloriesP1
     val endDate: LocalDate get() = startDate.plusDays(lengthWeeks * 7L)
@@ -80,6 +86,8 @@ class SettingsStore(context: Context) {
         val theme = stringPreferencesKey("theme")
         val lastOpenDate = stringPreferencesKey("lastOpenDate")
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
+        val plans = stringPreferencesKey("plans")
+        val liftKinds = stringPreferencesKey("liftKinds")
     }
 
     val flow: Flow<Settings> = ds.data.map { p -> read(p) }
@@ -88,6 +96,13 @@ class SettingsStore(context: Context) {
 
     private fun read(p: Preferences): Settings {
         val d = Settings()
+        // A meals list saved before the library existed has no defaults; borrow them from the spec by slot id.
+        val meals = (p[K.meals]?.let { runCatching { json.decodeFromString(ListSerializer(Meal.serializer()), it) }.getOrNull() } ?: d.meals)
+            .map { m -> if (m.defaultLib != null) m else m.copy(defaultLib = ProgramSpec.meals.firstOrNull { it.id == m.id }?.defaultLib) }
+        val exercises = (p[K.exercises]?.let { runCatching { json.decodeFromString(ListSerializer(Exercise.serializer()), it) }.getOrNull() } ?: d.exercises)
+            .map { e -> if (e.kind.isNotBlank()) e else e.copy(kind = ProgramSpec.inferLiftKind(e)) }
+        val plans = p[K.plans]?.let { runCatching { json.decodeFromString(MapSerializer(String.serializer(), DayPlan.serializer()), it) }.getOrNull() }
+            ?.mapKeys { DayMode.valueOf(it.key) } ?: ProgramSpec.defaultPlans(meals, exercises)
         return Settings(
             onboarded = p[K.onboarded] ?: d.onboarded,
             phase = p[K.phase] ?: d.phase,
@@ -99,11 +114,12 @@ class SettingsStore(context: Context) {
             caloriesP2 = p[K.caloriesP2] ?: d.caloriesP2,
             protein = p[K.protein] ?: d.protein,
             workoutsPerWeek = p[K.workoutsPerWeek] ?: d.workoutsPerWeek,
-            // A meals list saved before the library existed has no defaults; borrow them from the spec by slot id.
-            meals = (p[K.meals]?.let { runCatching { json.decodeFromString(ListSerializer(Meal.serializer()), it) }.getOrNull() } ?: d.meals)
-                .map { m -> if (m.defaultLib != null) m else m.copy(defaultLib = ProgramSpec.meals.firstOrNull { it.id == m.id }?.defaultLib) },
-            library = p[K.library]?.let { runCatching { json.decodeFromString(ListSerializer(LibMeal.serializer()), it) }.getOrNull() } ?: d.library,
-            exercises = p[K.exercises]?.let { runCatching { json.decodeFromString(ListSerializer(Exercise.serializer()), it) }.getOrNull() } ?: d.exercises,
+            meals = meals,
+            library = (p[K.library]?.let { runCatching { json.decodeFromString(ListSerializer(LibMeal.serializer()), it) }.getOrNull() } ?: d.library)
+                .map { m -> if (m.kind.isNotBlank()) m else m.copy(kind = ProgramSpec.inferMealKind(m, meals)) },
+            exercises = exercises,
+            plans = plans,
+            liftKinds = p[K.liftKinds]?.let { runCatching { json.decodeFromString(ListSerializer(String.serializer()), it) }.getOrNull() } ?: d.liftKinds,
             checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
             weighInTime = p[K.weighInTime]?.let(LocalTime::parse) ?: d.weighInTime,
             pickTime = p[K.pickTime]?.let(LocalTime::parse) ?: d.pickTime,
@@ -136,6 +152,8 @@ class SettingsStore(context: Context) {
         p[K.library] = json.encodeToString(ListSerializer(LibMeal.serializer()), s.library)
         p[K.exercises] = json.encodeToString(ListSerializer(Exercise.serializer()), s.exercises)
         p[K.checkpoints] = json.encodeToString(ListSerializer(Checkpoint.serializer()), s.checkpoints)
+        p[K.plans] = json.encodeToString(MapSerializer(String.serializer(), DayPlan.serializer()), s.plans.mapKeys { it.key.name })
+        p[K.liftKinds] = json.encodeToString(ListSerializer(String.serializer()), s.liftKinds)
         p[K.weighInTime] = s.weighInTime.toString()
         p[K.pickTime] = s.pickTime.toString()
         p[K.resetHour] = s.resetHour

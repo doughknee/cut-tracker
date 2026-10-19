@@ -1,403 +1,221 @@
 package com.relentnet.cuttracker.ui.beta
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.relentnet.cuttracker.data.Block
-import com.relentnet.cuttracker.data.Exercise
-import com.relentnet.cuttracker.data.LibMeal
-import com.relentnet.cuttracker.data.Meal
+import com.relentnet.cuttracker.data.AppState
+import com.relentnet.cuttracker.data.DayMode
+import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
-import com.relentnet.cuttracker.ui.LocalHaptics
-import com.relentnet.cuttracker.ui.components.BackHeader
-import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.Eyebrow
-import com.relentnet.cuttracker.ui.components.Field
-import com.relentnet.cuttracker.ui.components.H1
 import com.relentnet.cuttracker.ui.components.Hold
 import com.relentnet.cuttracker.ui.components.HoldShape
-import com.relentnet.cuttracker.ui.components.Screen
-import com.relentnet.cuttracker.ui.components.Sub
+import com.relentnet.cuttracker.ui.components.holdShape
 import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
-import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
-/** Beta: the plan for the route. Three cards, each its own page. */
+/** Beta: the plan for the route. A grid of tiles that fills the page; every tile is its own page. */
 @Composable
-fun BetaScreen(vm: AppViewModel, onMeals: () -> Unit, onLifts: () -> Unit, onCheckpoints: () -> Unit) {
-    val st by vm.state.collectAsStateWithLifecycle()
-    val s = st.settings
-    val next = s.checkpoints.filter { !it.free }.map { it.localDate }.sorted().firstOrNull { !st.today.isAfter(it) }
-    Screen {
-        Column {
-            Eyebrow("Your plan for the route")
-            H1("Beta")
-            Sub("What you eat, what you lift, where the route checks in. Change it here and Today follows.", Modifier.padding(top = 8.dp))
-        }
-        HubCard(
-            shape = HoldShape.JUG, title = "Meals", onClick = onMeals,
-            sub = "${s.meals.size} slots on the script · ${s.library.size} in the library",
-            detail = s.meals.joinToString("  ·  ") { it.name },
-        )
-        HubCard(
-            shape = HoldShape.CRIMP, title = "Lifts", onClick = onLifts,
-            sub = "${s.exercises.count { it.block == Block.CLIMB && !it.phase2Only }} on Climb days · ${s.exercises.count { it.block == Block.OFF && !it.phase2Only }} on Off days",
-            detail = s.exercises.filter { !it.phase2Only }.joinToString("  ·  ") { it.name },
-        )
-        HubCard(
-            shape = HoldShape.SLOPER, title = "Checkpoints", onClick = onCheckpoints,
-            sub = "${s.checkpoints.count { !it.free }} targets on the pace line",
-            detail = if (next != null) "Next: ${next.format(cpFmt)}" + (s.checkpoints.firstOrNull { it.localDate == next }?.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "") else "None ahead",
-        )
-    }
-}
-
-@Composable
-private fun HubCard(shape: HoldShape, title: String, sub: String, detail: String, onClick: () -> Unit) {
-    val c = CutTheme.colors
-    Card(Modifier.fillMaxWidth().pressable(onClick = onClick), border = c.hairline, radius = 14.dp, padding = PaddingValues(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(c.ground), contentAlignment = Alignment.Center) { Hold(shape, c.accent, 26.dp) }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = c.text, style = cutStyle(20, 800, 1f, -0.02f, display = true))
-                Text(sub, color = c.text2, style = cutStyle(12, 600, 1.2f, tabular = true))
-                Text(detail, color = c.dim, style = cutStyle(12, 500, 1.3f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Icon(CutIcons.Forward, null, Modifier.size(14.dp), tint = c.text2)
-        }
-    }
-}
-
-// ---- Meals page: the slots Today runs and the library they log from
-
-@Composable
-fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
-    val c = CutTheme.colors
-    val st by vm.state.collectAsStateWithLifecycle()
-    val s = st.settings
-    val haptics = LocalHaptics.current
-    var editing by rememberSaveable { mutableStateOf<String?>(null) }
-    fun open(id: String?) { editing = if (editing == id) null else id }
-
-    Screen(bottomInset = true) {
-        BackHeader("Beta", "Meals", onBack)
-        Sub("Slots are the rows on Today, in order. A swipe logs the default; a tap picks anything from the library or a one-off.")
-        SectionHead("Slots", "${s.meals.size} on the script")
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (m in s.meals) {
-                val def = ProgramEngine.defaultChoice(m, s)
-                val picks = st.logs.count { it.picks.containsKey(m.id) || m.id in it.doneItemIds }
-                ExpandRow(
-                    open = editing == m.id, onToggle = { open(m.id) },
-                    lead = { Chip(m.time.ifBlank { "any" }) },
-                    title = m.name, sub = def.name + "  ·  ${def.protein}g · ${def.calories} cal",
-                    trail = if (picks > 0) "$picks logged" else null,
-                ) {
-                    SlotEditor(m, s.library,
-                        onSave = { nm -> vm.saveSettings(s.copy(meals = s.meals.map { if (it.id == m.id) nm else it })); editing = null },
-                        onRemove = { haptics.tap(); vm.saveSettings(s.copy(meals = s.meals.filter { it.id != m.id })); editing = null })
-                }
-            }
-            AddRow("Add a slot") {
-                val id = "m${System.currentTimeMillis()}"
-                vm.saveSettings(s.copy(meals = s.meals + Meal(id, "New slot", "", "", 0, 0, 10, true, s.library.firstOrNull()?.id)))
-                editing = id
-            }
-        }
-        SectionHead("Library", "what a slot can log")
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (l in s.library) {
-                val uses = st.logs.count { log -> log.picks.values.any { it == "lib:" + l.id } }
-                ExpandRow(
-                    open = editing == l.id, onToggle = { open(l.id) },
-                    lead = { Hold(HoldShape.JUG, c.goodDim, 22.dp) },
-                    title = l.name, sub = "${l.protein}g · ${l.calories} cal" + (if (l.recipe.isNotBlank()) "  ·  recipe" else ""),
-                    trail = if (uses > 0) "$uses×" else null,
-                ) {
-                    LibEditor(l,
-                        onSave = { nl -> vm.saveSettings(s.copy(library = s.library.map { if (it.id == l.id) nl else it })); editing = null },
-                        onRemove = {
-                            haptics.tap()
-                            vm.saveSettings(s.copy(library = s.library.filter { it.id != l.id }, meals = s.meals.map { if (it.defaultLib == l.id) it.copy(defaultLib = null) else it }))
-                            editing = null
-                        })
-                }
-            }
-            AddRow("Add a meal") {
-                val id = "lib_${System.currentTimeMillis()}"
-                vm.saveSettings(s.copy(library = s.library + LibMeal(id, "New meal", 0, 0)))
-                editing = id
-            }
-        }
-    }
-}
-
-// ---- Lifts page: one list per block
-
-@Composable
-fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
-    val st by vm.state.collectAsStateWithLifecycle()
-    val s = st.settings
-    val haptics = LocalHaptics.current
-    var editing by rememberSaveable { mutableStateOf<String?>(null) }
-    fun open(id: String?) { editing = if (editing == id) null else id }
-
-    Screen(bottomInset = true) {
-        BackHeader("Beta", "Lifts", onBack)
-        Sub("The block each kind of day ends with. Log a session on Today and the last four show up under the lift; beat the last number and the chip goes green.")
-        for (block in listOf(Block.CLIMB, Block.OFF)) {
-            val lifts = s.exercises.filter { it.block == block && !it.phase2Only }
-            SectionHead(
-                if (block == Block.CLIMB) "Climb day block" else "Off day block",
-                if (block == Block.CLIMB) "after the session, at the gym" else "15 minutes at home",
-                shape = if (block == Block.CLIMB) HoldShape.CRIMP else HoldShape.JUG,
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (e in lifts) {
-                    val bw = e.step <= 0.0
-                    val history = ProgramEngine.sessions(st.liftSets, e.id, st.today.plusDays(1))
-                    ExpandRow(
-                        open = editing == e.id, onToggle = { open(e.id) },
-                        lead = { Chip("${e.sets}×") },
-                        title = e.name, sub = (if (bw) "bodyweight" else "+${fmtStep(e.step)} lb steps") + (if (e.repTarget.isNotBlank()) "  ·  ${e.repTarget} reps" else ""),
-                        trail = null,
-                        under = if (history.isNotEmpty()) ({ Trend(history, bw) }) else null,
-                    ) {
-                        LiftEditor(e,
-                            onSave = { ne -> vm.saveSettings(s.copy(exercises = s.exercises.map { if (it.id == e.id) ne else it })); editing = null },
-                            onRemove = { haptics.tap(); vm.saveSettings(s.copy(exercises = s.exercises.filter { it.id != e.id })); editing = null })
-                    }
-                }
-                AddRow("Add a lift") {
-                    val id = "x${System.currentTimeMillis()}"
-                    vm.saveSettings(s.copy(exercises = s.exercises + Exercise(id, "New lift", block, 3, "8 to 12", 5.0, "Lb")))
-                    editing = id
-                }
-            }
-        }
-    }
-}
-
-// ---- building blocks
-
-@Composable
-private fun SectionHead(title: String, sub: String, shape: HoldShape? = null) {
-    val c = CutTheme.colors
-    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (shape != null) Hold(shape, c.accent, 16.dp)
-        Text(title.uppercase(), color = c.text, style = cutStyle(12, 800, 1f, 0.1f))
-        Text(sub, color = c.text2, style = cutStyle(12, 500, 1f))
-    }
-}
-
-/** A Today-style row: lead chip, title and sub, optional trailing note, chevron; the editor unfolds beneath it. */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ExpandRow(
-    open: Boolean, onToggle: () -> Unit,
-    lead: @Composable () -> Unit, title: String, sub: String, trail: String?,
-    under: (@Composable () -> Unit)? = null,
-    editor: @Composable () -> Unit,
+fun BetaScreen(
+    vm: AppViewModel,
+    onMeals: () -> Unit, onLifts: () -> Unit, onDay: (DayMode) -> Unit,
+    onCheckpoints: () -> Unit, onTargets: () -> Unit, onWeek: () -> Unit,
 ) {
     val c = CutTheme.colors
-    val requester = remember { BringIntoViewRequester() }
-    LaunchedEffect(open) { if (open) { delay(120); requester.bringIntoView() } }
-    Card(Modifier.fillMaxWidth().bringIntoViewRequester(requester).animateContentSize(), border = if (open) c.mutedBorder else c.hairline, radius = 12.dp) {
-        Column {
-            Row(
-                Modifier.fillMaxWidth().pressable(onClick = onToggle).padding(14.dp, 12.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                lead()
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(title, color = c.text, style = cutStyle(16, 700, 1.1f))
-                    Text(sub, color = c.text2, style = cutStyle(12, 500, 1.2f, tabular = true))
-                    if (under != null) Box(Modifier.padding(top = 4.dp)) { under() }
-                }
-                if (trail != null) Text(trail, color = c.text2, style = cutStyle(11, 700, 1f, tabular = true))
-                Icon(CutIcons.Forward, null, Modifier.size(12.dp).rotate(if (open) 90f else 0f), tint = c.text2)
-            }
-            if (open) Column(Modifier.background(c.ground).padding(14.dp, 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { editor() }
-        }
-    }
-}
-
-@Composable
-private fun AddRow(label: String, onClick: () -> Unit) {
-    val c = CutTheme.colors
-    Text(
-        "+ ${label.uppercase()}", color = c.text2, style = cutStyle(11, 800, 1f, 0.1f),
-        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onClick, role = Role.Button).padding(horizontal = 4.dp, vertical = 8.dp),
-    )
-}
-
-@Composable
-private fun Chip(text: String) {
-    val c = CutTheme.colors
-    Box(Modifier.width(46.dp).height(28.dp).clip(RoundedCornerShape(7.dp)).background(c.ground), contentAlignment = Alignment.Center) {
-        Text(text, color = c.text, style = cutStyle(11, 800, 1f, tabular = true))
-    }
-}
-
-@Composable
-private fun Trend(history: List<Pair<Double, Int>>, bw: Boolean) {
-    val c = CutTheme.colors
-    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-        history.forEachIndexed { i, (w, r) ->
-            val beat = i > 0 && ProgramEngine.beat(w to r, history[i - 1])
-            Text(
-                if (bw) "×$r" else "${fmtStep(w)}×$r",
-                color = if (beat) c.good else c.text2, style = cutStyle(11, 700, 1f, tabular = true),
-                modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(c.ground).padding(6.dp, 4.dp),
-            )
-            if (i < history.lastIndex) Text("›", color = c.dim, style = cutStyle(11, 700, 1f))
-        }
-    }
-}
-
-@Composable
-private fun Label(text: String) = Text(text.uppercase(), color = CutTheme.colors.text2, style = cutStyle(10, 800, 1f, 0.1f))
-
-@Composable
-private fun Txt(value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String? = null, multiline: Boolean = false) {
-    Field(
-        value, onChange, modifier, height = if (multiline) 84.dp else 40.dp, fontSize = 14, weight = if (multiline) 500 else 700,
-        keyboard = KeyboardType.Text, imeAction = if (multiline) ImeAction.Default else ImeAction.Next, borderWidth = 1.dp, radius = 8.dp, padding = 10.dp,
-        placeholder = placeholder, singleLine = !multiline,
-    )
-}
-
-@Composable
-private fun Num(value: String, onChange: (String) -> Unit, width: Int = 64) {
-    Field(value, onChange, Modifier.width(width.dp), height = 40.dp, fontSize = 14, weight = 700, center = true, borderWidth = 1.dp, radius = 8.dp, padding = 6.dp, imeAction = ImeAction.Next)
-}
-
-@Composable
-private fun EditorButtons(onSave: () -> Unit, onRemove: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        BigButton("Done", onClick = onSave, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12, confirm = true)
-        BigButton("Remove", onClick = onRemove, modifier = Modifier.width(110.dp), secondary = true, height = 40.dp, fontSize = 12)
-    }
-}
-
-@Composable
-private fun SlotEditor(m: Meal, library: List<LibMeal>, onSave: (Meal) -> Unit, onRemove: () -> Unit) {
-    val c = CutTheme.colors
-    var name by remember(m.id) { mutableStateOf(m.name) }
-    var time by remember(m.id) { mutableStateOf(m.time) }
-    var def by remember(m.id) { mutableStateOf(m.defaultLib) }
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Txt(name, { name = it }, Modifier.weight(1f), "Name")
-        Num(time, { time = it }, 72)
-    }
-    Label("Default · what a swipe logs")
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (row in library.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (l in row) {
-                val on = def == l.id
-                val shape = RoundedCornerShape(8.dp)
-                Text(
-                    l.name, color = if (on) c.onAccent else c.text, style = cutStyle(12, 700, 1.1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).clip(shape).background(if (on) c.accent else c.surface).border(1.dp, if (on) c.accent else c.mutedBorder, shape)
-                        .clickable(role = Role.Button) { def = l.id }.padding(10.dp, 9.dp),
+    val st by vm.state.collectAsStateWithLifecycle()
+    val s = st.settings
+    Column(Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.statusBars).padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 14.dp)) {
+        Eyebrow("The plan for the route")
+        Text("Beta", color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.weight(1.3f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                EditorTile(
+                    Modifier.weight(1f), CutIcons.Meals, "Meals",
+                    rows = s.meals.map { m -> m.name to s.library.count { it.kind == m.id }.toString() }.take(4),
+                    foot = "${s.library.size} meals, ${st.mealsLoggedThisWeek()} logged this week", onClick = onMeals,
+                )
+                EditorTile(
+                    Modifier.weight(1f), CutIcons.Lift, "Lifts",
+                    rows = s.liftKinds.map { k -> k to s.exercises.count { it.kind == k }.toString() }.take(4),
+                    foot = "${s.exercises.size} lifts", onClick = onLifts,
                 )
             }
-            if (row.size == 1) Box(Modifier.weight(1f))
+            Row(Modifier.weight(0.9f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (mode in DayMode.entries) DayTile(Modifier.weight(1f), mode, st) { onDay(mode) }
+            }
+            CheckpointTile(Modifier.weight(0.9f), st, onCheckpoints)
+            Row(Modifier.weight(1.05f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                EditorTile(
+                    Modifier.weight(1f), CutIcons.Target, "Targets",
+                    rows = listOf("Protein" to "${s.protein} g", "Calories" to "%,d".format(Locale.US, s.calories), "Workouts" to "${s.workoutsPerWeek} a week"),
+                    foot = null, onClick = onTargets,
+                )
+                WeekTile(Modifier.weight(1f), st, onWeek)
+            }
         }
     }
-    EditorButtons(onSave = { onSave(m.copy(name = name.ifBlank { m.name }, time = time.trim(), defaultLib = def)) }, onRemove = onRemove)
+}
+
+/** How many meal rows were ticked in the Monday-to-Sunday week of today. */
+private fun AppState.mealsLoggedThisWeek(): Int {
+    val ws = ProgramEngine.weekStart(today)
+    val slots = settings.meals.map { it.id }.toSet()
+    return logs.filter { !it.date.isBefore(ws) && !it.date.isAfter(ws.plusDays(6)) }.sumOf { l -> l.doneItemIds.count { it in slots } }
 }
 
 @Composable
-private fun LibEditor(l: LibMeal, onSave: (LibMeal) -> Unit, onRemove: () -> Unit) {
-    var name by remember(l.id) { mutableStateOf(l.name) }
-    var pro by remember(l.id) { mutableStateOf(l.protein.toString()) }
-    var cal by remember(l.id) { mutableStateOf(l.calories.toString()) }
-    var recipe by remember(l.id) { mutableStateOf(l.recipe) }
-    Txt(name, { name = it }, Modifier.fillMaxWidth(), "Name")
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Num(pro, { pro = it }); Sub("g protein", size = 11)
-        Num(cal, { cal = it }, 72); Sub("cal", size = 11)
-    }
-    Txt(recipe, { recipe = it }, Modifier.fillMaxWidth(), "Recipe or notes", multiline = true)
-    EditorButtons(onSave = { onSave(LibMeal(l.id, name.ifBlank { l.name }, pro.toIntOrNull() ?: 0, cal.toIntOrNull() ?: 0, recipe)) }, onRemove = onRemove)
-}
-
-@Composable
-private fun LiftEditor(e: Exercise, onSave: (Exercise) -> Unit, onRemove: () -> Unit) {
+private fun TileFrame(modifier: Modifier, outlined: Boolean = false, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val c = CutTheme.colors
-    var name by remember(e.id) { mutableStateOf(e.name) }
-    var sets by remember(e.id) { mutableStateOf(e.sets.toString()) }
-    var step by remember(e.id) { mutableStateOf(fmtStep(e.step)) }
-    var reps by remember(e.id) { mutableStateOf(e.repTarget) }
-    var block by remember(e.id) { mutableStateOf(e.block) }
-    Txt(name, { name = it }, Modifier.fillMaxWidth(), "Name")
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Num(sets, { sets = it }, 52); Sub("sets", size = 11)
-        Num(step, { step = it }, 56); Sub("lb per tap, 0 for bodyweight", size = 11)
+    Card(
+        modifier.fillMaxHeight().pressable(onClick = onClick), radius = 16.dp,
+        background = if (outlined) c.ground else c.surface, border = if (outlined) c.hairline else null,
+    ) { Column(Modifier.fillMaxSize().padding(14.dp), content = content) }
+}
+
+@Composable
+private fun TileTop(icon: ImageVector? = null, shape: HoldShape? = null, tint: Color = CutTheme.colors.accent, holdSize: Int = 30) {
+    val c = CutTheme.colors
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        if (shape != null) Hold(shape, tint, holdSize.dp) else if (icon != null) Icon(icon, null, Modifier.size(22.dp), tint = tint)
+        Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Txt(reps, { reps = it }, Modifier.weight(1f), "Rep target, like 8 to 12")
-        for (b in listOf(Block.CLIMB, Block.OFF)) {
-            val on = block == b
-            val shape = RoundedCornerShape(8.dp)
+}
+
+/** Title first, then what is inside as hairline rows, then the number that matters. */
+@Composable
+private fun EditorTile(modifier: Modifier, icon: ImageVector, title: String, rows: List<Pair<String, String>>, foot: String?, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    TileFrame(modifier, onClick = onClick) {
+        TileTop(icon)
+        Text(title, color = c.text, style = cutStyle(22, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 10.dp))
+        Column(Modifier.weight(1f).padding(vertical = 6.dp), verticalArrangement = Arrangement.Center) {
+            for ((name, value) in rows) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.hairline))
+                Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(name, color = c.text, style = cutStyle(11, 700, 1.3f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(value, color = c.text2, style = cutStyle(11, 600, 1.3f, tabular = true), modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+        }
+        if (foot != null) Text(foot, color = c.text2, style = cutStyle(11, 500, 1.2f, tabular = true), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun DayTile(modifier: Modifier, mode: DayMode, st: AppState, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    val items = ProgramEngine.script(mode, st.settings)
+    val line = when (mode) { DayMode.CLIMB -> "Session + push"; DayMode.OFF -> "Core at home"; DayMode.REST -> "Weigh in + eat" }
+    TileFrame(modifier, onClick = onClick) {
+        TileTop(shape = holdShape(mode))
+        Text(dayTitle(mode), color = c.text, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
+        Column(Modifier.weight(1f).padding(top = 6.dp), verticalArrangement = Arrangement.Center) {
+            Text(line, color = c.text2, style = cutStyle(11, 500, 1.35f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${items.size} on, ${ProgramEngine.totalXp(items)} xp", color = c.text2, style = cutStyle(11, 500, 1.35f, tabular = true), maxLines = 1)
+        }
+    }
+}
+
+fun dayTitle(mode: DayMode) = when (mode) { DayMode.CLIMB -> "Climb day"; DayMode.OFF -> "Off day"; DayMode.REST -> "Rest day" }
+
+@Composable
+private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    val s = st.settings
+    val cps = s.checkpoints.filter { !it.free }.sortedBy { it.date }
+    val next = cps.firstOrNull { !st.today.isAfter(it.localDate) }
+    val idx = cps.indexOf(next)
+    val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today) ?: st.lastWeighIn?.lb ?: s.startWeight
+    val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
+    val behind = !ProgramEngine.onPace(avg, st.dayN, s, anchor)
+    TileFrame(modifier, outlined = true, onClick = onClick) {
+        TileTop(CutIcons.Flag, tint = c.text2)
+        Text("Checkpoints", color = c.text2, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
+        Column(Modifier.weight(1f).padding(top = 6.dp), verticalArrangement = Arrangement.Center) {
+            if (next?.target != null) {
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(ProgramEngine.fmt1(next.target), color = c.text, style = cutStyle(32, 800, 1f, -0.03f, display = true, tabular = true))
+                    Text("lb on ${next.localDate.format(cpFmt)}, in ${ChronoUnit.DAYS.between(st.today, next.localDate)} days", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    for (i in cps.indices) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < idx) c.good else if (i == idx) c.accent else c.hairline))
+                }
+            } else Text("No checkpoint ahead", color = c.text, style = cutStyle(15, 700, 1.2f))
+        }
+        if (next?.target != null) {
+            val toGo = avg - next.target
             Text(
-                if (b == Block.CLIMB) "CLIMB" else "OFF", color = if (on) c.onAccent else c.text, style = cutStyle(11, 800, 1f, 0.06f),
-                modifier = Modifier.clip(shape).background(if (on) c.accent else c.surface).border(1.dp, if (on) c.accent else c.mutedBorder, shape)
-                    .clickable(role = Role.Button) { block = b }.padding(10.dp, 11.dp),
+                "${idx + 1} of ${cps.size}, ${ProgramEngine.fmt1(kotlin.math.abs(toGo))} ${if (toGo >= 0) "to go" else "under"}, ${if (behind) "behind pace" else "on pace"}",
+                color = if (behind) c.accent else c.good, style = cutStyle(11, 600, 1.2f, tabular = true), maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }
     }
-    EditorButtons(
-        onSave = {
-            val st = step.toDoubleOrNull() ?: 0.0
-            onSave(e.copy(name = name.ifBlank { e.name }, sets = sets.toIntOrNull()?.coerceIn(1, 10) ?: e.sets, step = st, repTarget = reps.trim(), block = block,
-                unit = if (st > 0) e.unit.ifEmpty { "Lb" } else e.unit, bwLabel = if (st > 0) null else (e.bwLabel ?: "Body")))
-        },
-        onRemove = onRemove,
-    )
 }
 
-private fun fmtStep(v: Double) = if (v % 1.0 == 0.0) v.toInt().toString() else ProgramEngine.fmt1(v)
+@Composable
+private fun WeekTile(modifier: Modifier, st: AppState, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    val s = st.settings
+    val ws = ProgramEngine.weekStart(st.today)
+    val days = (0..6).map { ws.plusDays(it.toLong()) }.filter { !it.isAfter(st.today) }
+    val hit = days.count { d -> st.day(d).totals.protein >= s.protein }
+    TileFrame(modifier, outlined = true, onClick = onClick) {
+        TileTop(CutIcons.Week, tint = c.text2)
+        Text("This week", color = c.text2, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
+        Column(Modifier.weight(1f).padding(top = 6.dp), verticalArrangement = Arrangement.Center) {
+            Meter("Protein", hit, days.size.coerceAtLeast(1), c.good)
+            Box(Modifier.height(8.dp))
+            Meter("Workouts", st.workoutsThisWeek, s.workoutsPerWeek.coerceAtLeast(1), c.good)
+        }
+        Text("${ws.format(cpFmt)} to ${ws.plusDays(6).dayOfMonth}", color = c.text2, style = cutStyle(11, 500, 1.2f, tabular = true))
+    }
+}
+
+@Composable
+private fun Meter(label: String, done: Int, of: Int, color: Color) {
+    val c = CutTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, color = c.text, style = cutStyle(11, 700, 1f))
+            Text("$done of $of", color = if (done >= of) color else c.text2, style = cutStyle(11, 700, 1f, tabular = true))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            for (i in 0 until of.coerceAtMost(7)) Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(if (i < done) color else c.hairline))
+        }
+    }
+}
