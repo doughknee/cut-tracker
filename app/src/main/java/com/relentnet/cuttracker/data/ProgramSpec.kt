@@ -29,7 +29,19 @@ data class LibMeal(
     val id: String, val name: String, val protein: Int, val calories: Int, val recipe: String = "",
     /** The slot (meal kind) this belongs to: a [Meal.id]. Blank means Other. */
     val kind: String = "",
+    /** How the numbers were built, when they were: one line per food. Empty means typed by hand. */
+    val ingredients: List<Ingredient> = emptyList(),
 )
+
+/** One line of a meal: a food by name, how much of it, and its nutrition per 100 g, so the meal needs no table to add up. */
+@Serializable
+data class Ingredient(val name: String, val grams: Double, val protein100: Double, val kcal100: Double) {
+    val protein: Double get() = protein100 * grams / 100
+    val kcal: Double get() = kcal100 * grams / 100
+}
+
+fun List<Ingredient>.proteinSum(): Int = Math.round(sumOf { it.protein }).toInt()
+fun List<Ingredient>.kcalSum(): Int = Math.round(sumOf { it.kcal }).toInt()
 
 /** One non-meal line of a day's script, like the climbing session. Weigh-in is always there and is not a PlanItem. */
 @Serializable

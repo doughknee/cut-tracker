@@ -66,6 +66,7 @@ class BackupTest {
         // A v1 export predates workoutsPerWeek, library and picks; defaults must fill them in.
         val json = backupJson.encodeToString(Backup.serializer(), backup)
             .replace(Regex("\\s*\"workoutsPerWeek\": \\d+,"), "")
+            .replace(Regex(",\\s*\"ingredients\": \\[\\]"), "")   // meals had no ingredient lines either
             .replace(Regex(",\\s*\"library\": \\[[\\s\\S]*?\\]\\s*\\}"), "\n  }")
         val back = backupJson.decodeFromString(Backup.serializer(), json)
         assertEquals(3, back.settings.workoutsPerWeek)

@@ -24,10 +24,10 @@ Scoreboard, not a lecture
 XP for every item, grades from V0 to V10, a workout target you set yourself. No ads, no account, no feed.
 
 Yours
-Everything stays on your phone. No analytics, no sign-in, and the network only when you ask: paste a recipe link and it fills in the meal. Export a backup whenever you like.
+Everything stays on your phone. No analytics, no sign-in, and the network only when you ask: paste a recipe link or scan a barcode and it fills in the meal. Export a backup whenever you like.
 
 Meals and lifts
-A meal library with recipes and per-slot picks, a lift log that remembers last session and shows the trend, a weight chart with the 7-day average against your pace line, progress photos every two weeks.
+A meal library with recipes, an offline ingredient search (USDA) that adds up protein and calories, per-slot picks, a lift log that remembers last session and shows the trend, a weight chart with the 7-day average against your pace line, progress photos every two weeks.
 
 Sendline is a logbook and a scoreboard, not medical advice. Set your own targets and check with a doctor before a diet if you have a condition.
 
@@ -51,8 +51,8 @@ Privacy policy: https://doughknee.github.io/cut-tracker/privacy.html (GitHub Pag
 ## Data safety form
 
 - Does your app collect or share any of the required user data types? **No.**
-  - The INTERNET permission is used for one thing: fetching a recipe page the user pastes, only while they have switched that on. No user data is sent. Export is user-initiated and goes to an app the user picks.
-- Is all of the user data collected by your app encrypted in transit? No user data is transmitted. The recipe fetch is HTTPS only.
+  - The INTERNET permission is used for two things, each only while the user has switched it on: fetching a recipe page the user pastes, and looking a scanned barcode up on Open Food Facts (the request carries the barcode digits and nothing else). No user data is sent. Export is user-initiated and goes to an app the user picks.
+- Is all of the user data collected by your app encrypted in transit? No user data is transmitted. The recipe fetch and the barcode lookup are HTTPS only.
 - Do you provide a way for users to request that their data is deleted? Yes, Settings > Reset program, and uninstall.
 - Health data: the app stores weight and food logs on-device only. Answer "no" to collection because nothing leaves the device; mention on-device health logs in the privacy policy (done).
 

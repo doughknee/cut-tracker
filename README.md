@@ -1,6 +1,6 @@
 # Sendline
 
-Sendline (package `com.relentnet.cuttracker`, repo `cut-tracker`) is an Android app for a cut, any length, built for climbers: every day is a hold, the week is a wall, the program is a route. Offline, local-only, no accounts; the network only for a recipe link you paste, and only if you switch that on. Kotlin, Jetpack Compose, Room, DataStore, CameraX, Glance.
+Sendline (package `com.relentnet.cuttracker`, repo `cut-tracker`) is an Android app for a cut, any length, built for climbers: every day is a hold, the week is a wall, the program is a route. Offline, local-only, no accounts; the network only for a recipe link you paste or a barcode you scan, and only if you switch that on. Kotlin, Jetpack Compose, Room, DataStore, CameraX, Glance.
 
 The spec is `CUT_TRACKER_HANDOFF.md`; the look and copy come from `cut-tracker-prototype.html`. Build notes and decisions are in `PROGRESS.md`.
 
