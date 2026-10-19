@@ -168,12 +168,14 @@ object ProgramEngine {
 
     /**
      * Trend in lb per day: a least-squares line through the raw readings of the last [window] days. The fit does the
-     * smoothing, so it does not lag the way a line through the 7-day averages would. Null until two readings at least
-     * three days apart exist.
+     * smoothing, so it does not lag the way a line through the 7-day averages would. Null until seven readings spanning
+     * at least six days exist; fewer than that is noise dressed up as a trend.
      */
+    const val MIN_RATE_READINGS = 7
+
     fun rate(weighIns: List<WeighIn>, today: LocalDate, window: Int = 14): Double? {
         val recent = weighIns.filter { !it.date.isAfter(today) && !it.date.isBefore(today.minusDays(window.toLong() - 1)) }.sortedBy { it.date }
-        if (recent.size < 2 || ChronoUnit.DAYS.between(recent.first().date, recent.last().date) < 3) return null
+        if (recent.size < MIN_RATE_READINGS || ChronoUnit.DAYS.between(recent.first().date, recent.last().date) < 6) return null
         val pts = recent.map { w -> ChronoUnit.DAYS.between(today, w.date).toDouble() to w.lb }
         val mx = pts.map { it.first }.average()
         val my = pts.map { it.second }.average()

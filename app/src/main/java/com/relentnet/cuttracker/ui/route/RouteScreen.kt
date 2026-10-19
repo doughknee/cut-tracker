@@ -168,8 +168,8 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                                     null -> Text("${day.dayOfMonth}", color = c.dim.copy(alpha = 0.5f), style = cutStyle(11, 600, 1f, tabular = true))
                                     DayResult.FUTURE, DayResult.BEFORE -> Text("${day.dayOfMonth}", color = c.dim, style = cutStyle(11, 700, 1f, tabular = true))
                                     else -> Hold(
-                                        holdShape(modes[day]), holdFill(r, c), if (r == DayResult.TODAY) 32.dp else 30.dp,
-                                        stroke = if (r == DayResult.TODAY) c.accent else null, strokeWidth = if (r == DayResult.TODAY) 2.4.dp else 0.dp,
+                                        holdShape(modes[day]), holdFill(r, c), if (day == st.today) 32.dp else 30.dp,
+                                        stroke = if (day == st.today) c.accent else null, strokeWidth = if (day == st.today) 2.4.dp else 0.dp,
                                     ) { Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(11, 900, 1f, tabular = true)) }
                                 }
                                 if (cp != null) Icon(

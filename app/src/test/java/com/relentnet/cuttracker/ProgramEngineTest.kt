@@ -188,7 +188,8 @@ class ProgramEngineTest {
         // One pound a week, logged daily for two weeks.
         val w = (0 until 14).map { i -> WeighIn(d(i), 182.0 - i / 7.0) }
         val today = d(13)
-        assertEquals(null, ProgramEngine.rate(w.take(2), d(1)))
+        assertEquals(null, ProgramEngine.rate(w.take(6), d(5)))
+        assertTrue(ProgramEngine.rate(w.take(7), d(6)) != null)
         val r = ProgramEngine.rate(w, today)!!
         assertEquals(-1.0 / 7, r, 0.02)
         val end = d(13 + 70)

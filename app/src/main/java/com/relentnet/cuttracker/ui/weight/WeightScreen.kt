@@ -128,7 +128,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     TileLabel("At this rate")
                     Text(if (projected == null) "--" else ProgramEngine.fmt1(projected), color = if (projected != null && projected <= s.targetWeight + ProgramSpec.PACE_TOLERANCE_LB) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
-                    Sub(if (projected == null) "needs a few days" else "on ${s.endDate.format(shortDate)} · goal ${ProgramEngine.fmt1(s.targetWeight)}", size = 11)
+                    Sub(if (projected == null) "needs a week of readings" else "on ${s.endDate.format(shortDate)} · goal ${ProgramEngine.fmt1(s.targetWeight)}", size = 11)
                 }
             }
         }

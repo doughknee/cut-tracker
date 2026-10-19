@@ -328,7 +328,6 @@ fun XpStrip(st: AppState) {
     val next = ProgramEngine.nextLevelXp(level)
     val xp = tickedInt(st.xp)
     val progress by animateFloatAsState(ProgramEngine.levelProgress(st.xp), tween(450), label = "xpbar")
-    val chainN = tickedInt(st.chain.count)
     Card(Modifier.fillMaxWidth(), padding = PaddingValues(12.dp, 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(c.accent), contentAlignment = Alignment.Center) {
@@ -343,21 +342,20 @@ fun XpStrip(st: AppState) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(progress).clip(RoundedCornerShape(4.dp)).background(c.accent))
                 }
             }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(CutIcons.Link, null, Modifier.size(14.dp), tint = c.good)
-                    Text("$chainN", color = c.text, style = cutStyle(18, 800, 1f, tabular = true))
+                    Icon(CutIcons.Shield, null, Modifier.size(12.dp), tint = if (st.chain.securedToday) c.good else c.text2)
+                    Text(
+                        when {
+                            st.chain.securedToday -> "SECURED TODAY"
+                            st.chain.paused -> "CHAIN PAUSED"
+                            else -> "CHAIN OPEN"
+                        },
+                        color = if (st.chain.securedToday) c.good else c.text2, style = cutStyle(10, 800, 1f, 0.1f),
+                    )
                 }
                 val f = st.chain.freezesLeft
-                val fz = "$f freeze" + if (f == 1) "" else "s"
-                Text(
-                    when {
-                        st.chain.securedToday -> "secured today"
-                        st.chain.paused -> "paused · $fz"
-                        else -> fz
-                    }.uppercase(),
-                    color = c.text2, style = cutStyle(10, 600, 1f, 0.1f),
-                )
+                Text("$f FREEZE" + (if (f == 1) "" else "S") + " LEFT", color = c.text2, style = cutStyle(10, 600, 1f, 0.1f, tabular = true))
             }
         }
     }
