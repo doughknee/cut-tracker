@@ -99,9 +99,10 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
             CategoryRow(CutIcons.Zap, "Targets", "${s.calories} cal · ${s.protein} g protein · ${s.workoutsPerWeek} workouts a week") { onSection(SettingsSections.TARGETS) }
             CategoryRow(CutIcons.Today, "Nudges", (if (notifOn) "Weigh-in ${s.weighInTime.format(timeFmt)} · pick a day ${s.pickTime.format(timeFmt)}" else "Notifications are off")) { onSection(SettingsSections.NUDGES) }
             CategoryRow(CutIcons.Layers, "Appearance", when (s.theme) { "dark" -> "Dark"; "light" -> "Light"; else -> "Follows the system" } + (if (s.haptics) " · haptics on" else " · haptics off")) { onSection(SettingsSections.APPEARANCE) }
-            CategoryRow(CutIcons.Camera, "Data", "Export, import, reset") { onSection(SettingsSections.DATA) }
+            CategoryRow(CutIcons.Camera, "Data", "Export, import, reset" + (if (s.onlineFeatures) ", online features on" else ", offline")) { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = true) { onSection(SettingsSections.ABOUT) }
         }
+        Sub(if (s.onlineFeatures) "Online features: ${if (s.recipeImport) 1 else 0} on. Only what you switched on can use the network." else "Offline. Nothing leaves the phone.", size = 12, color = if (s.onlineFeatures) c.text2 else c.good)
         Sub("Meals, lifts and checkpoints live on the Beta tab.", size = 12)
     }
 }
@@ -260,6 +261,18 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     SettingsRow("Export with photos", onClick = { export(true) }) { Sub("zip ›") }
                     SettingsRow("Import JSON or zip", last = true, onClick = { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) }) { Sub("›") }
                 }
+                Eyebrow("Online features")
+                Card(Modifier.fillMaxWidth()) {
+                    SettingsRow("Allow online features") { Switch(saved.onlineFeatures) { vm.saveSettings(saved.copy(onlineFeatures = !saved.onlineFeatures)) } }
+                    SettingsRow("Recipe import by link", last = true, labelColor = if (saved.onlineFeatures) c.text else c.text2) {
+                        Switch(saved.onlineFeatures && saved.recipeImport) { if (saved.onlineFeatures) vm.saveSettings(saved.copy(recipeImport = !saved.recipeImport)) }
+                    }
+                }
+                Sub("Off, the app never touches the network. Recipe import downloads the one page you paste in New meal, straight from that site, and reads the recipe out of it. Nothing about you is sent, and nothing else connects.", size = 12)
+                Text(
+                    "Read the code that does it ›", color = c.accent, style = cutStyle(12, 700, 1.3f),
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/RecipeImport.kt"))) }.padding(4.dp, 2.dp),
+                )
                 Eyebrow("Danger")
                 Card(Modifier.fillMaxWidth()) {
                     SettingsRow(
@@ -276,7 +289,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                 Card(Modifier.fillMaxWidth()) {
                     SettingsRow("Sendline") { Sub(version) }
                     SettingsRow("Privacy policy", onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://doughknee.github.io/cut-tracker/privacy.html"))) }) { Sub("›") }
-                    SettingsRow("Everything stays on this phone", last = true) { Sub("no account, no network") }
+                    SettingsRow("Everything stays on this phone", last = true) { Sub(if (saved.onlineFeatures) "no account, online only when you ask" else "no account, no network") }
                 }
                 Sub("Sendline is a logbook and a scoreboard, not medical advice. Your targets are yours; talk to a doctor before a cut if you have a condition.", size = 12)
             }

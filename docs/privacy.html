@@ -17,9 +17,9 @@
 <body>
 <main>
   <h1>Sendline privacy policy</h1>
-  <p class="date">Effective 2026-10-19</p>
+  <p class="date">Effective 2026-10-19, updated 2026-10-19 for recipe import</p>
 
-  <p>Sendline is an offline app. It has no account, no server and no internet permission. Nothing you enter leaves your phone unless you export it yourself.</p>
+  <p>Sendline is an offline app. It has no account and no server. Nothing you enter leaves your phone unless you export it yourself. The one exception is a feature you switch on: recipe import, described below.</p>
 
   <h2>What the app stores</h2>
   <ul>
@@ -33,12 +33,16 @@
   <h2>What the app does not do</h2>
   <ul>
     <li>No analytics, no crash reporting, no advertising, no tracking of any kind.</li>
-    <li>No network access. The app does not request the INTERNET permission, so it cannot send data anywhere.</li>
+    <li>No network access unless you switch on Online features in Settings, and then only what is listed under "Recipe import".</li>
     <li>No account, no sign-in, no email collection.</li>
   </ul>
 
+  <h2>Recipe import</h2>
+  <p>Off by default. When you paste a recipe link into New meal and allow it, the app downloads that one page, straight from that website, and reads the recipe out of it (name, servings, protein and calories when the page lists them). The request goes to that site the way a browser visit would, so that site sees your IP address. Nothing about you or your data is sent, and the app makes no other connections. Switch it off any time under Settings, Data, Online features. <a href="https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/RecipeImport.kt">The code that does it</a> is public.</p>
+
   <h2>Permissions</h2>
   <ul>
+    <li><strong>Internet</strong>: only for recipe import, only while you have it switched on, only for the page you paste.</li>
     <li><strong>Camera</strong>: only when you choose to take a progress photo. Photos stay on the device.</li>
     <li><strong>Notifications</strong>: one daily weigh-in reminder and one "pick a day" reminder, both optional.</li>
     <li><strong>Exact alarms</strong>: so reminders fire at the time you chose. If you do not allow it, reminders still fire, just less precisely.</li>

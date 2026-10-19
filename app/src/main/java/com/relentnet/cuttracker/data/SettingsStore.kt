@@ -51,7 +51,12 @@ data class Settings(
     val plans: Map<DayMode, DayPlan> = ProgramSpec.defaultPlans(),
     /** Kinds a lift can belong to, in display order. */
     val liftKinds: List<String> = ProgramSpec.LIFT_KINDS,
+    /** The master switch for anything that touches the network. Off means the app behaves as if it had no INTERNET permission. */
+    val onlineFeatures: Boolean = false,
+    /** Fetch the page behind a pasted recipe link to fill in the New meal sheet. Only counts while [onlineFeatures] is on. */
+    val recipeImport: Boolean = true,
 ) {
+    val recipeImportOn: Boolean get() = onlineFeatures && recipeImport
     val calories: Int get() = caloriesP1
     val endDate: LocalDate get() = startDate.plusDays(lengthWeeks * 7L)
     val totalDays: Int get() = lengthWeeks * 7
@@ -88,6 +93,8 @@ class SettingsStore(context: Context) {
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
         val plans = stringPreferencesKey("plans")
         val liftKinds = stringPreferencesKey("liftKinds")
+        val onlineFeatures = booleanPreferencesKey("onlineFeatures")
+        val recipeImport = booleanPreferencesKey("recipeImport")
     }
 
     val flow: Flow<Settings> = ds.data.map { p -> read(p) }
@@ -120,6 +127,8 @@ class SettingsStore(context: Context) {
             exercises = exercises,
             plans = plans,
             liftKinds = p[K.liftKinds]?.let { runCatching { json.decodeFromString(ListSerializer(String.serializer()), it) }.getOrNull() } ?: d.liftKinds,
+            onlineFeatures = p[K.onlineFeatures] ?: d.onlineFeatures,
+            recipeImport = p[K.recipeImport] ?: d.recipeImport,
             checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
             weighInTime = p[K.weighInTime]?.let(LocalTime::parse) ?: d.weighInTime,
             pickTime = p[K.pickTime]?.let(LocalTime::parse) ?: d.pickTime,
@@ -154,6 +163,8 @@ class SettingsStore(context: Context) {
         p[K.checkpoints] = json.encodeToString(ListSerializer(Checkpoint.serializer()), s.checkpoints)
         p[K.plans] = json.encodeToString(MapSerializer(String.serializer(), DayPlan.serializer()), s.plans.mapKeys { it.key.name })
         p[K.liftKinds] = json.encodeToString(ListSerializer(String.serializer()), s.liftKinds)
+        p[K.onlineFeatures] = s.onlineFeatures
+        p[K.recipeImport] = s.recipeImport
         p[K.weighInTime] = s.weighInTime.toString()
         p[K.pickTime] = s.pickTime.toString()
         p[K.resetHour] = s.resetHour
