@@ -22,7 +22,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -155,9 +165,15 @@ fun Wall(
             for ((i, day) in days.withIndex()) {
                 val r = st.results[day] ?: if (day.isBefore(st.settings.startDate)) DayResult.BEFORE else DayResult.FUTURE
                 val isSel = i == sel
-                val size = if (isSel) HOLD_SELECTED else HOLD
-                val x = ax(i) - (if (isSel) 8.dp else 0.dp)
-                val y = ay(i) - (if (isSel) 8.dp else 0.dp)
+                // The selected hold grows, fills cross-fade, and a fresh Send pops like a hold you just stuck.
+                val size by animateDpAsState(if (isSel) HOLD_SELECTED else HOLD, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow), label = "holdSize")
+                val fill by animateColorAsState(holdFill(r, c), tween(350), label = "holdFill")
+                val pop = remember { Animatable(1f) }
+                LaunchedEffect(r == DayResult.SEND) {
+                    if (r == DayResult.SEND) { pop.snapTo(0.55f); pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium)) }
+                }
+                val x = ax(i) - (size - HOLD) / 2
+                val y = ay(i) - (size - HOLD) / 2
                 val open = r != DayResult.FUTURE && r != DayResult.BEFORE
                 val stroke = when {
                     isSel -> if (day == st.today) c.accent else c.text
@@ -166,8 +182,9 @@ fun Wall(
                 }
                 Column(Modifier.offset(x, y).width(size), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Hold(
-                        holdShape(modes[day]), holdFill(r, c), size,
+                        holdShape(modes[day]), fill, size,
                         Modifier
+                            .scale(pop.value)
                             .semantics { contentDescription = "${day.format(wdFmt)} ${day.dayOfMonth}, ${resultName(r)}" }
                             .then(if (open) Modifier.clickable(onClick = { onPickDay(day) }, role = Role.Button) else Modifier),
                         stroke = stroke, strokeWidth = if (stroke != null) 2.2.dp else 0.dp,

@@ -108,7 +108,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
                 }
             }
             ProjectCard(st)
-            HoldCalendar(st, current, onDay = { pop = it; haptics.tick() })
+            HoldCalendar(st, current, onDay = { pop = it; haptics.tick() }, onCheckpoints = onCheckpoints)
             NextCheckpoint(st, current, onCheckpoints)
             Legend()
             BadgeShelf(st.badges)
@@ -133,7 +133,7 @@ private val monthFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM", Loc
 
 /** Twelve Monday-to-Sunday rows. Climbed days are holds (shape = kind of day, fill = result); the rest are numbers. */
 @Composable
-private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -> Unit) {
+private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -> Unit, onCheckpoints: () -> Unit) {
     val c = CutTheme.colors
     val s = st.settings
     val modes = st.logs.associate { it.date to it.mode }
@@ -159,8 +159,13 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                         val r = st.results[day]
                         val cp = cps[day]
                         val open = r != null && r != DayResult.FUTURE && r != DayResult.BEFORE
+                        val tap: (() -> Unit)? = when {
+                            open -> ({ onDay(day) })
+                            cp != null -> onCheckpoints
+                            else -> null
+                        }
                         Box(
-                            Modifier.weight(1f).height(34.dp).then(if (open) Modifier.clickable(onClick = { onDay(day) }, role = Role.Button) else Modifier),
+                            Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier),
                             contentAlignment = Alignment.Center,
                         ) {
                             Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
@@ -173,7 +178,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                                     ) { Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(11, 900, 1f, tabular = true)) }
                                 }
                                 if (cp != null) Icon(
-                                    CutIcons.Flag, null, Modifier.align(Alignment.TopEnd).offset(4.dp, (-6).dp).size(11.dp),
+                                    CutIcons.Flag, null, Modifier.align(Alignment.TopEnd).offset(5.dp, (-3).dp).size(11.dp),
                                     tint = when {
                                         cp.localDate == current -> c.accent
                                         cp.free -> c.freeze

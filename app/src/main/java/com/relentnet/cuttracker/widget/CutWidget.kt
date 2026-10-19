@@ -87,6 +87,8 @@ private object W {
 private val ItemKey = ActionParameters.Key<String>("item")
 private val ModeKey = ActionParameters.Key<String>("mode")
 private val DeltaKey = ActionParameters.Key<Double>("delta")
+/** Day a widget hold opens; the activity reads it as an intent extra of the same name. */
+private val DateKey = ActionParameters.Key<String>(MainActivity.EXTRA_DATE)
 /** The stepper's unlogged weight, kept per widget instance. */
 private val DraftKey = doublePreferencesKey("draft")
 private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
@@ -412,9 +414,11 @@ private fun WeekHolds(st: AppState) {
                 DayMode.REST -> R.drawable.ic_h_sloper
                 null -> R.drawable.ic_h_pinch
             }
-            // Padding, not spacers: a Glance Row holds at most 10 children.
-            Box(GlanceModifier.padding(end = if (i < 6) 3.dp else 0.dp)) {
-                Image(ImageProvider(icon), null, GlanceModifier.size(12.dp), colorFilter = ColorFilter.tint(color))
+            // Padding, not spacers: a Glance Row holds at most 10 children. Each hold opens its day in the app.
+            Box(GlanceModifier.padding(end = if (i < 6) 1.dp else 0.dp)) {
+                Box(GlanceModifier.padding(2.dp).clickable(actionStartActivity<MainActivity>(actionParametersOf(DateKey to d.toString())))) {
+                    Image(ImageProvider(icon), null, GlanceModifier.size(12.dp), colorFilter = ColorFilter.tint(color))
+                }
             }
         }
     }

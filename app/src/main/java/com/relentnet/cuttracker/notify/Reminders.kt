@@ -71,7 +71,7 @@ object Reminders {
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(if (kind == KIND_WEIGH) "Weigh in" else "Climb or off?")
-            .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "It's 7pm and no day is picked. Guessing Off day. Weigh in and hit protein and the chain is safe.")
+            .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "It's 7pm and no day is picked. Guessing Rest day. Weigh in and hit protein and the chain is safe.")
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
             .setAutoCancel(true)

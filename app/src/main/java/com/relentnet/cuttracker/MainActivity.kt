@@ -53,6 +53,14 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         intent?.getStringExtra(Reminders.EXTRA_TAB)?.let { vm.requestTab(it) }
+        intent?.getStringExtra(EXTRA_DATE)?.let { d ->
+            runCatching { java.time.LocalDate.parse(d) }.getOrNull()?.let { vm.viewDate = it; vm.requestTab(com.relentnet.cuttracker.ui.Routes.TODAY) }
+        }
+    }
+
+    companion object {
+        /** Intent extra from the widget: ISO date of the hold that was tapped. */
+        const val EXTRA_DATE = "date"
     }
 
     override fun onResume() {

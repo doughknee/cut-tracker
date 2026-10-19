@@ -157,7 +157,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Box(Modifier.width(14.dp).height(2.dp).dashed(c.mutedBorder))
-                    Text("TARGET", color = c.text2, style = cutStyle(11, 600, 1f, 0.06f))
+                    Text("PACE", color = c.text2, style = cutStyle(11, 600, 1f, 0.06f))
                 }
             }
         }
