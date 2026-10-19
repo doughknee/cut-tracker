@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -50,7 +51,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -112,6 +112,8 @@ fun App(vm: AppViewModel) {
     LaunchedEffect(st.settings.onboarded) {
         if (!st.settings.onboarded && route != null && route != Routes.ONBOARDING) nav.navigate(Routes.ONBOARDING) { popUpTo(0) { inclusive = true } }
     }
+    // The stack holds one tab at a time, so back from Beta or Route is ours to handle: it goes to Today.
+    BackHandler(enabled = route in Routes.tabs && route != Routes.TODAY) { nav.goTab(Routes.TODAY) }
     Box(Modifier.fillMaxSize().background(c.ground)) {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) {
@@ -228,8 +230,15 @@ private fun Splash(loaded: Boolean) {
     }
 }
 
+/**
+ * Every tab switch is a push: the stack is cleared (state saved) and the tab is pushed fresh (state restored). With
+ * the usual popUpTo-start recipe, going to Today was a pop, and pops run through the seekable predictive-back path,
+ * which is a different animation from the push Beta <-> Route use and stutters when you hammer it.
+ */
 fun NavHostController.goTab(route: String) = navigate(route) {
-    popUpTo(graph.findStartDestination().id) { saveState = true }
+    // The whole graph, not the start destination: once Today is off the stack, popUpTo(Today) is a no-op and the
+    // stack grows one tab per switch.
+    popUpTo(graph.id) { inclusive = true; saveState = true }
     launchSingleTop = true
     restoreState = true
 }
