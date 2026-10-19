@@ -166,6 +166,29 @@ object ProgramEngine {
 
     fun onPace(avg: Double, dayN: Int, s: Settings): Boolean = avg <= paceWeight(dayN, s) + ProgramSpec.PACE_TOLERANCE_LB
 
+    /**
+     * Trend in lb per day: a least-squares line through the raw readings of the last [window] days. The fit does the
+     * smoothing, so it does not lag the way a line through the 7-day averages would. Null until two readings at least
+     * three days apart exist.
+     */
+    fun rate(weighIns: List<WeighIn>, today: LocalDate, window: Int = 14): Double? {
+        val recent = weighIns.filter { !it.date.isAfter(today) && !it.date.isBefore(today.minusDays(window.toLong() - 1)) }.sortedBy { it.date }
+        if (recent.size < 2 || ChronoUnit.DAYS.between(recent.first().date, recent.last().date) < 3) return null
+        val pts = recent.map { w -> ChronoUnit.DAYS.between(today, w.date).toDouble() to w.lb }
+        val mx = pts.map { it.first }.average()
+        val my = pts.map { it.second }.average()
+        val sxx = pts.sumOf { (it.first - mx) * (it.first - mx) }
+        if (sxx == 0.0) return null
+        return pts.sumOf { (it.first - mx) * (it.second - my) } / sxx
+    }
+
+    /** Where the average lands on [date] at the current [rate]; null without a rate or an average. */
+    fun projectedAt(weighIns: List<WeighIn>, today: LocalDate, date: LocalDate): Double? {
+        val avg = sevenDayAverage(weighIns, today) ?: return null
+        val r = rate(weighIns, today) ?: return null
+        return avg + r * ChronoUnit.DAYS.between(today, date)
+    }
+
     // Chain, freezes, results
 
     private fun resultOf(log: DayLog?, weighed: Boolean, s: Settings): DayResult {

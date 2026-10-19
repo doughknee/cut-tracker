@@ -184,6 +184,20 @@ class ProgramEngineTest {
         assertEquals(listOf(2, 4, 6, 7), seven.map { ProgramEngine.checkpointWeek(it, start, 7) })
     }
 
+    @Test fun rateAndProjection() {
+        // One pound a week, logged daily for two weeks.
+        val w = (0 until 14).map { i -> WeighIn(d(i), 182.0 - i / 7.0) }
+        val today = d(13)
+        assertEquals(null, ProgramEngine.rate(w.take(2), d(1)))
+        val r = ProgramEngine.rate(w, today)!!
+        assertEquals(-1.0 / 7, r, 0.02)
+        val end = d(13 + 70)
+        val proj = ProgramEngine.projectedAt(w, today, end)!!
+        val avg = ProgramEngine.sevenDayAverage(w, today)!!
+        assertEquals(avg - 10.0, proj, 0.3)
+        assertEquals(null, ProgramEngine.projectedAt(emptyList(), today, end))
+    }
+
     @Test fun photoCadence() {
         assertTrue(ProgramEngine.photoDue(emptyList(), start, start))
         assertFalse(ProgramEngine.photoDue(listOf(start), d(14), start))

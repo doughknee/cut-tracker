@@ -42,7 +42,9 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.AppState
+import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.data.WeighIn
+import com.relentnet.cuttracker.ui.route.currentCheckpointDate
 import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
 import com.relentnet.cuttracker.ui.LocalHaptics
@@ -77,27 +79,72 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
     var text by rememberSaveable(prefill) { mutableStateOf(ProgramEngine.fmt1(prefill)) }
     fun log() { text.toDoubleOrNull()?.takeIf { it > 0 }?.let { haptics.tap(); vm.logWeight(it) } }
 
+    val pace = ProgramEngine.paceWeight(st.dayN, s)
+    val gap = avg?.let { it - pace }
+    val rate = ProgramEngine.rate(st.weighIns, st.today)
+    val projected = ProgramEngine.projectedAt(st.weighIns, st.today, s.endDate)
+    val weekAgo = ProgramEngine.sevenDayAverage(st.weighIns.filter { it.date.isBefore(st.today.minusDays(6)) }, st.today.minusDays(7))
+    val cpDate = currentCheckpointDate(st)
+    val cp = s.checkpoints.firstOrNull { it.localDate == cpDate }
+
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Today", title = "Weight", onBack = onBack)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Card(Modifier.weight(1.4f), padding = PaddingValues(16.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Card(Modifier.fillMaxWidth(), padding = PaddingValues(16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     TileLabel("7-day average")
-                    Text(if (avg == null) "--" else ProgramEngine.fmt1(shownAvg.toDouble()), color = c.text, style = cutStyle(46, 800, 1f, -0.02f, tabular = true))
-                    if (avg != null) {
-                        val delta = avg - s.startWeight
-                        Text(
-                            (if (delta < 0) "" else "+") + ProgramEngine.fmt1(delta) + " lb since start · " + (if (onPace) "on pace" else "behind pace"),
-                            color = if (onPace) c.good else c.accent, style = cutStyle(13, 600, 1.2f, tabular = true), modifier = Modifier.padding(top = 4.dp),
-                        )
-                    } else Sub("Log a weigh-in to start the average.", Modifier.padding(top = 4.dp), size = 12)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(if (avg == null) "--" else ProgramEngine.fmt1(shownAvg.toDouble()), color = c.text, style = cutStyle(46, 800, 1f, -0.02f, tabular = true))
+                        Text(" lb", color = c.text2, style = cutStyle(14, 600, 1f), modifier = Modifier.padding(bottom = 6.dp))
+                    }
+                }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    TileLabel("Pace today")
+                    Text(ProgramEngine.fmt1(pace), color = c.text2, style = cutStyle(22, 800, 1f, tabular = true))
                 }
             }
-            Card(Modifier.weight(1f), padding = PaddingValues(16.dp)) {
+            if (gap != null) {
+                val ahead = gap <= ProgramSpec.PACE_TOLERANCE_LB
+                Text(
+                    when {
+                        gap <= -ProgramSpec.PACE_TOLERANCE_LB -> "${ProgramEngine.fmt1(-gap)} lb ahead of pace"
+                        ahead -> "On pace"
+                        else -> "${ProgramEngine.fmt1(gap)} lb behind pace"
+                    },
+                    color = if (ahead) c.good else c.accent, style = cutStyle(13, 700, 1.2f, tabular = true), modifier = Modifier.padding(top = 8.dp),
+                )
+            } else Sub("Log a weigh-in to start the average.", Modifier.padding(top = 8.dp), size = 12)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(Modifier.weight(1f), padding = PaddingValues(14.dp, 12.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    TileLabel("Target ${s.endDate.format(shortDate)}")
-                    Text(ProgramEngine.fmt1(s.targetWeight), color = c.text, style = cutStyle(30, 800, 1.2f, tabular = true))
-                    Text("${ProgramEngine.fmt1(((avg ?: s.startWeight) - s.targetWeight).coerceAtLeast(0.0))} lb to go", color = c.text2, style = cutStyle(12, 500, 1f, tabular = true))
+                    TileLabel("This week")
+                    val wk = if (avg != null && weekAgo != null) avg - weekAgo else null
+                    Text(if (wk == null) "--" else (if (wk > 0) "+" else "") + ProgramEngine.fmt1(wk), color = if (wk != null && wk < 0) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
+                    Sub(if (wk == null) "needs two weeks" else "lb vs last week", size = 11)
+                }
+            }
+            Card(Modifier.weight(1f), padding = PaddingValues(14.dp, 12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    TileLabel("At this rate")
+                    Text(if (projected == null) "--" else ProgramEngine.fmt1(projected), color = if (projected != null && projected <= s.targetWeight + ProgramSpec.PACE_TOLERANCE_LB) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
+                    Sub(if (projected == null) "needs a few days" else "on ${s.endDate.format(shortDate)} · goal ${ProgramEngine.fmt1(s.targetWeight)}", size = 11)
+                }
+            }
+        }
+        if (cp != null && cp.target != null) {
+            val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, cp.localDate).toInt()
+            val toLose = ((avg ?: s.startWeight) - cp.target).coerceAtLeast(0.0)
+            Card(Modifier.fillMaxWidth(), border = c.hairline, padding = PaddingValues(14.dp, 12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        TileLabel("Next checkpoint · ${cp.localDate.format(shortDate)}")
+                        Text(
+                            if (toLose == 0.0) "Already under ${ProgramEngine.fmt1(cp.target)}" else "${ProgramEngine.fmt1(toLose)} lb to ${ProgramEngine.fmt1(cp.target)}",
+                            color = c.text, style = cutStyle(15, 700, 1.1f, tabular = true),
+                        )
+                    }
+                    Text(when (days) { 0 -> "today"; 1 -> "tomorrow"; else -> "$days days" }, color = c.text2, style = cutStyle(12, 700, 1f, tabular = true))
                 }
             }
         }
@@ -129,7 +176,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
                 ) { Text((if (q > 0) "+" else "") + ProgramEngine.fmt1(q), color = c.text, style = cutStyle(13, 700, 1f, tabular = true)) }
             }
         }
-        Sub("Daily readings stay hidden. You see the 7-day average and nothing else.", size = 12)
+        Sub("Daily readings stay hidden. The average, the pace line and the rate are what matter; one reading is noise.", size = 12)
     }
 }
 
@@ -175,6 +222,15 @@ fun WeightChart(st: AppState) {
             c.mutedBorder, Offset(xOf(1), yOf(s.startWeight)), Offset(xOf(s.totalDays), yOf(s.targetWeight)), 2.dp.toPx(),
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx())),
         )
+        // Today's column and the checkpoint targets, so the chart says where you are, not only where you were.
+        val xToday = xOf(st.dayN)
+        drawLine(c.hairline, Offset(xToday, yTop), Offset(xToday, yBot), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
+        for (cp in s.checkpoints) {
+            val t = cp.target ?: continue
+            if (t < bot || t > top) continue
+            val x = xOf(ProgramEngine.dayNumber(cp.localDate, s.startDate))
+            drawCircle(if (!cp.localDate.isAfter(st.today)) c.text2 else c.mutedBorder, 3.dp.toPx(), Offset(x, yOf(t)))
+        }
         if (showDots) for (w in sorted) drawCircle(c.dim, 2.5.dp.toPx(), Offset(xOf(ProgramEngine.dayNumber(w.date, s.startDate)), yOf(w.lb)))
         if (avgs.isNotEmpty()) {
             val path = Path()

@@ -389,10 +389,11 @@ private fun ItemRow(r: WRow) {
     }
 }
 
-/** This week's seven holds, tiny. */
+/** This week's seven holds, tiny: shape is the kind of day, color is the result, same as the wall. */
 @Composable
 private fun WeekHolds(st: AppState) {
     val ws = ProgramEngine.weekStart(st.today)
+    val modes = st.logs.associate { it.date to it.mode }
     Row(verticalAlignment = Alignment.CenterVertically) {
         for (i in 0 until 7) {
             val d = ws.plusDays(i.toLong())
@@ -405,11 +406,15 @@ private fun WeekHolds(st: AppState) {
                 DayResult.TODAY -> W.accent
                 else -> W.future
             }
+            val icon = when (modes[d]) {
+                DayMode.OFF -> R.drawable.ic_h_jug
+                DayMode.CLIMB -> R.drawable.ic_h_crimp
+                DayMode.REST -> R.drawable.ic_h_sloper
+                null -> R.drawable.ic_h_pinch
+            }
             // Padding, not spacers: a Glance Row holds at most 10 children.
-            Box(GlanceModifier.padding(end = if (i < 6) 2.dp else 0.dp)) {
-                Box(GlanceModifier.width(11.dp).height(9.dp).cornerRadius(2.dp).background(color).padding(1.dp), contentAlignment = Alignment.Center) {
-                    if (r == DayResult.TODAY) Box(GlanceModifier.fillMaxSize().cornerRadius(1.dp).background(W.ground)) {}
-                }
+            Box(GlanceModifier.padding(end = if (i < 6) 3.dp else 0.dp)) {
+                Image(ImageProvider(icon), null, GlanceModifier.size(12.dp), colorFilter = ColorFilter.tint(color))
             }
         }
     }
