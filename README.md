@@ -45,7 +45,7 @@ Then:
 
 The signed APK lands at `app/build/outputs/apk/release/app-release.apk`.
 
-For Google Play build the bundle instead; `STORE_LISTING.md` has the listing copy, the Data safety answers and the release checklist, and `docs/privacy.html` is the privacy policy to host:
+For Google Play build the bundle instead; `STORE_LISTING.md` has the listing copy, the Data safety answers and the release checklist, and `docs/privacy.html` is the privacy policy, published at https://doughknee.github.io/cut-tracker/privacy.html:
 
 ```bash
 ./gradlew :app:bundleRelease

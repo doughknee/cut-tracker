@@ -42,7 +42,7 @@ weight loss, diet tracker, climbing, habit tracker, calorie counter
 ## Contact
 
 Email: bcharris713@gmail.com
-Privacy policy: host `docs/privacy.html` (GitHub Pages works: push the repo, enable Pages on the `docs/` folder, then the URL is `https://<user>.github.io/cut-tracker/privacy.html`).
+Privacy policy: https://doughknee.github.io/cut-tracker/privacy.html (GitHub Pages, served from `docs/` on `main`; edit `docs/privacy.html` and push to update it).
 
 ## Data safety form
 
