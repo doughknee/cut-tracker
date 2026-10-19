@@ -538,6 +538,22 @@ private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (Stri
                 if (recipeOpen == m.id) Text(m.recipe, color = c.text2, style = cutStyle(13, 500, 1.4f), modifier = Modifier.padding(12.dp, 0.dp, 12.dp, 12.dp))
             }
         }
+        // The last few one-off entries for this slot, so a repeat is one tap instead of retyping.
+        val recents = st.logs.sortedByDescending { it.date }.mapNotNull { it.picks[slot.id] }.filter { it.startsWith("custom:") && it != current }.distinct().take(3)
+        for (ref in recents) {
+            val ch = ProgramEngine.resolveChoice(slot, ref, s)
+            val shape = RoundedCornerShape(9.dp)
+            Row(
+                Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, c.hairline, shape).clickable(onClick = { onPick(ref) }, role = Role.Button).padding(12.dp, 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(ch.name, color = c.text, style = cutStyle(14, 600, 1.1f))
+                    Text("RECENT", color = c.text2, style = cutStyle(9, 800, 1f, 0.1f))
+                }
+                Text("${ch.protein}g · ${ch.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
+            }
+        }
         if (current != null && current.startsWith("custom:")) {
             val ch = ProgramEngine.resolveChoice(slot, current, s)
             val shape = RoundedCornerShape(9.dp)

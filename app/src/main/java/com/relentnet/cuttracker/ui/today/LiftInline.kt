@@ -56,6 +56,13 @@ fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
     val haptics = LocalHaptics.current
     val exercises = blocks.flatMap { ProgramEngine.exercisesFor(it, s) }
     val last = remember(st.liftSets, st.today) { exercises.associate { it.id to ProgramEngine.lastSession(st.liftSets, it.id, st.today) } }
+    // The last four sessions per exercise, oldest first, so the card shows where the number has been going.
+    val history = remember(st.liftSets, st.today) {
+        exercises.associate { e ->
+            e.id to st.liftSets.filter { it.exerciseId == e.id && it.date.isBefore(st.today) }
+                .groupBy { it.date }.toSortedMap().values.map { sets -> sets.first().weightLb to sets.first().reps }.takeLast(4)
+        }
+    }
     val values = remember { mutableStateMapOf<String, Entry>() }
     // Prefill from the last session; a fresh exercise starts at 0 lb × 10 reps.
     LaunchedEffect(last, st.today) {
@@ -81,7 +88,7 @@ fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
             for (e in ProgramEngine.exercisesFor(b, s)) {
                 val v = values[e.id] ?: Entry(last[e.id]?.first ?: 0.0, last[e.id]?.second ?: 10)
                 ExerciseCard(
-                    e, v, last[e.id], sets = ProgramEngine.setsFor(e, s.phase),
+                    e, v, last[e.id], history[e.id] ?: emptyList(), sets = ProgramEngine.setsFor(e, s.phase),
                     onChange = { values[e.id] = it; haptics.tick() },
                 )
             }
@@ -98,7 +105,7 @@ fun LiftInline(vm: AppViewModel, blocks: List<Block>, onSaved: () -> Unit) {
 }
 
 @Composable
-private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, sets: Int, onChange: (Entry) -> Unit) {
+private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, history: List<Pair<Double, Int>>, sets: Int, onChange: (Entry) -> Unit) {
     val c = CutTheme.colors
     val bw = e.step <= 0.0
     val upW = last != null && v.weight > last.first
@@ -115,6 +122,17 @@ private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, sets: 
                     },
                     color = c.text2, style = cutStyle(11, 600, 1f, tabular = true),
                 )
+            }
+            if (history.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                history.forEachIndexed { i, (w, r) ->
+                    val beat = i > 0 && ProgramEngine.beat(w to r, history[i - 1])
+                    Text(
+                        if (bw) "×$r" else "${fmtLb(w)}×$r",
+                        color = if (beat) c.good else c.text2, style = cutStyle(11, 700, 1f, tabular = true),
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(c.ground).padding(6.dp, 4.dp),
+                    )
+                    if (i < history.lastIndex) Text("›", color = c.dim, style = cutStyle(11, 700, 1f))
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
