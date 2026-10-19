@@ -14,7 +14,7 @@ data class CustomLook(val id: String, val name: String, val hue: Int, val stone:
     val code: String get() = encode(hue, stone)
 
     /** Chalk names, so a pasted code gets a name without asking. */
-    val autoName: String get() = "${HUE_NAMES[((hue % 360 + 360) % 360) / 30]} on ${STONES[stone.coerceIn(0, 5)].name.lowercase()}"
+    val autoName: String get() = "${HUE_NAMES[(((hue % 360 + 360) % 360 + 15) % 360) / 30]} on ${STONES[stone.coerceIn(0, 5)].name.lowercase()}"
 
     /** ARGB ints for one face. Order matches ui.theme.Face. */
     data class FaceInts(

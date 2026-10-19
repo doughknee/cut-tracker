@@ -49,6 +49,11 @@ import com.relentnet.cuttracker.ui.LocalHaptics
 import com.relentnet.cuttracker.ui.components.BackHeader
 import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
+import com.relentnet.cuttracker.ui.components.CheckBox
+import com.relentnet.cuttracker.ui.components.Confetti
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.style.TextDecoration
+import kotlinx.coroutines.delay
 import com.relentnet.cuttracker.ui.components.ChipRow
 import com.relentnet.cuttracker.ui.components.Hold
 import com.relentnet.cuttracker.ui.components.HoldShape
@@ -169,10 +174,14 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
     }
 }
 
-/** A corner of Today drawn in [palette], so a tap on a look shows what it does before it does it everywhere. */
+/**
+ * A corner of Today drawn in [palette], so a tap on a look shows what it does before it does it everywhere. It plays:
+ * tick the row, log the day, and the look's own confetti goes up. Then it resets so you can do it again.
+ */
 @Composable
 private fun Preview(palette: Palette, dark: Boolean, line: String) {
     val colors = palette.colors(dark)
+    val haptics = LocalHaptics.current
     val ground by animateColorAsState(colors.ground, tween(360), label = "pg")
     val surface by animateColorAsState(colors.surface, tween(360), label = "ps")
     val wall by animateColorAsState(colors.wall, tween(360), label = "pw")
@@ -180,36 +189,48 @@ private fun Preview(palette: Palette, dark: Boolean, line: String) {
     val good by animateColorAsState(colors.good, tween(360), label = "pgood")
     val freeze by animateColorAsState(colors.freeze, tween(360), label = "pf")
     val live: CutColors = colors.copy(ground = ground, surface = surface, wall = wall, accent = accent, good = good, freeze = freeze)
+    var checked by remember { mutableStateOf(false) }
+    var logged by remember { mutableStateOf(false) }
+    val sent = checked && logged
+    LaunchedEffect(sent) { if (sent) { haptics.pattern(0, 30, 40, 60); delay(1800); checked = false; logged = false } }
     CompositionLocalProvider(LocalCutColors provides live, LocalDecor provides palette.decor) {
         val c = CutTheme.colors
-        Card(Modifier.fillMaxWidth(), radius = 16.dp, background = c.ground, border = c.hairline) {
-            Box(Modifier.fillMaxWidth().height(86.dp).background(c.wall).drawBehind { drawWallDecor(palette.decor, c, 64.dp.toPx()) }) {
-                Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Hold(HoldShape.JUG, c.good, 30.dp); Hold(HoldShape.CRIMP, c.goodDim, 26.dp); Hold(HoldShape.SLOPER, c.freeze, 28.dp); Hold(HoldShape.PINCH, c.accent, 30.dp)
-                }
-                Text("V1 · WEEK 1", color = c.onAccent, style = cutStyle(9, 800, 1f, 0.1f), modifier = Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(4.dp)).background(c.accent).padding(6.dp, 3.dp))
-            }
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                    Column {
-                        Text(palette.name, color = c.text, style = cutStyle(20, 800, 1f, -0.02f, display = true))
-                        Text(line, color = c.text2, style = cutStyle(11, 500, 1.3f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Box(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth(), radius = 16.dp, background = c.ground, border = c.hairline) {
+                Box(Modifier.fillMaxWidth().height(86.dp).background(c.wall).drawBehind { drawWallDecor(palette.decor, c, 64.dp.toPx()) }) {
+                    Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Hold(HoldShape.JUG, c.good, 30.dp); Hold(HoldShape.CRIMP, c.goodDim, 26.dp); Hold(HoldShape.SLOPER, c.freeze, 28.dp)
+                        val today by animateColorAsState(if (sent) c.good else c.accent, tween(300), label = "ptoday")
+                        Hold(HoldShape.PINCH, today, 30.dp)
                     }
-                    Text("4 CHAIN", color = c.good, style = cutStyle(11, 800, 1f, 0.06f))
+                    Text("V1 · WEEK 1", color = c.onAccent, style = cutStyle(9, 800, 1f, 0.1f), modifier = Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(4.dp)).background(c.accent).padding(6.dp, 3.dp))
                 }
-                Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.surface).border(1.5.dp, c.accent.copy(alpha = 0.6f), RoundedCornerShape(10.dp)).padding(12.dp, 10.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Box(Modifier.size(20.dp).clip(RoundedCornerShape(5.dp)).border(2.dp, c.mutedBorder, RoundedCornerShape(5.dp)))
-                    Column(Modifier.weight(1f)) {
-                        Text("UP NEXT", color = c.accent, style = cutStyle(9, 800, 1f, 0.1f))
-                        Text("Weigh in", color = c.text, style = cutStyle(14, 700, 1f))
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                        Column(Modifier.weight(1f)) {
+                            Text(palette.name, color = c.text, style = cutStyle(20, 800, 1f, -0.02f, display = true))
+                            Text(line, color = c.text2, style = cutStyle(11, 500, 1.3f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        Text(if (sent) "5 CHAIN" else "4 CHAIN", color = c.good, style = cutStyle(11, 800, 1f, 0.06f), modifier = Modifier.padding(start = 10.dp))
                     }
-                    Text("+10", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true))
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (checked) c.surface.copy(alpha = 0.7f) else c.surface)
+                            .then(if (checked) Modifier else Modifier.border(1.5.dp, c.accent.copy(alpha = 0.6f), RoundedCornerShape(10.dp)))
+                            .clickable(role = Role.Checkbox) { haptics.tick(); checked = !checked }.padding(12.dp, 10.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        CheckBox(checked, size = 20, iconSize = 11)
+                        Column(Modifier.weight(1f)) {
+                            if (!checked) Text("UP NEXT", color = c.accent, style = cutStyle(9, 800, 1f, 0.1f))
+                            Text("Weigh in", color = if (checked) c.text2 else c.text, style = cutStyle(14, 700, 1f), textDecoration = if (checked) TextDecoration.LineThrough else null)
+                        }
+                        val xp by animateColorAsState(if (checked) c.good else c.text2, tween(200), label = "pxp")
+                        Text("+10", color = xp, style = cutStyle(11, 700, 1f, tabular = true))
+                    }
+                    BigButton(if (logged) "Logged" else "Log it", onClick = { haptics.tick(); logged = true }, modifier = Modifier.fillMaxWidth(), height = 40.dp, fontSize = 12, confirm = true, enabled = !logged)
                 }
-                BigButton("Log it", onClick = {}, modifier = Modifier.fillMaxWidth(), height = 40.dp, fontSize = 12)
             }
+            if (sent) Confetti(colors = listOf(c.accent, c.good))
         }
     }
 }
