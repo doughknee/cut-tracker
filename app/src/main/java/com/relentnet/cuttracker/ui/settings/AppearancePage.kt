@@ -29,6 +29,18 @@ import com.relentnet.cuttracker.ui.components.drawWallDecor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.mutableStateOf
@@ -134,20 +146,45 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
         var code by remember { mutableStateOf("") }
         val looks = s.customLooks
         fun add(look: CustomLook) { haptics.tick(); vm.saveSettings(s.copy(customLooks = looks.filter { it.id != look.id } + look, palette = look.id, paletteByCalendar = false)) }
+        // The tap is the show: the tile pulses and a hairline ring runs out from it across the grid.
+        val scope = rememberCoroutineScope()
+        val ripple = remember { Animatable(0f) }
+        var grid by remember { mutableStateOf<LayoutCoordinates?>(null) }
+        val centers = remember { mutableStateMapOf<String, Offset>() }
+        var tapped by remember { mutableStateOf("" to 0) }
+        var origin by remember { mutableStateOf(Offset.Zero) }
+        fun pick(id: String) {
+            haptics.tick(); tapped = id to tapped.second + 1; origin = centers[id] ?: Offset.Zero
+            scope.launch { ripple.snapTo(0f); ripple.animateTo(1f, tween(650, easing = FastOutSlowInEasing)) }
+            vm.saveSettings(s.copy(palette = id, paletteByCalendar = false))
+        }
         KindCard("Looks", "${Palettes.all.size + looks.size}", sub = if (s.paletteByCalendar) "Pick one and the calendar lets go." else null) {
-            Column(Modifier.padding(14.dp, 6.dp, 14.dp, 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                Modifier.padding(14.dp, 6.dp, 14.dp, 14.dp).onGloballyPositioned { grid = it }.drawWithContent {
+                    drawContent()
+                    val t = ripple.value
+                    if (t > 0f && t < 1f) {
+                        val reach = listOf(Offset.Zero, Offset(size.width, 0f), Offset(0f, size.height), Offset(size.width, size.height)).maxOf { (it - origin).getDistance() }
+                        drawCircle(c.accent.copy(alpha = (1f - t) * 0.9f), t * reach, origin, style = Stroke(1.5.dp.toPx()))
+                        drawCircle(c.accent.copy(alpha = (1f - t) * 0.35f), t * reach * 0.7f, origin, style = Stroke(1.dp.toPx()))
+                    }
+                },
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 val tiles: List<Any?> = Palettes.all + looks + listOf(null)
                 for (row in tiles.chunked(2)) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (t in row) when (t) {
-                        is Palette -> PaletteTile(t, dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f)) {
-                            haptics.tick(); vm.saveSettings(s.copy(palette = t.id, paletteByCalendar = false))
+                    for (t in row) {
+                        val id = (t as? Palette)?.id ?: (t as? CustomLook)?.id
+                        val place = if (id == null) Modifier else Modifier.onGloballyPositioned { tile -> grid?.let { g -> centers[id] = g.localPositionOf(tile, Offset(tile.size.width / 2f, tile.size.height / 2f)) } }
+                        when (t) {
+                            is Palette -> PaletteTile(t, dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f).then(place), pulse = if (tapped.first == t.id) tapped.second else 0) { pick(t.id) }
+                            is CustomLook -> PaletteTile(
+                                t.palette(), dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f).then(place), pulse = if (tapped.first == t.id) tapped.second else 0,
+                                onEdit = { sheet = t.id },
+                                onDelete = { haptics.tick(); vm.saveSettings(s.copy(customLooks = looks.filter { it.id != t.id }, palette = if (s.palette == t.id) "sandstone" else s.palette)) },
+                            ) { pick(t.id) }
+                            else -> NewLookTile(Modifier.weight(1f)) { sheet = "" }
                         }
-                        is CustomLook -> PaletteTile(
-                            t.palette(), dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f),
-                            onEdit = { sheet = t.id },
-                            onDelete = { haptics.tick(); vm.saveSettings(s.copy(customLooks = looks.filter { it.id != t.id }, palette = if (s.palette == t.id) "sandstone" else s.palette)) },
-                        ) { haptics.tick(); vm.saveSettings(s.copy(palette = t.id, paletteByCalendar = false)) }
-                        else -> NewLookTile(Modifier.weight(1f)) { sheet = "" }
                     }
                     if (row.size == 1) Box(Modifier.weight(1f))
                 }
@@ -230,19 +267,21 @@ private fun Preview(palette: Palette, dark: Boolean, line: String) {
                     BigButton(if (logged) "Logged" else "Log it", onClick = { haptics.tick(); logged = true }, modifier = Modifier.fillMaxWidth(), height = 40.dp, fontSize = 12, confirm = true, enabled = !logged)
                 }
             }
-            if (sent) Confetti(colors = listOf(c.accent, c.good))
+            if (sent) Confetti(colors = listOf(c.accent, c.good), durationFrames = 130)
         }
     }
 }
 
 /** One look in the grid, drawn in its own stone so the grid is the preview. A chalked look carries its pen and its bin. */
 @Composable
-private fun PaletteTile(p: Palette, dark: Boolean, selected: Boolean, modifier: Modifier, onEdit: (() -> Unit)? = null, onDelete: (() -> Unit)? = null, onClick: () -> Unit) {
+private fun PaletteTile(p: Palette, dark: Boolean, selected: Boolean, modifier: Modifier, pulse: Int = 0, onEdit: (() -> Unit)? = null, onDelete: (() -> Unit)? = null, onClick: () -> Unit) {
     val outer = CutTheme.colors
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(pulse) { if (pulse > 0) { scale.animateTo(1.06f, tween(110)); scale.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow)) } }
     CompositionLocalProvider(LocalCutColors provides p.colors(dark), LocalDecor provides p.decor) {
         val c = CutTheme.colors
         Column(
-            modifier.clip(RoundedCornerShape(12.dp)).background(c.ground).border(if (selected) 2.dp else 1.dp, if (selected) outer.accent else outer.hairline, RoundedCornerShape(12.dp))
+            modifier.graphicsLayer { scaleX = scale.value; scaleY = scale.value }.clip(RoundedCornerShape(12.dp)).background(c.ground).border(if (selected) 2.dp else 1.dp, if (selected) outer.accent else outer.hairline, RoundedCornerShape(12.dp))
                 .pressable(onClick = onClick).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {

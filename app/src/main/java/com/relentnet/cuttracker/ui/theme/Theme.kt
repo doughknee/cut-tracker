@@ -5,7 +5,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
@@ -73,10 +76,23 @@ fun isDarkFor(mode: ThemeMode, now: java.time.LocalTime): Boolean = when (mode) 
     ThemeMode.SCHEDULE -> Palettes.scheduledDark(now)
 }
 
+/** The swap is the show: each token slides to the new look instead of snapping. */
+@Composable
+private fun CutColors.eased(): CutColors = copy(
+    ground = ground.eased("ground"), surface = surface.eased("surface"), hairline = hairline.eased("hairline"), mutedBorder = mutedBorder.eased("muted"),
+    text = text.eased("text"), text2 = text2.eased("text2"), dim = dim.eased("dim"), accent = accent.eased("accent"), onAccent = onAccent.eased("onAccent"),
+    good = good.eased("good"), goodDim = goodDim.eased("goodDim"), freeze = freeze.eased("freeze"), miss = miss.eased("miss"), future = future.eased("future"),
+    wall = wall.eased("wall"),
+)
+
+@Composable
+private fun Color.eased(label: String): Color = animateColorAsState(this, tween(400), label = label).value
+
 @Composable
 fun CutTheme(mode: ThemeMode, palette: Palette = Palettes.SANDSTONE, now: java.time.LocalTime = java.time.LocalTime.now(), content: @Composable () -> Unit) {
     val dark = isDarkFor(mode, now)
-    val c = palette.colors(dark)
+    // Keyed on dark so a mode flip snaps (the states are rebuilt at the new colors) while a palette change eases.
+    val c = key(dark) { palette.colors(dark).eased() }
     val scheme = if (dark) darkColorScheme(
         primary = c.accent, onPrimary = c.onAccent, background = c.ground, onBackground = c.text,
         surface = c.surface, onSurface = c.text, surfaceVariant = c.surface, onSurfaceVariant = c.text2,
