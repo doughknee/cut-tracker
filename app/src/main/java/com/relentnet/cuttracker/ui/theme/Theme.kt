@@ -52,6 +52,9 @@ val LightCutColors = CutColors(
 
 val LocalCutColors = staticCompositionLocalOf { DarkCutColors }
 
+/** What the current look pins to the holds. Holds read it so every hold in the app dresses up at once. */
+val LocalDecor = staticCompositionLocalOf { Decor.NONE }
+
 enum class ThemeMode { SYSTEM, DARK, LIGHT, SCHEDULE;
     companion object { fun of(s: String) = when (s) { "dark" -> DARK; "light" -> LIGHT; "schedule" -> SCHEDULE; else -> SYSTEM } }
 }
@@ -93,7 +96,7 @@ fun CutTheme(mode: ThemeMode, palette: Palette = Palettes.SANDSTONE, now: java.t
         val window = (view.context as? Activity)?.window ?: return@SideEffect
         WindowCompat.getInsetsController(window, view).apply { isAppearanceLightStatusBars = !dark; isAppearanceLightNavigationBars = !dark }
     }
-    CompositionLocalProvider(LocalCutColors provides c) {
+    CompositionLocalProvider(LocalCutColors provides c, LocalDecor provides palette.decor) {
         MaterialTheme(colorScheme = scheme, typography = CutTypography, content = content)
     }
 }

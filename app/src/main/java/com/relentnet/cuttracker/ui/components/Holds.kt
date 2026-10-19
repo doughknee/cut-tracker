@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import com.relentnet.cuttracker.data.DayMode
 import com.relentnet.cuttracker.engine.DayResult
 import com.relentnet.cuttracker.ui.theme.CutColors
+import com.relentnet.cuttracker.ui.theme.CutTheme
+import com.relentnet.cuttracker.ui.theme.Decor
+import com.relentnet.cuttracker.ui.theme.LocalDecor
 
 /** Hold silhouette = kind of day. Jug is the easy one, crimp the hard one, sloper nothing to grab, pinch no pick. */
 enum class HoldShape { JUG, CRIMP, SLOPER, PINCH }
@@ -88,7 +91,62 @@ fun DrawScope.drawHold(shape: HoldShape, fill: Color, stroke: Color? = null, str
     }
 }
 
-/** A hold with optional centered content (the day number). */
+/**
+ * The holiday hat: drawn along the top edge of the hold so a day number in the middle stays readable. Colors come from
+ * the look, never from here, so the hat reads in both dark and light.
+ */
+fun DrawScope.drawDecor(decor: Decor, shape: HoldShape, fill: Color, c: CutColors) {
+    val s = size.minDimension / 24f
+    // Where the top of the silhouette sits, per shape, so the hat sits on the hold and not above it.
+    val top = when (shape) { HoldShape.JUG -> 2.2f; HoldShape.CRIMP -> 6.5f; HoldShape.SLOPER -> 7.2f; HoldShape.PINCH -> 3.4f }
+    when (decor) {
+        Decor.NONE -> Unit
+        Decor.PUMPKIN -> {
+            // A stem, and two eyes cut into the hold just under the top edge.
+            drawRoundRect(c.goodDim, Offset(10.9f * s, (top - 2.2f) * s), Size(2.2f * s, 2.8f * s), CornerRadius(0.8f * s))
+            val eye = Path().apply { moveTo(7.2f * s, (top + 5.2f) * s); lineTo(9.8f * s, (top + 5.2f) * s); lineTo(8.5f * s, (top + 2.9f) * s); close() }
+            val eye2 = Path().apply { moveTo(14.2f * s, (top + 5.2f) * s); lineTo(16.8f * s, (top + 5.2f) * s); lineTo(15.5f * s, (top + 2.9f) * s); close() }
+            drawPath(eye, c.ground); drawPath(eye2, c.ground)
+        }
+        Decor.SNOW -> {
+            // Three soft blobs along the top edge.
+            val snow = c.text.copy(alpha = 0.9f)
+            drawCircle(snow, 2.6f * s, Offset(8f * s, (top + 0.6f) * s))
+            drawCircle(snow, 3.2f * s, Offset(12.4f * s, (top + 0.2f) * s))
+            drawCircle(snow, 2.3f * s, Offset(16.4f * s, (top + 0.9f) * s))
+        }
+        Decor.HEART -> {
+            // A small heart at the top right.
+            val cx = 17.2f * s; val cy = (top + 2.2f) * s; val r = 1.6f * s
+            drawCircle(c.accent, r, Offset(cx - r * 0.9f, cy - r * 0.4f))
+            drawCircle(c.accent, r, Offset(cx + r * 0.9f, cy - r * 0.4f))
+            val tip = Path().apply { moveTo(cx - r * 1.8f, cy); lineTo(cx + r * 1.8f, cy); lineTo(cx, cy + r * 2.1f); close() }
+            drawPath(tip, c.accent)
+        }
+        Decor.STARS -> {
+            // A four-point spark at the top right and a smaller one at the top left.
+            fun spark(cx: Float, cy: Float, r: Float) {
+                val p = Path().apply {
+                    moveTo(cx, cy - r); quadraticTo(cx, cy, cx + r, cy); quadraticTo(cx, cy, cx, cy + r); quadraticTo(cx, cy, cx - r, cy); quadraticTo(cx, cy, cx, cy - r); close()
+                }
+                drawPath(p, c.accent)
+            }
+            spark(17.6f * s, (top + 2.4f) * s, 3.2f * s)
+            spark(6.4f * s, (top + 1.6f) * s, 1.9f * s)
+        }
+        Decor.BUNTING -> {
+            // Three little flags hung from the top edge.
+            val cols = listOf(c.accent, c.text, c.freeze)
+            for (i in 0..2) {
+                val x = (7f + i * 5f) * s
+                val p = Path().apply { moveTo(x - 1.6f * s, (top + 0.6f) * s); lineTo(x + 1.6f * s, (top + 0.6f) * s); lineTo(x, (top + 4.2f) * s); close() }
+                drawPath(p, cols[i])
+            }
+        }
+    }
+}
+
+/** A hold with optional centered content (the day number). Wears the current look's decor. */
 @Composable
 fun Hold(
     shape: HoldShape,
@@ -99,8 +157,10 @@ fun Hold(
     strokeWidth: Dp = 0.dp,
     content: @Composable () -> Unit = {},
 ) {
+    val decor = LocalDecor.current
+    val c = CutTheme.colors
     Box(
-        modifier.size(size).drawBehind { drawHold(shape, fill, stroke, strokeWidth.toPx()) },
+        modifier.size(size).drawBehind { drawHold(shape, fill, stroke, strokeWidth.toPx()); if (decor != Decor.NONE) drawDecor(decor, shape, fill, c) },
         contentAlignment = Alignment.Center,
     ) { content() }
 }

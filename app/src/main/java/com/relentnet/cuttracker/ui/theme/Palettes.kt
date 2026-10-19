@@ -14,9 +14,12 @@ data class Face(
     val accent: Color, val onAccent: Color, val good: Color, val goodDim: Color, val freeze: Color, val miss: Color, val future: Color,
 )
 
+/** What a holiday look pins to the top of every hold. The number in the middle stays readable. */
+enum class Decor { NONE, PUMPKIN, SNOW, HEART, STARS, BUNTING }
+
 /** A named look. The stone (ground, surface, wall) and the three result colors change; the type and the layout never do. */
 @Immutable
-data class Palette(val id: String, val name: String, val line: String, val dark: Face, val light: Face) {
+data class Palette(val id: String, val name: String, val line: String, val dark: Face, val light: Face, val decor: Decor = Decor.NONE) {
     fun colors(isDark: Boolean): CutColors {
         val base = if (isDark) DarkCutColors else LightCutColors
         val f = if (isDark) dark else light
@@ -76,29 +79,34 @@ object Palettes {
         light(0xFFF7F1E8, 0xFFFFFFFF, 0xFFEBE1D2, 0xFFD3C3AC, 0xFFF0E7DA, 0xFFD9700A, 0xFF9A7B00, 0xFFEADFA2, 0xFF6F3FC0),
     )
     val HALLOWEEN = Palette(
-        "halloween", "Halloween", "Jack-o'-lantern orange on a purple-black wall. Acid green sends.",
+        "halloween", "Halloween", "Jack-o'-lantern orange on a purple-black wall. Every hold gets a face.",
         dark(0xFF0C0914, 0xFF17121F, 0xFF261D33, 0xFF433659, 0xFF120D1C, 0xFFFF7518, 0xFFB5FF4A, 0xFF4A6A20, 0xFF9B5DE5),
         light(0xFFF4EEF9, 0xFFFFFFFF, 0xFFE6DCF0, 0xFFCDBEDF, 0xFFEBE3F3, 0xFFE85D04, 0xFF5C9A00, 0xFFCDEDA3, 0xFF6F3FC0),
+        decor = Decor.PUMPKIN,
     )
     val WINTER = Palette(
-        "winter", "Winter", "Pine and ember on dark ice. For the last week of the year.",
+        "winter", "Winter", "Pine and ember on dark ice, snow on every hold. The last week of the year.",
         dark(0xFF0A0F12, 0xFF121A1E, 0xFF1D282E, 0xFF344550, 0xFF0F161A, 0xFFE63946, 0xFF2FBF71, 0xFF1E5A3C, 0xFF8ECAE6),
         light(0xFFEDF3F5, 0xFFFFFFFF, 0xFFD8E4E9, 0xFFB3C7D0, 0xFFE2ECF0, 0xFFC1121F, 0xFF1B8A4B, 0xFFB8E3C8, 0xFF3A86C8),
+        decor = Decor.SNOW,
     )
     val NEW_YEAR = Palette(
-        "newyear", "New Year", "Gold chalk on black. One night a year.",
+        "newyear", "New Year", "Gold chalk on black, a spark on every hold. One night a year.",
         dark(0xFF000000, 0xFF111008, 0xFF24220F, 0xFF46421C, 0xFF0A0906, 0xFFFFD60A, 0xFFF2EEE6, 0xFF5A5848, 0xFF5AA9FF, onAccent = 0xFF000000),
         light(0xFFFBF8EE, 0xFFFFFFFF, 0xFFEFE8CF, 0xFFD8CFA8, 0xFFF3EEDC, 0xFFC99A00, 0xFF4F8A0E, 0xFFC9DDB0, 0xFF2F7FD6),
+        decor = Decor.STARS,
     )
     val ROSE = Palette(
-        "rose", "Rose", "Rose chalk, blush sends. Mid-February.",
+        "rose", "Rose", "Rose chalk, blush sends, a heart on every hold. Mid-February.",
         dark(0xFF120A0E, 0xFF1C1218, 0xFF2C1E26, 0xFF4A3540, 0xFF170F14, 0xFFFF5C8A, 0xFFFFB3C6, 0xFF5A3C46, 0xFF8ECAE6),
         light(0xFFF9EEF2, 0xFFFFFFFF, 0xFFEFDCE4, 0xFFDBBAC8, 0xFFF3E5EB, 0xFFD6336C, 0xFFB03060, 0xFFF0C6D4, 0xFF2F7FD6),
+        decor = Decor.HEART,
     )
     val FOURTH = Palette(
-        "fourth", "Fourth", "Red chalk, white sends, blue freeze. Early July.",
+        "fourth", "Fourth", "Red chalk, white sends, blue freeze, bunting on every hold. Early July.",
         dark(0xFF0A0C14, 0xFF13161F, 0xFF202432, 0xFF384058, 0xFF10131A, 0xFFFF3B3B, 0xFFF2EEE6, 0xFF5A5858, 0xFF3A86FF),
         light(0xFFEFF2F8, 0xFFFFFFFF, 0xFFDDE3EE, 0xFFBAC6DA, 0xFFE3E9F2, 0xFFD62828, 0xFF1F3F8A, 0xFFBFCDEB, 0xFF3A86FF),
+        decor = Decor.BUNTING,
     )
 
     /** What the palette grid shows, in order. Holiday looks sit at the end so they can be picked by hand too. */

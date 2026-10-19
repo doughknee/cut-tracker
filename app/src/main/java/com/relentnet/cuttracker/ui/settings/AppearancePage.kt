@@ -45,6 +45,8 @@ import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutColors
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.LocalCutColors
+import com.relentnet.cuttracker.ui.theme.LocalDecor
+import com.relentnet.cuttracker.ui.theme.Decor
 import com.relentnet.cuttracker.ui.theme.Palette
 import com.relentnet.cuttracker.ui.theme.Palettes
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -136,7 +138,7 @@ private fun Preview(palette: Palette, dark: Boolean, line: String) {
     val good by animateColorAsState(colors.good, tween(360), label = "pgood")
     val freeze by animateColorAsState(colors.freeze, tween(360), label = "pf")
     val live: CutColors = colors.copy(ground = ground, surface = surface, wall = wall, accent = accent, good = good, freeze = freeze)
-    CompositionLocalProvider(LocalCutColors provides live) {
+    CompositionLocalProvider(LocalCutColors provides live, LocalDecor provides palette.decor) {
         val c = CutTheme.colors
         Card(Modifier.fillMaxWidth(), radius = 16.dp, background = c.ground, border = c.hairline) {
             Box(Modifier.fillMaxWidth().height(86.dp).background(c.wall)) {
@@ -174,7 +176,7 @@ private fun Preview(palette: Palette, dark: Boolean, line: String) {
 @Composable
 private fun PaletteTile(p: Palette, dark: Boolean, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val outer = CutTheme.colors
-    CompositionLocalProvider(LocalCutColors provides p.colors(dark)) {
+    CompositionLocalProvider(LocalCutColors provides p.colors(dark), LocalDecor provides p.decor) {
         val c = CutTheme.colors
         Column(
             modifier.clip(RoundedCornerShape(12.dp)).background(c.ground).border(if (selected) 2.dp else 1.dp, if (selected) outer.accent else outer.hairline, RoundedCornerShape(12.dp))
@@ -182,7 +184,8 @@ private fun PaletteTile(p: Palette, dark: Boolean, selected: Boolean, modifier: 
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                Swatch(c.accent, 16); Swatch(c.good, 12); Swatch(c.freeze, 12); Swatch(c.surface, 12, c.mutedBorder)
+                if (p.decor != Decor.NONE) Hold(HoldShape.JUG, c.good, 18.dp) else Swatch(c.accent, 16)
+                Swatch(c.good, 12); Swatch(c.freeze, 12); Swatch(c.surface, 12, c.mutedBorder)
                 Box(Modifier.weight(1f))
                 if (selected) Text("ON", color = outer.accent, style = cutStyle(9, 800, 1f, 0.1f))
             }
