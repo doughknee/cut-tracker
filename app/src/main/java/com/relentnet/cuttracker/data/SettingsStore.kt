@@ -61,8 +61,14 @@ data class Settings(
     val onlineFeatures: Boolean = false,
     /** Fetch the page behind a pasted recipe link to fill in the New meal sheet. Only counts while [onlineFeatures] is on. */
     val recipeImport: Boolean = true,
+    /** Look a scanned barcode up on Open Food Facts to fill in the New meal sheet. Only counts while [onlineFeatures] is on. Off until
+     *  the allow card in New meal, or the switch in Settings, turns it on: an update must not switch a new network feature on by itself. */
+    val barcodeLookup: Boolean = false,
 ) {
     val recipeImportOn: Boolean get() = onlineFeatures && recipeImport
+    val barcodeLookupOn: Boolean get() = onlineFeatures && barcodeLookup
+    /** How many online features are switched on, for the Settings summary. */
+    val onlineCount: Int get() = if (!onlineFeatures) 0 else listOf(recipeImport, barcodeLookup).count { it }
     val calories: Int get() = caloriesP1
     val endDate: LocalDate get() = startDate.plusDays(lengthWeeks * 7L)
     val totalDays: Int get() = lengthWeeks * 7
@@ -104,6 +110,7 @@ class SettingsStore(context: Context) {
         val paletteByCalendar = booleanPreferencesKey("paletteByCalendar")
         val customLooks = stringPreferencesKey("customLooks")
         val recipeImport = booleanPreferencesKey("recipeImport")
+        val barcodeLookup = booleanPreferencesKey("barcodeLookup")
     }
 
     val flow: Flow<Settings> = ds.data.map { p -> read(p) }
@@ -141,6 +148,7 @@ class SettingsStore(context: Context) {
             paletteByCalendar = p[K.paletteByCalendar] ?: d.paletteByCalendar,
             customLooks = p[K.customLooks]?.let { runCatching { json.decodeFromString(ListSerializer(CustomLook.serializer()), it) }.getOrNull() } ?: d.customLooks,
             recipeImport = p[K.recipeImport] ?: d.recipeImport,
+            barcodeLookup = p[K.barcodeLookup] ?: d.barcodeLookup,
             checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
             weighInTime = p[K.weighInTime]?.let(LocalTime::parse) ?: d.weighInTime,
             pickTime = p[K.pickTime]?.let(LocalTime::parse) ?: d.pickTime,
@@ -180,6 +188,7 @@ class SettingsStore(context: Context) {
         p[K.paletteByCalendar] = s.paletteByCalendar
         p[K.customLooks] = json.encodeToString(ListSerializer(CustomLook.serializer()), s.customLooks)
         p[K.recipeImport] = s.recipeImport
+        p[K.barcodeLookup] = s.barcodeLookup
         p[K.weighInTime] = s.weighInTime.toString()
         p[K.pickTime] = s.pickTime.toString()
         p[K.resetHour] = s.resetHour

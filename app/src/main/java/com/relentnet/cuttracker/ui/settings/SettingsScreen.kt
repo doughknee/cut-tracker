@@ -101,7 +101,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(CutIcons.Shield, null, Modifier.size(22.dp), tint = if (s.onlineFeatures) c.text2 else c.good)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(if (s.onlineFeatures) "Online features: ${if (s.recipeImport) 1 else 0} on" else "Offline", color = c.text, style = cutStyle(16, 800, 1f, display = true))
+                    Text(if (s.onlineFeatures) "Online features: ${s.onlineCount} on" else "Offline", color = c.text, style = cutStyle(16, 800, 1f, display = true))
                     Text(if (s.onlineFeatures) "Only what you switched on can use the network." else "Nothing leaves the phone.", color = c.text2, style = cutStyle(12, 500, 1.3f))
                 }
                 Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
@@ -213,7 +213,13 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     PlainRow("Recipe import by link", "downloads the one page you paste in New meal, straight from that site") {
                         Switch(s.onlineFeatures && s.recipeImport) { if (s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(recipeImport = !s.recipeImport)) } }
                     }
-                    PlainRow("The code that does it", "public, on GitHub") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/RecipeImport.kt"))) } }
+                    PlainRow("Barcode lookup", "sends the digits you scan in New meal to Open Food Facts, a public food database, and nothing else") {
+                        Switch(s.onlineFeatures && s.barcodeLookup) { if (s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(barcodeLookup = !s.barcodeLookup)) } }
+                    }
+                    PlainRow("The code that does it", "public, on GitHub") {
+                        LinkText("Recipe") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/RecipeImport.kt"))) }
+                        LinkText("Barcode") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/OpenFoodFacts.kt"))) }
+                    }
                 }
                 KindCard("Danger", "") {
                     PlainRow(

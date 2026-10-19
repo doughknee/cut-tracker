@@ -8,3 +8,7 @@
 
 # Glance instantiates ActionCallback classes reflectively when a widget is tapped.
 -keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }
+
+# ML Kit lists its component registrars by name in the manifest and instantiates them reflectively; R8 dropped their
+# no-arg constructors, so BarcodeScanning.getClient() crashed with a null registrar on the release build.
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }

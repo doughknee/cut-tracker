@@ -7,3 +7,4 @@ keystore.properties
 *.jks
 .idea/
 screenshots/*.tmp
+tools/fdc-cache/

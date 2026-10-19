@@ -14,6 +14,7 @@ work = "2.12.0"
 glance = "1.2.0"
 kotlinxSerialization = "1.11.0"
 coroutines = "1.11.0"
+mlkitBarcode = "17.3.0"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -38,6 +39,8 @@ work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work"
 glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+# The bundled model: scans without Google Play services (the phone runs GrapheneOS), at the cost of ~3 MB of APK.
+mlkit-barcode = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcode" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 
 [plugins]
