@@ -22,8 +22,8 @@ android {
         targetSdk = 36
         // Bump both for every Play upload; versionCode only ever goes up.
         // -PversionCode=N lets a test build install over a newer build already on the phone (no uninstall).
-        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 3
-        versionName = "1.2.0"
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 4
+        versionName = "1.3.0"
     }
 
     signingConfigs {

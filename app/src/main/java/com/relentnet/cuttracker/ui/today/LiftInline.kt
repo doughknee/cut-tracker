@@ -154,7 +154,8 @@ private fun Stepper(value: String, up: Boolean, onMinus: () -> Unit, onPlus: () 
     Row(Modifier.fillMaxWidth().height(48.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         StepButton("-", onMinus)
         if (typing) {
-            var text by remember { androidx.compose.runtime.mutableStateOf(value) }
+            // Starts empty with the current value as the hint, so typing replaces it.
+            var text by remember { androidx.compose.runtime.mutableStateOf("") }
             val focus = remember { androidx.compose.ui.focus.FocusRequester() }
             var had by remember { androidx.compose.runtime.mutableStateOf(false) }
             LaunchedEffect(Unit) { focus.requestFocus() }
@@ -162,7 +163,7 @@ private fun Stepper(value: String, up: Boolean, onMinus: () -> Unit, onPlus: () 
             Field(
                 text, { text = it },
                 Modifier.weight(1f).onFocusChanged { if (it.isFocused) had = true else if (had) commit() },
-                height = 48.dp, fontSize = 22, center = true, focusRequester = focus, onDone = ::commit, borderWidth = 1.dp,
+                height = 48.dp, fontSize = 22, center = true, focusRequester = focus, onDone = ::commit, borderWidth = 1.dp, placeholder = value,
             )
         } else Box(
             Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(9.dp)).background(c.ground)

@@ -211,7 +211,8 @@ fun MiniStepper(
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         StepBtn("−", "Less", onMinus)
         if (typing && onType != null) {
-            var text by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(value.replace(",", "")) }
+            // Starts empty with the current value as the hint, so typing replaces it; an empty Done keeps the old value.
+            var text by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
             val focus = remember { androidx.compose.ui.focus.FocusRequester() }
             var had by remember { androidx.compose.runtime.mutableStateOf(false) }
             androidx.compose.runtime.LaunchedEffect(Unit) { focus.requestFocus() }
@@ -219,7 +220,7 @@ fun MiniStepper(
             Field(
                 text, { text = it },
                 Modifier.width(66.dp).onFocusChanged { f -> if (f.isFocused) had = true else if (had) commit() },
-                height = 36.dp, fontSize = 14, center = true, focusRequester = focus, onDone = ::commit, padding = 4.dp, radius = 8.dp, borderWidth = 1.dp,
+                height = 36.dp, fontSize = 14, center = true, focusRequester = focus, onDone = ::commit, padding = 4.dp, radius = 8.dp, borderWidth = 1.dp, placeholder = value,
             )
         } else Box(
             Modifier.width(66.dp).height(36.dp).clip(RoundedCornerShape(8.dp)).background(c.ground).border(1.dp, c.mutedBorder, RoundedCornerShape(8.dp))

@@ -94,7 +94,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                 if (pro.isBlank()) pro = ((b * 0.9 / 5).toInt() * 5).coerceIn(80, 300).toString()
             }
             4 -> {
-                val startWeight = sw.toDouble()
+                val startWeight = sw.num() ?: s.startWeight
                 val targetWeight = tw.num() ?: s.targetWeight
                 val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
                 val w = weeks.int()?.coerceIn(1, 52) ?: 12
@@ -166,7 +166,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Protein, grams") {
                         Field(pro, { pro = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
-                    Hint("Prefilled from your weights as a common starting point. Protein is the one that keeps the chain: weigh in and hit it, and the day counts even when the rest slips. Change both any time in Settings.")
+                    Hint("Prefilled from your weights as a common starting point. Protein is the one that keeps the chain: weigh in and hit it, and the day counts even when the rest slips. Change both any time on Beta, under Targets.")
                 }
                 else -> {
                     Big("One nudge a day.")
@@ -174,7 +174,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Weigh-in reminder") {
                         PickerBox(t.toString()) { TimePickerDialog(context, { _, h, m -> time = LocalTime.of(h, m).toString() }, t.hour, t.minute, true).show() }
                     }
-                    Body("That's the only daily notification. A second one fires at 7pm only if you haven't picked a day.")
+                    Body("That's the daily one, and it stays quiet once you weighed in. A second fires at 7pm only if no day is picked yet. Either can be switched off in Settings.")
                 }
             }
         }
