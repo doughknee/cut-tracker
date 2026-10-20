@@ -78,9 +78,45 @@ object Reminders {
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
             .setAutoCancel(true)
+            .apply {
+                // The same two answers as Today's evening card, right from the shade.
+                if (kind == KIND_PICK) {
+                    addAction(0, "Yep, Rest day", pickIntent(context, "REST"))
+                    addAction(0, "I climbed", pickIntent(context, "CLIMB"))
+                }
+            }
             .build()
         runCatching { context.getSystemService(NotificationManager::class.java).notify(if (kind == KIND_WEIGH) 1 else 2, n) }
     }
+}
+
+private fun pickIntent(context: Context, mode: String): PendingIntent = PendingIntent.getBroadcast(
+    context, if (mode == "REST") 21 else 22,
+    Intent(context, PickReceiver::class.java).putExtra(PickReceiver.MODE, mode),
+    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+)
+
+/** A button on the pick-a-day reminder: sets today's kind the way the evening card does, then clears the reminder. */
+class PickReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val mode = intent.getStringExtra(MODE)?.let { m -> com.relentnet.cuttracker.data.DayMode.entries.firstOrNull { it.name == m } } ?: return
+        val app = App.of(context)
+        val result = goAsync()
+        Thread {
+            runBlocking {
+                val today = app.repo.today()
+                // Only if the day is still unset: a tap on a stale notification never overwrites a pick made in the app.
+                if (app.db.dayLogs().get(today)?.mode == null) {
+                    val pre = if (mode == com.relentnet.cuttracker.data.DayMode.CLIMB) setOf(com.relentnet.cuttracker.data.ProgramSpec.ITEM_CLIMB) else emptySet()
+                    app.repo.setMode(mode, pre)
+                }
+            }
+            runCatching { context.getSystemService(NotificationManager::class.java).cancel(2) }
+            result.finish()
+        }.start()
+    }
+
+    companion object { const val MODE = "mode" }
 }
 
 class AlarmReceiver : BroadcastReceiver() {
