@@ -33,13 +33,13 @@ Meals and lifts
 A meal library grouped by kind. Build a meal from ingredients with an offline USDA food search that adds up protein and calories, or point the camera at a nutrition label and let the app read it. The picker leads with what you actually ate for that slot. A lift log that remembers last session and shows the trend, a weight chart with the 7-day average against your pace line, progress photos every two weeks.
 
 Looks
-Thirteen looks, a dark mode that comes on at night, a calendar mode that dresses the wall for the month and the holidays, and a hue ring to chalk your own and share it with a four-letter code.
+Thirteen looks, a dark mode that comes on at night, a calendar mode that dresses the wall for the month and the holidays, and a hue ring to chalk your own and share it with a four-character code.
 
 Scoreboard, not a lecture
 XP for every item, grades from V0 to V10, a workout target you set yourself. No ads, no account, no feed.
 
 Yours
-Everything stays on your phone. No analytics, no sign-in. Two features use the network and both are off until you switch them on: paste a recipe link and the app fills in the meal, or scan a barcode and it looks the product up. Export a backup whenever you like.
+Everything stays on your phone. No analytics, no sign-in. Two features use the network and both are off until you switch them on: paste a recipe link and the app fills in the meal, or scan a barcode and it looks the product up. Save a backup to a file whenever you like, and restore it on a new phone from the first screen.
 
 Sendline is a logbook and a scoreboard, not medical advice. Set your own targets and check with a doctor before a diet if you have a condition.
 
