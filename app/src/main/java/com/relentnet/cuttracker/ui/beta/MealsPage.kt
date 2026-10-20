@@ -145,6 +145,7 @@ private fun MealSheet(
     var recipe by rememberSaveable(m) { mutableStateOf(m?.recipe ?: "") }
     var lines by rememberSaveable(m, saver = linesSaver) { mutableStateOf(m?.ingredients ?: emptyList()) }
     var link by rememberSaveable(m) { mutableStateOf(sharedLink ?: "") }
+    var fetchedFor by rememberSaveable(m) { mutableStateOf("") }
     var fetching by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<Pair<String, Boolean>?>(null) }   // text, ok
     var scanning by remember { mutableStateOf(false) }
@@ -160,13 +161,15 @@ private fun MealSheet(
     // The link is the consent: once online features are on, a usable link fetches half a second after the typing stops.
     // Lives in the effect so a changed link cancels the fetch in flight instead of racing it.
     LaunchedEffect(link, importOn) {
-        if (!importOn || !RecipeImport.isUsable(link)) return@LaunchedEffect
+        if (!importOn || !RecipeImport.isUsable(link) || link == fetchedFor) return@LaunchedEffect
         delay(500)
         fetching = true; note = "Reading the page" to true
         try {
             RecipeImport.fetch(link).onSuccess { r ->
+                fetchedFor = link
                 name = r.name
-                if (r.protein != null || r.calories != null) lines = emptyList()
+                // 2. Numbers from the page replace the lines and both of their totals.
+                if (r.protein != null || r.calories != null) setLines(emptyList())
                 r.protein?.let { pro = it.toString() }; r.calories?.let { cal = it.toString() }
                 recipe = link.trim() + (r.servings?.let { ", 1 of $it servings." } ?: "")
                 val missing = listOfNotNull("protein".takeIf { r.protein == null }, "calories".takeIf { r.calories == null })
@@ -192,7 +195,7 @@ private fun MealSheet(
         reading = false
         val f = LabelRead.parse(text)
         if (lines.isNotEmpty() && (f.protein != null || f.calories != null)) {
-            val grams = f.serving?.let { Regex("""(\d+(?:[.,]\d+)?)\s*g\b""", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1)?.num() } ?: 100.0
+            val grams = f.serving?.let { Regex("""(\d+(?:[.,]\d+)?)\s*g\b""", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1)?.num()?.takeIf { it > 0 } } ?: 100.0
             setLines(lines + Ingredient(if (name.isBlank()) "From the label" else "From the label, $name", grams, (f.protein ?: 0) * 100.0 / grams, (f.calories ?: 0) * 100.0 / grams))
         } else { f.protein?.let { pro = it.toString() }; f.calories?.let { cal = it.toString() } }
         if (f.serving != null && recipe.isBlank()) recipe = "One serving, ${f.serving}, from the label."

@@ -378,7 +378,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
         DayResult.BEFORE -> "Before the start."
         else -> buildList {
             when (log?.mode) { DayMode.CLIMB -> add("Climb day."); DayMode.OFF -> add("Off day."); DayMode.REST -> add("Rest day."); null -> add("No day picked.") }
-            if (items.isNotEmpty()) add("$done of ${items.size} items.")
+            if (items.isNotEmpty()) add("$done of ${maxOf(done, items.size)} items.")
             if (weight != null) add("${ProgramEngine.fmt1(weight)} lb.")
             st.liftSets.filter { it.date == date }.groupBy { it.exerciseId }.forEach { (id, sets) ->
                 val e = st.settings.exercises.firstOrNull { it.id == id } ?: return@forEach

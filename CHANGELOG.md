@@ -25,6 +25,24 @@ What changed in Sendline, from the user's side. Newest first.
 - A sheet with unsaved edits asks before a swipe or a tap outside throws them away.
 - Search matches every word in any order and ignores accents. The lift picker and, past eight meals, Today's meal picker get a search box.
 
+### Meals and the scanner
+
+- What you type in New meal, a custom look or a day-plan sheet survives a dark-mode switch or the app being closed in the background.
+- Removing the last ingredient clears its numbers, and reading a label while a meal has ingredients adds it as one more line.
+- Network problems read as plain sentences, and an http link says only https links can be read.
+- The scanner lets go of the camera when it closes, offers Open settings when the camera is denied, and the label reader waits for a clean frame and says so when it cannot read one.
+- A meal made from Today's picker lands under that meal's kind.
+- Pasting a code for a look you already have selects it.
+
+### Route, Targets and the widget
+
+- Changing the start, goal, weeks or start date on Targets moves the checkpoints with it, unless you set them by hand.
+- The widget shows a plain card before you set up, before a future start and after the route, and a tap on a widget left over from yesterday never ticks today.
+- Past the end of the route, being at goal no longer reads as behind pace.
+- A second route's chart starts at its own start; Today says when a future route starts instead of a negative day.
+- A new checkpoint lands on the first free day a week out; "today" and "tomorrow" replace "in 0 days".
+- Starting a second route can be called off at the first step.
+
 ### Reminders
 
 - Each reminder has its own switch, and the times follow your phone's 12 or 24-hour clock.

@@ -115,7 +115,8 @@ private fun CameraScanner(
     var provider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var failed by remember { mutableStateOf(false) }
     // The camera is bound to the page's lifecycle, so it has to be let go here or it keeps running after the scan.
-    DisposableEffect(Unit) { onDispose { provider?.unbindAll(); executor.shutdown() } }
+    val disposed = remember { AtomicBoolean(false) }
+    DisposableEffect(Unit) { onDispose { disposed.set(true); provider?.unbindAll(); executor.shutdown() } }
     androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
         if (!granted && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) { granted = true; denied = false }
         onPauseOrDispose { }
@@ -129,6 +130,7 @@ private fun CameraScanner(
                         scaleType = PreviewView.ScaleType.FILL_CENTER
                         val future = ProcessCameraProvider.getInstance(ctx)
                         future.addListener({
+                            if (disposed.get()) return@addListener
                             val p = future.get().also { provider = it }
                             val preview = Preview.Builder().build().also { it.surfaceProvider = surfaceProvider }
                             val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).apply {

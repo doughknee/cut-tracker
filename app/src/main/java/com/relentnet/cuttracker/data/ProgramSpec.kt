@@ -194,13 +194,14 @@ object ProgramSpec {
         if (old.startDate == new.startDate && old.startWeight == new.startWeight && old.targetWeight == new.targetWeight && old.lengthWeeks == new.lengthWeeks) return new
         if (!flagsAreDefault(old)) return new
         val skips = new.checkpoints.filter { it.free }
-        return new.copy(checkpoints = (skips + defaultCheckpoints(new.startDate, new.startWeight, new.targetWeight, new.lengthWeeks)).sortedBy { it.date })
+        val flags = defaultCheckpoints(new.startDate, new.startWeight, new.targetWeight, new.lengthWeeks).filter { d -> skips.none { it.covers(d.localDate) } }
+        return new.copy(checkpoints = (skips + flags).sortedBy { it.date })
     }
 
     /** True while the route's flags are exactly the defaults its numbers make (by date and target). */
     fun flagsAreDefault(s: Settings): Boolean =
-        s.checkpoints.filter { !it.free }.map { it.date to it.target } ==
-            defaultCheckpoints(s.startDate, s.startWeight, s.targetWeight, s.lengthWeeks).map { it.date to it.target }
+        s.checkpoints.filter { !it.free }.map { listOf(it.date, it.target, it.note, it.label) } ==
+            defaultCheckpoints(s.startDate, s.startWeight, s.targetWeight, s.lengthWeeks).map { listOf(it.date, it.target, it.note, it.label) }
 
     /** The defaults before onboarding; onboarding replaces them with the user's own. */
     val checkpoints: List<Checkpoint> get() = defaultCheckpoints(PHASE_1_START, START_WEIGHT, TARGET_WEIGHT, LENGTH_WEEKS)

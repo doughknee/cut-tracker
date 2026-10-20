@@ -28,4 +28,14 @@ class FollowFlagsTest {
         val untouched = base.copy(checkpoints = base.checkpoints + skip)
         assertTrue(skip in ProgramSpec.followFlags(untouched, untouched.copy(targetWeight = 168.0)).checkpoints)
     }
+
+    @Test fun aMovedFlagNeverLandsOnASkipAndEditedNotesCountAsHandSet() {
+        // The 8-week route puts a flag on Nov 11; a skip that day keeps the flag off it.
+        val skip = Checkpoint("2026-11-11", free = true, label = "Off", note = "")
+        val withSkip = base.copy(checkpoints = base.checkpoints + skip)
+        val after = ProgramSpec.followFlags(withSkip, withSkip.copy(lengthWeeks = 8))
+        assertTrue(after.checkpoints.count { it.date == "2026-11-11" } == 1)
+        val noted = base.copy(checkpoints = base.checkpoints.mapIndexed { i, cp -> if (i == 0) cp.copy(note = "Mine.") else cp })
+        assertEquals(noted.checkpoints, ProgramSpec.followFlags(noted, noted.copy(lengthWeeks = 8)).checkpoints)
+    }
 }

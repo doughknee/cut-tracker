@@ -212,7 +212,7 @@ private fun QuietStage(st: AppState) {
     val (title, line) = when {
         !s.onboarded -> "Sendline" to "Set up the route in the app."
         st.ended -> "Route complete" to "${s.totalDays} days, chain ${st.chain.count}. Start the next route in the app."
-        else -> "Starts ${s.startDate.format(dateFmt)}" to "Day 1 is ${java.time.temporal.ChronoUnit.DAYS.between(st.today, s.startDate)} days away. Weigh in that morning."
+        else -> "Starts ${s.startDate.format(dateFmt)}" to java.time.temporal.ChronoUnit.DAYS.between(st.today, s.startDate).let { n -> if (n == 1L) "Day 1 is tomorrow. Weigh in that morning." else "Day 1 is $n days away. Weigh in that morning." }
     }
     Column(GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>()), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = body(size = 16, bold = true))

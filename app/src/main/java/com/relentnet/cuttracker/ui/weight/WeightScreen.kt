@@ -235,7 +235,7 @@ fun WeightChart(st: AppState) {
             if (cp.localDate == current) drawCircle(c.accent, 4.dp.toPx(), Offset(x, yOf(t)), style = Stroke(2.dp.toPx()))
             else drawCircle(if (!cp.localDate.isAfter(st.today)) c.text2 else c.mutedBorder, 3.dp.toPx(), Offset(x, yOf(t)))
         }
-        if (showDots) for (w in sorted) drawCircle(c.dim, 2.5.dp.toPx(), Offset(xOf(ProgramEngine.dayNumber(w.date, s.startDate)), yOf(w.lb)))
+        if (showDots) for (w in sorted.filter { !it.date.isBefore(s.startDate) }) drawCircle(c.dim, 2.5.dp.toPx(), Offset(xOf(ProgramEngine.dayNumber(w.date, s.startDate)), yOf(w.lb)))
         if (avgs.isNotEmpty()) {
             val path = Path()
             avgs.forEachIndexed { i, (w, a) ->

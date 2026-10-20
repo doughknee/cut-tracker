@@ -141,6 +141,9 @@ Unattended, at the user's request: audit everything and fix what a daily user fe
 - Round 7, release check: fixed an onboarding crash on a comma-typed start weight and typed stepper values appending to the old number; onboarding copy points targets at Beta.
 - Round 8, an independent review of the whole diff found seven regressions, all fixed: editing a past day re-judged it by today's targets (now it can only rise unless you untick or change its kind); steppers fired on touch-down so a scroll could change a value; Save session missed a number still being typed; a meal rename froze past picks; Undo restored the whole settings snapshot; day plan switches used screen state; a stale pick-a-day button could set the next day. Number fields now select their contents on focus.
 - Round 9: Save a copy (backup straight to a picked file), Open settings for a denied camera, a scrolling rules sheet, "No day picked." in the Route popover, 48dp targets for Today's small controls.
+- Second wave (after 3 am, the user asked to keep going all night): two more audits on areas the first wave did not cover (widget, Route and Weight edges, onboarding, meal sheet, scanner, looks), the widget placed and driven on the release build, store shots retaken on 1.3.0, a 404 page and sitemap for the site.
+- Round 10: meal sheet input survives process death (verified with am kill), honest totals, plain network errors, the scanner releases the camera, label reader timing, look-code twins, sheet guards on the chalk and day-plan sheets.
+- Round 11: Targets moves default flags (FollowFlagsTest), the widget's quiet card and stale-tap guard, pace clamped to the route, second-route chart and photos, future-start copy, checkpoint add logic, onboarding guards, state derived off the main thread and shared.
 
 Tests added: `HistoryTest` (ledger-scored history, workouts), `InputParsingTest` (numbers and search), BackupTest covers the new settings fields.
 
