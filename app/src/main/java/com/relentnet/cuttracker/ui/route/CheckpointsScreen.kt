@@ -115,7 +115,8 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                     val first = sorted.first()
                     val right = sorted.firstOrNull { it.date == compare } ?: sorted.last()
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for ((p, label) in listOf(first to "Day 1", right to "Day ${ProgramEngine.dayNumber(right.date, s.startDate)}")) {
+                        fun dayLabel(d: LocalDate) = ProgramEngine.dayNumber(d, s.startDate).let { if (it >= 1) "Day $it" else "Last route" }
+                        for ((p, label) in listOf(first to dayLabel(first.date), right to dayLabel(right.date))) {
                             val bmp = rememberPhoto(p.path, 4)
                             Box(Modifier.weight(1f).aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp)).background(c.surface)) {
                                 if (bmp != null) Image(bmp, null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
@@ -164,7 +165,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                     cp.free -> (if (cp.days > 1) "skip days" else "skip day") to c.text2
                     state == CpState.HIT -> "hit at ${ProgramEngine.fmt1(avg!!)}" to c.good
                     state == CpState.PASSED -> (if (avg != null) "was ${ProgramEngine.fmt1(avg)}" else "passed") to c.text2
-                    isCurrent -> "in ${ChronoUnit.DAYS.between(st.today, cp.localDate)} days" to c.accent
+                    isCurrent -> when (val n = ChronoUnit.DAYS.between(st.today, cp.localDate)) { 0L -> "today"; 1L -> "tomorrow"; else -> "in $n days" } to c.accent
                     else -> "week $week" to c.text2
                 }
                 NumRow(
@@ -184,11 +185,11 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
         }
     }
     Fab(Modifier.align(Alignment.BottomEnd)) {
-        val last = s.checkpoints.filter { !it.free }.maxOfOrNull { it.localDate } ?: st.today
-        val d = last.plusDays(14).let { if (it.isAfter(s.endDate.minusDays(1))) s.endDate.minusDays(1) else it }
-        // The date is a checkpoint's identity, so a day that already has a flag opens that flag instead of stacking a second one.
-        val taken = s.checkpoints.firstOrNull { !it.free && it.localDate == d }
-        if (taken != null) { editing = taken.date; return@Fab }
+        // The date is a checkpoint's identity: a new flag goes on the first day from a week out that has no flag or skip.
+        val taken = s.checkpoints.flatMap { cp -> (0 until cp.days).map { cp.localDate.plusDays(it.toLong()) } }.toSet()
+        val from = maxOf(st.today, s.startDate).plusDays(7)
+        val d = generateSequence(from) { it.plusDays(1) }.takeWhile { !it.isAfter(s.endDate) }.firstOrNull { it !in taken }
+        if (d == null) { vm.showToast("Every day from a week out already has a flag or a skip"); return@Fab }
         val ncp = Checkpoint(d.toString(), ProgramEngine.paceWeight(ProgramEngine.dayNumber(d, s.startDate), s, ProgramEngine.paceAnchor(st.weighIns, s)).let { kotlin.math.round(it * 2) / 2 }, note = "Pace check.")
         vm.updateSettings { s -> s.copy(checkpoints = (s.checkpoints + ncp).sortedBy { it.date }) }
         editing = ncp.date

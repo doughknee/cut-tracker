@@ -49,7 +49,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val haptics = LocalHaptics.current
-    fun set(f: (Settings) -> Settings) { haptics.tick(); vm.updateSettings { s -> f(s) } }
+    fun set(f: (Settings) -> Settings) { haptics.tick(); vm.updateSettings { s -> com.relentnet.cuttracker.data.ProgramSpec.followFlags(s, f(s)) } }
     val total = s.startWeight - s.targetWeight
     val rate = total / s.lengthWeeks
     val pct = if (s.startWeight > 0) rate / s.startWeight * 100 else 0.0
@@ -78,7 +78,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
                 val shape = RoundedCornerShape(8.dp)
                 Box(
                     Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape).clickable(role = Role.Button) {
-                        DatePickerDialog(context, { _, y, m, d -> vm.updateSettings { s -> s.copy(startDate = LocalDate.of(y, m + 1, d)) } }, s.startDate.year, s.startDate.monthValue - 1, s.startDate.dayOfMonth).show()
+                        DatePickerDialog(context, { _, y, m, d -> set { it.copy(startDate = LocalDate.of(y, m + 1, d)) } }, s.startDate.year, s.startDate.monthValue - 1, s.startDate.dayOfMonth).show()
                     }.padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) { Text(s.startDate.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
@@ -94,7 +94,11 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
                 Text(note, color = if (warn) c.accent else c.text2, style = cutStyle(12, 500, 1.4f))
             }
         }
-        Sub("Changing the start, the goal or the weeks redraws the pace line and moves every checkpoint that sits on it.", size = 12)
+        Sub(
+            if (com.relentnet.cuttracker.data.ProgramSpec.flagsAreDefault(s)) "Changing the start, the goal or the weeks redraws the pace line and moves every checkpoint that sits on it."
+            else "Changing the start, the goal or the weeks redraws the pace line. Your checkpoints were set by hand, so they stay where they are.",
+            size = 12,
+        )
     }
 }
 

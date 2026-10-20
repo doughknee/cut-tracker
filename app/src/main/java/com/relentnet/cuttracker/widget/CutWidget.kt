@@ -89,8 +89,12 @@ private val ModeKey = ActionParameters.Key<String>("mode")
 private val DeltaKey = ActionParameters.Key<Double>("delta")
 /** Day a widget hold opens; the activity reads it as an intent extra of the same name. */
 private val DateKey = ActionParameters.Key<String>(MainActivity.EXTRA_DATE)
-/** The stepper's unlogged weight, kept per widget instance. */
+/** The stepper's unlogged weight, kept per widget instance, with the day it was stepped on. */
 private val DraftKey = doublePreferencesKey("draft")
+private val DraftDayKey = androidx.datastore.preferences.core.stringPreferencesKey("draftDay")
+/** The program day a widget was drawn for. A tap on a widget drawn before the rollover only redraws it. */
+private val ForKey = ActionParameters.Key<String>("for")
+private var drawnFor: String = ""
 private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
 
 private fun eyebrow(color: ColorProvider = W.text2, size: Int = 9) = TextStyle(color = color, fontSize = size.sp, fontWeight = FontWeight.Bold)
@@ -107,7 +111,7 @@ class CutWidget : GlanceAppWidget() {
         provideContent {
             val st by repo.state.collectAsState(initial)
             val prefs = currentState<Preferences>()
-            Wide(st, prefs[DraftKey])
+            Wide(st, prefs[DraftKey].takeIf { prefs[DraftDayKey] == st.today.toString() })
         }
     }
 }
@@ -121,6 +125,7 @@ class CheckItemAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val id = parameters[ItemKey] ?: return
         val app = App.of(context)
+        if (stale(app, parameters)) { updateWidgets(context); return }
         val st = app.repo.state.first { it.loaded }
         if (id !in st.done) Haptics(context) { st.settings.haptics }.tap()
         app.repo.toggleItem(id)
@@ -136,8 +141,10 @@ class StepWeightAction : ActionCallback {
         val st = app.repo.state.first { it.loaded }
         Haptics(context) { st.settings.haptics }.tick()
         updateAppWidgetState(context, glanceId) { p ->
-            val cur = p[DraftKey] ?: draftDefault(st)
+            // A draft from an earlier day starts over from the last reading.
+            val cur = p[DraftKey]?.takeIf { p[DraftDayKey] == st.today.toString() } ?: draftDefault(st)
             p[DraftKey] = ((cur + delta) * 10).roundToInt() / 10.0
+            p[DraftDayKey] = st.today.toString()
         }
         CutWidget().update(context, glanceId)
     }
@@ -147,9 +154,10 @@ class StepWeightAction : ActionCallback {
 class LogWeightAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val app = App.of(context)
+        if (stale(app, parameters)) { updateWidgets(context); return }
         val st = app.repo.state.first { it.loaded }
         var draft = draftDefault(st)
-        updateAppWidgetState(context, glanceId) { p -> draft = p[DraftKey] ?: draft; p.remove(DraftKey) }
+        updateAppWidgetState(context, glanceId) { p -> draft = p[DraftKey]?.takeIf { p[DraftDayKey] == st.today.toString() } ?: draft; p.remove(DraftKey); p.remove(DraftDayKey) }
         Haptics(context) { st.settings.haptics }.tap()
         app.repo.logWeight(draft)
         updateWidgets(context)
@@ -161,11 +169,18 @@ class PickModeAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val mode = parameters[ModeKey]?.let { runCatching { DayMode.valueOf(it) }.getOrNull() } ?: return
         val app = App.of(context)
+        if (stale(app, parameters)) { updateWidgets(context); return }
         val st = app.repo.state.first { it.loaded }
         Haptics(context) { st.settings.haptics }.tap()
         app.repo.setMode(mode)
         updateWidgets(context)
     }
+}
+
+/** True when the tap came from a widget drawn for an earlier program day (before the rollover). */
+private suspend fun stale(app: App, p: ActionParameters): Boolean {
+    app.repo.refreshToday()
+    return p[ForKey]?.let { it != app.repo.today().toString() } ?: false
 }
 
 suspend fun updateWidgets(context: Context) {
@@ -178,13 +193,31 @@ private fun fmt1(v: Double) = ProgramEngine.fmt1(v)
 
 @Composable
 private fun Wide(st: AppState, draft: Double?) {
+    drawnFor = st.today.toString()
     val weighed = ProgramSpec.ITEM_WEIGH in st.done || st.weighIns.any { it.date == st.today }
     Box(GlanceModifier.fillMaxSize().background(W.ground).cornerRadius(16.dp).padding(horizontal = 12.dp, vertical = 10.dp)) {
         when {
+            !st.settings.onboarded || st.ended || st.dayN < 1 -> QuietStage(st)
             !weighed -> WeighStage(st, draft ?: draftDefault(st))
             st.mode == null -> PickStage(st)
             else -> Dashboard(st)
         }
+    }
+}
+
+/** No day to log: set-up not done, the route finished, or a start still ahead. A tap opens the app. */
+@Composable
+private fun QuietStage(st: AppState) {
+    val s = st.settings
+    val (title, line) = when {
+        !s.onboarded -> "Sendline" to "Set up the route in the app."
+        st.ended -> "Route complete" to "${s.totalDays} days, chain ${st.chain.count}. Start the next route in the app."
+        else -> "Starts ${s.startDate.format(dateFmt)}" to "Day 1 is ${java.time.temporal.ChronoUnit.DAYS.between(st.today, s.startDate)} days away. Weigh in that morning."
+    }
+    Column(GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>()), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = body(size = 16, bold = true))
+        Spacer(GlanceModifier.height(4.dp))
+        Text(line, style = body(W.text2, 12))
     }
 }
 
@@ -238,7 +271,7 @@ private fun WeighStage(st: AppState, draft: Double) {
         }
         Spacer(GlanceModifier.height(6.dp))
         Box(
-            GlanceModifier.fillMaxWidth().height(30.dp).background(W.accent).cornerRadius(9.dp).clickable(actionRunCallback<LogWeightAction>()),
+            GlanceModifier.fillMaxWidth().height(30.dp).background(W.accent).cornerRadius(9.dp).clickable(actionRunCallback<LogWeightAction>(actionParametersOf(ForKey to drawnFor))),
             contentAlignment = Alignment.Center,
         ) { Text("LOG · +${ProgramSpec.XP_WEIGH} XP", style = eyebrow(W.onAccent, 11)) }
     }
@@ -284,7 +317,7 @@ private fun PickStage(st: AppState) {
 private fun PickCard(modifier: GlanceModifier, mode: DayMode, icon: Int, title: String, sub: String) {
     Column(
         modifier.fillMaxHeight().background(W.surface).cornerRadius(10.dp).padding(horizontal = 10.dp, vertical = 8.dp)
-            .clickable(actionRunCallback<PickModeAction>(actionParametersOf(ModeKey to mode.name))),
+            .clickable(actionRunCallback<PickModeAction>(actionParametersOf(ModeKey to mode.name, ForKey to drawnFor))),
     ) {
         Image(ImageProvider(icon), null, GlanceModifier.size(18.dp), colorFilter = ColorFilter.tint(W.accent))
         Spacer(GlanceModifier.defaultWeight())
@@ -357,7 +390,7 @@ private fun Dashboard(st: AppState) {
 @Composable
 private fun ItemRow(r: WRow) {
     val action = if (r.item.id == ProgramSpec.ITEM_WEIGH) actionStartActivity<MainActivity>()
-    else actionRunCallback<CheckItemAction>(actionParametersOf(ItemKey to r.item.id))
+    else actionRunCallback<CheckItemAction>(actionParametersOf(ItemKey to r.item.id, ForKey to drawnFor))
     Row(
         GlanceModifier.fillMaxWidth().height(24.dp).cornerRadius(7.dp).background(if (r.done) W.ground else W.surface).padding(horizontal = 7.dp).clickable(action),
         verticalAlignment = Alignment.CenterVertically,

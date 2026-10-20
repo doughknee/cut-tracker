@@ -53,7 +53,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
     val s = st.settings
     val ws = ProgramEngine.weekStart(st.today)
     val days = (0..6).map { ws.plusDays(it.toLong()) }
-    val past = days.filter { !it.isAfter(st.today) }
+    val past = days.filter { !it.isAfter(st.today) && !it.isBefore(s.startDate) && it.isBefore(s.endDate) }
     var open by rememberSaveable { mutableStateOf<String?>(null) }
     val hit = past.count { st.day(it).totals.protein >= s.protein }
     Screen(bottomInset = true) {

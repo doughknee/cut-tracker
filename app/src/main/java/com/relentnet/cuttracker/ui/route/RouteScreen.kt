@@ -119,7 +119,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
                 Column {
                     Eyebrow("The Route · ${s.lengthWeeks} weeks")
                     Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
-                        Text("Day ${st.dayN.coerceAtMost(s.totalDays)}", color = c.text, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
+                        Text("Day ${st.dayN.coerceIn(0, s.totalDays)}", color = c.text, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
                         Text(" / ${s.totalDays}", color = c.dim, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
                     }
                 }
@@ -355,7 +355,8 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val log = st.logs.firstOrNull { it.date == date }
     val xp = st.xpEvents.filter { it.date == date }.sumOf { it.amount }
     val items = ProgramEngine.script(log?.mode, st.settings, log?.picks ?: emptyMap())
-    val done = log?.doneItemIds?.count { id -> items.any { it.id == id } } ?: 0
+    val ticked = st.xpEvents.count { it.date == date && it.kind == com.relentnet.cuttracker.data.XpKind.ITEM }
+    val done = if (date.isBefore(st.today)) ticked else log?.doneItemIds?.count { id -> items.any { it.id == id } } ?: 0
     val weight = st.weighIns.firstOrNull { it.date == date }?.lb
     val skipped = st.settings.checkpoints.any { it.free && it.covers(date) }
     val (title, color) = if (cpAhead) ("Checkpoint" + (cp!!.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "")) to cpColor else when (r) {

@@ -23,7 +23,8 @@ class App : Application() {
         super.onCreate()
         Reminders.ensureChannel(this)
         repo.scope.launch {
-            repo.state.filter { it.loaded }.map { listOf(it.today, it.log, it.chain, it.items.size) }.distinctUntilChanged().debounce(300).collect { updateWidgets(this@App) }
+            repo.state.filter { it.loaded }.map { st -> listOf(st.today, st.log, st.chain, st.items, st.settings.protein, st.settings.onboarded, st.ended, st.weighIns.firstOrNull { it.date == st.today }) }
+                .distinctUntilChanged().debounce(300).collect { updateWidgets(this@App) }
         }
         repo.scope.launch {
             settings.flow.map { listOf(it.onboarded, it.weighInTime, it.pickTime, it.weighReminder, it.pickReminder) }.distinctUntilChanged().collect {

@@ -188,7 +188,7 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
     val idx = cps.indexOf(next)
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today) ?: st.lastWeighIn?.lb ?: s.startWeight
     val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
-    val behind = !ProgramEngine.onPace(avg, st.dayN, s, anchor)
+    val behind = !ProgramEngine.onPace(avg, st.dayN.coerceIn(1, s.totalDays), s, anchor)
     TileFrame(modifier, outlined = true, onClick = onClick) {
         TileTop(CutIcons.Flag, tint = c.text2)
         Text("Checkpoints", color = c.text2, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))

@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.withLock
 import androidx.room.withTransaction
 import java.time.Duration
@@ -166,6 +169,9 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
             xpEvents = xpEvents, logs = logs, loaded = true,
         )
     }
+        // Derived off the main thread, once, for the app, the widget and the reminders alike.
+        .flowOn(Dispatchers.Default)
+        .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     // Writes
 

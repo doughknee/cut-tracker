@@ -80,6 +80,9 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     var pro by rememberSaveable { mutableStateOf("") }
     // Starting the next route keeps every log, badge and XP; only the program changes.
     val again = st.logs.isNotEmpty() || st.weighIns.isNotEmpty()
+    var starting by rememberSaveable { mutableStateOf(false) }
+    // A second route can be called off at the first step: back returns to the route that just ended.
+    androidx.activity.compose.BackHandler(enabled = again && step == 0) { vm.updateSettings { s -> s.copy(onboarded = true) } }
     var swMissing by remember { mutableStateOf(false) }
     val swFocus = remember { FocusRequester() }
 
@@ -94,6 +97,8 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                 if (pro.isBlank()) pro = ((b * 0.9 / 5).toInt() * 5).coerceIn(80, 300).toString()
             }
             4 -> {
+                if (starting) return   // a second tap while the first save runs does nothing
+                starting = true
                 val startWeight = sw.num() ?: s.startWeight
                 val targetWeight = tw.num() ?: s.targetWeight
                 val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
@@ -143,7 +148,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Where you want to land") {
                         Field(tw, { tw = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
-                    val a = sw.num(); val b = tw.num(); val w = weeks.int() ?: 12
+                    val a = sw.num(); val b = tw.num(); val w = (weeks.int() ?: 12).coerceIn(1, 52)
                     Hint(if (a != null && b != null) "${ProgramEngine.fmt1(a - b)} lb over $w weeks is ${"%.2f".format(Locale.US, (a - b) / w)} lb a week." else "About 1 lb a week is the pace.")
                 }
                 2 -> {
@@ -155,7 +160,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Weeks") {
                         Field(weeks, { weeks = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
-                    val w = weeks.int() ?: 12
+                    val w = (weeks.int() ?: 12).coerceIn(1, 52)
                     Hint("Ends ${d.plusDays(w * 7L).format(longDate)}. ${w * 7} holds on the route.")
                 }
                 3 -> {
@@ -179,7 +184,8 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BigButton("Back", onClick = { if (step > 0) step-- }, modifier = Modifier.width(120.dp).alpha(if (step > 0) 1f else 0f), secondary = true, enabled = step > 0)
+            if (again && step == 0) BigButton("Not yet", onClick = { vm.updateSettings { s -> s.copy(onboarded = true) } }, modifier = Modifier.width(120.dp), secondary = true)
+            else BigButton("Back", onClick = { if (step > 0) step-- }, modifier = Modifier.width(120.dp).alpha(if (step > 0) 1f else 0f), secondary = true, enabled = step > 0)
             BigButton(when (step) { 0 -> "Let's go"; 4 -> "Start the route"; else -> "Next" }, onClick = ::next, modifier = Modifier.weight(1f))
         }
     }

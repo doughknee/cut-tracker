@@ -203,7 +203,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 Modifier.clip(RoundedCornerShape(6.dp)).pressable(haptic = false, onClick = onRoute).padding(end = 6.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Sub("Day ${ProgramEngine.dayNumber(date, st.settings.startDate).coerceAtMost(st.settings.totalDays)} of ${st.settings.totalDays}", size = 12)
+                val dn = ProgramEngine.dayNumber(date, st.settings.startDate)
+                Sub(if (dn < 1) "Starts ${st.settings.startDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE MMM d", Locale.US))}" else "Day ${dn.coerceAtMost(st.settings.totalDays)} of ${st.settings.totalDays}", size = 12)
                 Text("ROUTE ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
             }
         }
@@ -338,7 +339,7 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     val shown = tickedFloat((avg ?: s.startWeight).toFloat())
-    val gap = avg?.let { it - ProgramEngine.paceWeight(st.dayN, s, ProgramEngine.paceAnchor(st.weighIns, s)) }
+    val gap = avg?.let { it - ProgramEngine.paceWeight(st.dayN.coerceIn(1, s.totalDays), s, ProgramEngine.paceAnchor(st.weighIns, s)) }
     val onPace = gap != null && gap <= ProgramSpec.PACE_TOLERANCE_LB
     Card(Modifier.fillMaxWidth().clickable(onClick = onWeight, role = Role.Button), padding = PaddingValues(14.dp, 12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

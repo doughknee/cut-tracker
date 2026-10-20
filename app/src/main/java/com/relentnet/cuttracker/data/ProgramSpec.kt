@@ -186,6 +186,22 @@ object ProgramSpec {
         }
     }
 
+    /**
+     * When the route's start, goal, weeks or start date change and its flags are still the ones the old numbers made,
+     * the flags follow the new numbers. Flags edited by hand, and planned skips, stay where they are.
+     */
+    fun followFlags(old: Settings, new: Settings): Settings {
+        if (old.startDate == new.startDate && old.startWeight == new.startWeight && old.targetWeight == new.targetWeight && old.lengthWeeks == new.lengthWeeks) return new
+        if (!flagsAreDefault(old)) return new
+        val skips = new.checkpoints.filter { it.free }
+        return new.copy(checkpoints = (skips + defaultCheckpoints(new.startDate, new.startWeight, new.targetWeight, new.lengthWeeks)).sortedBy { it.date })
+    }
+
+    /** True while the route's flags are exactly the defaults its numbers make (by date and target). */
+    fun flagsAreDefault(s: Settings): Boolean =
+        s.checkpoints.filter { !it.free }.map { it.date to it.target } ==
+            defaultCheckpoints(s.startDate, s.startWeight, s.targetWeight, s.lengthWeeks).map { it.date to it.target }
+
     /** The defaults before onboarding; onboarding replaces them with the user's own. */
     val checkpoints: List<Checkpoint> get() = defaultCheckpoints(PHASE_1_START, START_WEIGHT, TARGET_WEIGHT, LENGTH_WEEKS)
 }

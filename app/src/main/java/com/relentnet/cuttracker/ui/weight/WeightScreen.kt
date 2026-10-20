@@ -79,7 +79,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     val shownAvg = tickedFloat((avg ?: s.startWeight).toFloat())
     val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
-    val pace = ProgramEngine.paceWeight(st.dayN, s, anchor)
+    val pace = ProgramEngine.paceWeight(st.dayN.coerceIn(1, s.totalDays), s, anchor)
     val gap = avg?.let { it - pace }
     val rate = ProgramEngine.rate(st.weighIns, st.today)
     val projected = ProgramEngine.projectedAt(st.weighIns, st.today, s.endDate)
@@ -192,10 +192,11 @@ fun WeightChart(st: AppState) {
     val axisStyle = cutStyle(9, 500, 1f).copy(color = c.dim)
     val sorted = remember(st.weighIns) { st.weighIns.sortedBy { it.date } }
     val current = currentCheckpointDate(st)
-    val avgs: List<Pair<WeighIn, Double>> = remember(sorted) {
+    val avgs: List<Pair<WeighIn, Double>> = remember(sorted, s.startDate) {
         sorted.mapIndexed { i, w -> w to (ProgramEngine.sevenDayAverage(sorted.subList(0, i + 1), w.date) ?: w.lb) }
+            .filter { !it.first.date.isBefore(s.startDate) }
     }
-    val readings = sorted.map { it.lb }
+    val readings = sorted.filter { !it.date.isBefore(s.startDate) }.map { it.lb }
     val projected = ProgramEngine.projectedAt(sorted, st.today, s.endDate)
     val (top, bot) = chartRange(s.startWeight, s.targetWeight, readings, projected)
     val total = s.totalDays.toFloat()
@@ -224,7 +225,7 @@ fun WeightChart(st: AppState) {
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx())),
         )
         // Today's column and the checkpoint targets, so the chart says where you are, not only where you were.
-        val xToday = xOf(st.dayN)
+        val xToday = xOf(st.dayN.coerceIn(1, s.totalDays))
         drawLine(c.hairline, Offset(xToday, yTop), Offset(xToday, yBot), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 3.dp.toPx())))
         for (cp in s.checkpoints) {
             val t = cp.target ?: continue
