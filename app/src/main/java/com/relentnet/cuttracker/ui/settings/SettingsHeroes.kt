@@ -69,12 +69,15 @@ internal fun Shade(s: Settings, notifOn: Boolean) {
                         Text("SENDLINE · ${clockText(context, at)}", color = c.text2, style = cutStyle(10, 700, 1f, 0.06f, tabular = true))
                     }
                     Text(Reminders.title(kind), color = c.text, style = cutStyle(14, 800, 1.1f))
-                    Text(Reminders.text(kind), color = c.text2, style = cutStyle(12, 500, 1.3f))
-                    if (kind == Reminders.KIND_PICK) Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        for (a in listOf("Yep, Rest day", v.trained)) Text(a.uppercase(), color = c.accent, style = cutStyle(11, 800, 1f, 0.06f))
+                    Text(Reminders.text(kind, s.prefs), color = c.text2, style = cutStyle(12, 500, 1.3f))
+                    val actions = (if (kind == Reminders.KIND_PICK) listOf("Yep, Rest day", v.trained) else emptyList()) +
+                        listOfNotNull(if (s.prefs.snoozeMinutes > 0) "Snooze ${s.prefs.snoozeMinutes} min" else null)
+                    if (actions.isNotEmpty()) Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        for (a in actions) Text(a.uppercase(), color = c.accent, style = cutStyle(11, 800, 1f, 0.06f))
                     }
                 }
             }
+            if (s.prefs.lockScreenHide && on.isNotEmpty()) Sub("On the lock screen, none of this shows until the phone is unlocked.", size = 12)
             if (!notifOn && on.isNotEmpty()) Sub("Notifications are off for Sendline, so none of this shows yet. Allow them below.", size = 12)
         }
     }

@@ -1,5 +1,7 @@
 package com.relentnet.cuttracker.ui.components
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -81,7 +83,7 @@ fun Eyebrow(text: String, modifier: Modifier = Modifier, color: Color = CutTheme
 
 @Composable
 fun H1(text: String, modifier: Modifier = Modifier, color: Color = CutTheme.colors.text) {
-    Text(text, modifier.padding(top = 6.dp), color = color, style = cutStyle(44, 800, 1f, -0.02f, display = true))
+    Text(text, modifier.padding(top = 6.dp).semantics { heading() }, color = color, style = cutStyle(44, 800, 1f, -0.02f, display = true))
 }
 
 /** Eyebrow + H1 header block. */

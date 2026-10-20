@@ -91,7 +91,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val popFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
 
 /** Checkpoint state for the anchor icons and the Checkpoints timeline. */
 enum class CpState { HIT, PASSED, CURRENT, UPCOMING }
@@ -220,7 +219,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                             cp != null -> onCheckpoints
                             else -> null
                         }
-                        val said = day.format(java.time.format.DateTimeFormatter.ofPattern("EEEE MMMM d", java.util.Locale.US)) +
+                        val said = com.relentnet.cuttracker.data.Dates.long(day) +
                             (if (r != null && r != DayResult.BEFORE) ", " + resultName(r, CutTheme.vocab) else "") +
                             (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${s.wu(it)}" } ?: "") else if (cp?.free == true && r != DayResult.SKIP) ", planned skip" else "")
                         Box(
@@ -241,7 +240,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                                     DayResult.BEFORE -> Text("${day.dayOfMonth}", color = c.dim, style = cutStyle(11, 700, 1f, tabular = true))
                                     else -> Hold(
                                         holdShape(modes[day]), holdFill(r, c), if (day == st.today) 32.dp else 30.dp,
-                                        stroke = if (day == st.today) c.accent else null, strokeWidth = if (day == st.today) 2.4.dp else 0.dp,
+                                        stroke = if (day == st.today) c.accent else null, strokeWidth = if (day == st.today) 2.4.dp else 0.dp, mark = r,
                                     ) { Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(11, 900, 1f, tabular = true)) }
                                 }
                                 if (flag) Icon(CutIcons.Flag, null, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp).size(12.dp), tint = flagColor)
@@ -266,14 +265,13 @@ private fun NextCheckpoint(st: AppState, current: LocalDate?, onCheckpoints: () 
             Icon(CutIcons.Flag, null, Modifier.size(16.dp), tint = c.accent)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 TileLabel("Next checkpoint")
-                Text(cp.localDate.format(cpFmt) + (cp.target?.let { " · ${st.settings.wu(it)}" } ?: "") + " · $whenText", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
+                Text(com.relentnet.cuttracker.data.Dates.md(cp.localDate) + (cp.target?.let { " · ${st.settings.wu(it)}" } ?: "") + " · $whenText", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
                 if (cp.note.isNotBlank()) Sub(CutTheme.vocab.note(cp.note), size = 11)
             }
         }
     }
 }
 
-private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 @Composable
 private fun Legend() {
@@ -417,7 +415,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
             Box(Modifier.size(36.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.mutedBorder).align(Alignment.CenterHorizontally))
             Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(date.format(popFmt), color = c.text, style = cutStyle(15, 800, 1f))
+                    Text(com.relentnet.cuttracker.data.Dates.wmd(date), color = c.text, style = cutStyle(15, 800, 1f))
                     Text(title, color = color, style = cutStyle(12, 800, 1f, tabular = true))
                 }
                 Sub(detail, size = 12)

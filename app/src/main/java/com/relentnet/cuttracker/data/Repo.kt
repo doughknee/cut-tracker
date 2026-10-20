@@ -153,6 +153,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val s = arr[0] as Settings
         ProgramEngine.firstDay = s.prefs.weekStart
         Clock.mode = s.prefs.clock
+        Dates.dayFirst = s.prefs.dayFirst
         val today = arr[1] as LocalDate
         val logs = arr[2] as List<DayLog>
         val weighIns = arr[3] as List<WeighIn>

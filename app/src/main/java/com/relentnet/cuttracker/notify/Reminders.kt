@@ -32,9 +32,22 @@ object Reminders {
     /** The weigh-in reminder lands on Today with the weigh-in row open; the row is the one place to type it. */
     const val EXTRA_WEIGH = "weigh"
 
-    /** What each reminder says; Settings > Nudges shows the same words. */
+    /** What each reminder says; Settings > Nudges shows the same words. Your own words (Nudges) replace the body. */
     fun title(kind: String) = if (kind == KIND_WEIGH) "Weigh in" else "Pick a day"
     fun text(kind: String) = if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "No day picked yet. Tap Yep, Rest day, then weigh in and hit protein to keep the chain."
+    fun text(kind: String, p: com.relentnet.cuttracker.data.Prefs) = (if (kind == KIND_WEIGH) p.weighText else p.pickText).trim().ifEmpty { text(kind) }
+
+    /** A one-off alarm [minutes] from now for the same reminder; it checks again before it posts, like the daily one. */
+    fun snooze(context: Context, kind: String, minutes: Int) {
+        val am = context.getSystemService(AlarmManager::class.java)
+        val millis = System.currentTimeMillis() + minutes * 60_000L
+        val pi = PendingIntent.getBroadcast(
+            context, if (kind == KIND_WEIGH) 3 else 4, Intent(context, AlarmReceiver::class.java).putExtra(KIND, kind),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pi)
+        else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pi)
+    }
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -84,7 +97,14 @@ object Reminders {
                 val today = day ?: runBlocking { App.of(context).repo.today() }
                 val cp = kind == KIND_WEIGH && s.prefs.checkpointNote && s.checkpoints.any { !it.free && it.localDate == today }
                 setContentTitle(if (cp) "Checkpoint day" else title(kind))
-                setContentText(if (cp) "Weigh in before food, then take the progress photo." else text(kind))
+                setContentText(if (cp) "Weigh in before food, then take the progress photo." else text(kind, s.prefs))
+                // Hide from the lock screen (Nudges): nothing of it shows until the phone is unlocked.
+                if (s.prefs.lockScreenHide) setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                if (s.prefs.snoozeMinutes > 0) addAction(0, "Snooze ${s.prefs.snoozeMinutes} min", PendingIntent.getBroadcast(
+                    context, if (kind == KIND_WEIGH) 31 else 32,
+                    Intent(context, SnoozeReceiver::class.java).putExtra(KIND, kind).putExtra(SnoozeReceiver.MINUTES, s.prefs.snoozeMinutes),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ))
             }
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
@@ -130,6 +150,17 @@ class PickReceiver : BroadcastReceiver() {
     }
 
     companion object { const val MODE = "mode"; const val DAY = "day" }
+}
+
+/** Snooze on a reminder: clears it and asks again in a few minutes. */
+class SnoozeReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val kind = intent.getStringExtra(Reminders.KIND) ?: return
+        Reminders.snooze(context, kind, intent.getIntExtra(MINUTES, 30))
+        runCatching { context.getSystemService(NotificationManager::class.java).cancel(if (kind == Reminders.KIND_WEIGH) 1 else 2) }
+    }
+
+    companion object { const val MINUTES = "minutes" }
 }
 
 class AlarmReceiver : BroadcastReceiver() {

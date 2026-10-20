@@ -58,6 +58,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.relentnet.cuttracker.ui.theme.CutIcons
@@ -81,7 +84,7 @@ fun KindCard(
             Modifier.fillMaxWidth().then(if (onFold != null) Modifier.clickable(onClick = onFold, role = Role.Button) else Modifier).padding(start = 14.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(title, color = c.text, style = cutStyle(18, 800, 1f, -0.01f, display = true), modifier = Modifier.padding(vertical = 10.dp))
+            Text(title, color = c.text, style = cutStyle(18, 800, 1f, -0.01f, display = true), modifier = Modifier.padding(vertical = 10.dp).semantics { heading() })
             if (count.isNotEmpty()) Text(count, color = c.text2, style = cutStyle(11, 800, 1f, tabular = true), modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(c.ground).padding(6.dp, 3.dp))
             Box(Modifier.weight(1f))
             if (onFold != null) {
@@ -127,7 +130,7 @@ fun NumRow(
                 if (!sub.isNullOrBlank()) Text(sub, color = c.text2, style = cutStyle(11, 500, 1.2f, tabular = true), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (right != null) Text(right, color = rightColor, style = cutStyle(11, 700, 1f, tabular = true))
-            if (on != null && onSwitch != null) Switch(on, title, onSwitch)
+            if (on != null && onSwitch != null) Switch(on, title, onToggle = onSwitch)
             if (chevron) Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
         }
     }
@@ -176,7 +179,8 @@ fun ChipRow(options: List<Pair<String, String>>, selected: String, onSelect: (St
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((key, label) in options) {
                 val on = key == selected
-                Chip(label, on = on, transparentWhenOn = true, modifier = Modifier.onGloballyPositioned { bounds[key] = it.boundsInParent() }) { onSelect(key) }
+                // TalkBack hears a group of choices: each chip says whether it is the chosen one.
+                Chip(label, on = on, transparentWhenOn = true, modifier = Modifier.onGloballyPositioned { bounds[key] = it.boundsInParent() }.semantics { this.selected = on }) { onSelect(key) }
             }
             extra?.invoke()
         }
@@ -189,7 +193,7 @@ fun Chip(label: String, on: Boolean, modifier: Modifier = Modifier, transparentW
     val c = CutTheme.colors
     val shape = RoundedCornerShape(8.dp)
     Box(
-        modifier.height(32.dp).clip(shape)
+        modifier.height(if (CutTheme.prefs.bigTargets) 44.dp else 32.dp).clip(shape)
             .background(if (on && !transparentWhenOn) c.accent else Color.Transparent, shape)
             .border(1.dp, when { on -> if (transparentWhenOn) Color.Transparent else c.accent; dashed -> c.mutedBorder; else -> c.mutedBorder }, shape)
             .clickable(onClick = onClick, role = Role.Button).padding(horizontal = 11.dp),

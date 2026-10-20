@@ -46,7 +46,6 @@ import com.relentnet.cuttracker.ui.theme.cutStyle
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val shortDate: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 /** What a day has to hit, and where the route ends. Every tap saves; the math card follows. */
 @Composable
@@ -76,9 +75,9 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
             PlainRow("Workouts", "lift blocks done, any kind of day") { MiniStepper("${s.workoutsPerWeek}", { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek - 1).coerceAtLeast(0)) } }, { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek + 1).coerceAtMost(7)) } }, "a week", onType = { v -> set { it.copy(workoutsPerWeek = v.toInt().coerceIn(0, 7)) } }) }
         }
         KindCard("The route", "") {
-            PlainRow("Start", "weighed on ${s.startDate.format(shortDate)}") { MiniStepper(s.w(s.startWeight), { set { it.copy(startWeight = it.stepped(it.startWeight, -1)) } }, { set { it.copy(startWeight = it.stepped(it.startWeight, 1)) } }, s.unit, onType = { v -> set { it.copy(startWeight = it.toLb(v).coerceIn(50.0, 1000.0)) } }) }
+            PlainRow("Start", "weighed on ${com.relentnet.cuttracker.data.Dates.md(s.startDate)}") { MiniStepper(s.w(s.startWeight), { set { it.copy(startWeight = it.stepped(it.startWeight, -1)) } }, { set { it.copy(startWeight = it.stepped(it.startWeight, 1)) } }, s.unit, onType = { v -> set { it.copy(startWeight = it.toLb(v).coerceIn(50.0, 1000.0)) } }) }
             PlainRow("Goal", "where the route ends") { MiniStepper(s.w(s.targetWeight), { set { it.copy(targetWeight = it.stepped(it.targetWeight, -1)) } }, { set { it.copy(targetWeight = it.stepped(it.targetWeight, 1)) } }, s.unit, onType = { v -> set { it.copy(targetWeight = it.toLb(v).coerceIn(50.0, 1000.0)) } }) }
-            PlainRow("Weeks", "${s.startDate.format(shortDate)} to ${s.endDate.format(shortDate)}") { MiniStepper("${s.lengthWeeks}", { set { it.copy(lengthWeeks = (it.lengthWeeks - 1).coerceAtLeast(1)) } }, { set { it.copy(lengthWeeks = (it.lengthWeeks + 1).coerceAtMost(52)) } }, "wk", onType = { v -> set { it.copy(lengthWeeks = v.toInt().coerceIn(1, 52)) } }) }
+            PlainRow("Weeks", "${com.relentnet.cuttracker.data.Dates.md(s.startDate)} to ${com.relentnet.cuttracker.data.Dates.md(s.endDate)}") { MiniStepper("${s.lengthWeeks}", { set { it.copy(lengthWeeks = (it.lengthWeeks - 1).coerceAtLeast(1)) } }, { set { it.copy(lengthWeeks = (it.lengthWeeks + 1).coerceAtMost(52)) } }, "wk", onType = { v -> set { it.copy(lengthWeeks = v.toInt().coerceIn(1, 52)) } }) }
             PlainRow("Starts", "day 1 of the route; what you logged is kept") {
                 val context = LocalContext.current
                 val shape = RoundedCornerShape(8.dp)
@@ -87,7 +86,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
                         DatePickerDialog(context, { _, y, m, d -> set { it.copy(startDate = LocalDate.of(y, m + 1, d)) } }, s.startDate.year, s.startDate.monthValue - 1, s.startDate.dayOfMonth).show()
                     }.padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text(s.startDate.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
+                ) { Text(com.relentnet.cuttracker.data.Dates.wmd(s.startDate), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
             }
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {

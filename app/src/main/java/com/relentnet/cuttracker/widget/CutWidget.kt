@@ -74,10 +74,18 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** Widget tokens: light by day, dark by night, from the same palettes as the app. */
-private object W {
-    private fun cp(l: Color, d: Color) = ColorProvider(day = l, night = d)
-    val ground = cp(LightCutColors.ground, DarkCutColors.ground)
+/**
+ * Widget tokens from the same palettes as the app: light by day and dark by night, or one of them always (Settings,
+ * Widget). See-through lets the wallpaper show behind the ground.
+ */
+private class WColors(theme: String = "phone", seeThrough: Boolean = false) {
+    private val cp: (Color, Color) -> ColorProvider = when (theme) {
+        "dark" -> { _, d -> ColorProvider(day = d, night = d) }
+        "light" -> { l, _ -> ColorProvider(day = l, night = l) }
+        else -> { l, d -> ColorProvider(day = l, night = d) }
+    }
+    private val a = if (seeThrough) 0.72f else 1f
+    val ground = cp(LightCutColors.ground.copy(alpha = a), DarkCutColors.ground.copy(alpha = a))
     val surface = cp(LightCutColors.surface, DarkCutColors.surface)
     val hairline = cp(LightCutColors.hairline, DarkCutColors.hairline)
     val mutedBorder = cp(LightCutColors.mutedBorder, DarkCutColors.mutedBorder)
@@ -93,6 +101,9 @@ private object W {
     val future = cp(LightCutColors.future, DarkCutColors.future)
 }
 
+/** Set at the top of each render from the settings. ponytail: one widget look for every instance, like the app's theme. */
+private var W = WColors()
+
 private val ItemKey = ActionParameters.Key<String>("item")
 private val ModeKey = ActionParameters.Key<String>("mode")
 private val DeltaKey = ActionParameters.Key<Double>("delta")
@@ -106,7 +117,6 @@ private val ForKey = ActionParameters.Key<String>("for")
 /** Opens Today with the weigh-in field open; MainActivity reads it as the reminder's extra of the same name. */
 private val WeighKey = ActionParameters.Key<Boolean>(com.relentnet.cuttracker.notify.Reminders.EXTRA_WEIGH)
 private var drawnFor: String = ""
-private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
 
 private fun eyebrow(color: ColorProvider = W.text2, size: Int = 9) = TextStyle(color = color, fontSize = size.sp, fontWeight = FontWeight.Bold)
 private fun body(color: ColorProvider = W.text, size: Int = 12, bold: Boolean = false) =
@@ -205,6 +215,7 @@ private fun draftDefault(st: AppState): Double = st.weighInBefore(st.today)?.lb 
 @Composable
 private fun Wide(st: AppState, draft: Double?) {
     drawnFor = st.today.toString()
+    W = WColors(st.settings.prefs.widgetTheme, st.settings.prefs.widgetSeeThrough)
     val weighed = ProgramSpec.ITEM_WEIGH in st.done || st.weighIns.any { it.date == st.today }
     Box(GlanceModifier.fillMaxSize().background(W.ground).cornerRadius(16.dp).padding(horizontal = 12.dp, vertical = 10.dp)) {
         when {
@@ -223,7 +234,7 @@ private fun QuietStage(st: AppState) {
     val (title, line) = when {
         !s.onboarded -> "Sendline" to "Set up the route in the app."
         st.ended -> "Route complete" to "${s.totalDays} days, chain ${st.chain.count}. Start the next route in the app."
-        else -> "Starts ${s.startDate.format(dateFmt)}" to java.time.temporal.ChronoUnit.DAYS.between(st.today, s.startDate).let { n -> if (n == 1L) "Day 1 is tomorrow. Weigh in that morning." else "Day 1 is $n days away. Weigh in that morning." }
+        else -> "Starts ${com.relentnet.cuttracker.data.Dates.wmd(s.startDate)}" to java.time.temporal.ChronoUnit.DAYS.between(st.today, s.startDate).let { n -> if (n == 1L) "Day 1 is tomorrow. Weigh in that morning." else "Day 1 is $n days away. Weigh in that morning." }
     }
     Column(GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>()), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = body(size = 16, bold = true))
@@ -256,7 +267,7 @@ private fun WeighStage(st: AppState, draft: Double) {
     val delta = if (yesterday == null) null else ((s.shown(draft) - s.shown(yesterday)) * 10).roundToInt() / 10.0
     Column(GlanceModifier.fillMaxSize()) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("${st.today.format(dateFmt).uppercase()} · DAY ${st.dayN}", style = eyebrow(), modifier = GlanceModifier.defaultWeight())
+            Text("${com.relentnet.cuttracker.data.Dates.wmd(st.today).uppercase()} · DAY ${st.dayN}", style = eyebrow(), modifier = GlanceModifier.defaultWeight())
             ChainBadge(st, safe = false)
         }
         Spacer(GlanceModifier.height(6.dp))
@@ -286,7 +297,7 @@ private fun WeighStage(st: AppState, draft: Double) {
         Box(
             GlanceModifier.fillMaxWidth().height(30.dp).background(W.accent).cornerRadius(9.dp).clickable(actionRunCallback<LogWeightAction>(actionParametersOf(ForKey to drawnFor))),
             contentAlignment = Alignment.Center,
-        ) { Text("LOG · +${ProgramSpec.XP_WEIGH} xp", style = eyebrow(W.onAccent, 11)) }
+        ) { Text(if (st.settings.prefs.widgetXp) "LOG · +${ProgramSpec.XP_WEIGH} xp" else "LOG", style = eyebrow(W.onAccent, 11)) }
     }
 }
 
@@ -308,7 +319,7 @@ private fun PickStage(st: AppState) {
                 Text("DAY ${st.dayN} · ", style = eyebrow())
                 Image(ImageProvider(R.drawable.ic_w_check), null, GlanceModifier.size(10.dp), colorFilter = ColorFilter.tint(W.good))
                 Spacer(GlanceModifier.width(3.dp))
-                Text((if (lb != null && !st.settings.prefs.widgetHideWeight) st.settings.w(lb) + " " else "") + "LOGGED · +${ProgramSpec.XP_WEIGH}", style = eyebrow(W.text))
+                Text((if (lb != null && !st.settings.prefs.widgetHideWeight) st.settings.w(lb) + " " else "") + (if (st.settings.prefs.widgetXp) "LOGGED · +${ProgramSpec.XP_WEIGH}" else "LOGGED"), style = eyebrow(W.text))
             }
             Text("PICK A DAY", style = eyebrow(W.accent))
         }
@@ -316,12 +327,12 @@ private fun PickStage(st: AppState) {
         Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
             val climb = ProgramEngine.script(DayMode.CLIMB, st.settings)
             val off = ProgramEngine.script(DayMode.OFF, st.settings)
-            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, st.settings.vocab.trainDay, "${count(climb.size, "item")} · ${ProgramEngine.totalXp(climb)} xp")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, st.settings.vocab.trainDay, "${count(climb.size, "item")}" + xpWords(st, ProgramEngine.totalXp(climb)))
             Spacer(GlanceModifier.width(8.dp))
-            PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${count(off.size, "item")} · ${ProgramEngine.totalXp(off)} xp")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${count(off.size, "item")}" + xpWords(st, ProgramEngine.totalXp(off)))
             Spacer(GlanceModifier.width(8.dp))
             val rest = ProgramEngine.script(DayMode.REST, st.settings)
-            PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${count(rest.size, "item")} · ${ProgramEngine.totalXp(rest)} xp")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${count(rest.size, "item")}" + xpWords(st, ProgramEngine.totalXp(rest)))
         }
     }
 }
@@ -339,7 +350,10 @@ private fun PickCard(modifier: GlanceModifier, mode: DayMode, icon: Int, title: 
     }
 }
 
-private data class WRow(val item: ScriptItem, val done: Boolean, val next: Boolean)
+private data class WRow(val item: ScriptItem, val done: Boolean, val next: Boolean, val xp: Boolean = true)
+
+/** " · 120 xp" after a pick card's item count, or nothing with the widget's xp off. */
+private fun xpWords(st: AppState, xp: Int) = if (st.settings.prefs.widgetXp) " · $xp xp" else ""
 
 /** Up to [n] rows: the next items to do, then the most recently completed (tap to undo); older ones fold into the summary line. */
 private fun rowsFor(st: AppState, n: Int = 4): List<WRow> {
@@ -349,7 +363,8 @@ private fun rowsFor(st: AppState, n: Int = 4): List<WRow> {
     val recent = items.filter { it.id in st.done && it.id != ProgramSpec.ITEM_WEIGH }.sortedByDescending { lastAt[it.id]?.toEpochMilli() ?: 0L }
     val todo = remaining.take(n - minOf(1, recent.size))
     val done = recent.take(n - todo.size)
-    return todo.mapIndexed { i, it -> WRow(it, false, i == 0) } + done.map { WRow(it, true, false) }
+    val xp = st.settings.prefs.widgetXp
+    return todo.mapIndexed { i, it -> WRow(it, false, i == 0, xp) } + done.map { WRow(it, true, false, xp) }
 }
 
 @Composable
@@ -423,7 +438,7 @@ private fun ItemRow(r: WRow) {
             style = body(W.dim, 10),
         )
         Text(
-            if (r.next || r.done) "+${r.item.xp}" else r.item.time,
+            if ((r.next || r.done) && r.xp) "+${r.item.xp}" else if (r.done) "" else r.item.time,
             style = eyebrow(if (r.done) W.good else if (r.next) W.accent else W.text2),
         )
     }

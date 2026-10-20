@@ -39,3 +39,9 @@ fun Settings.stepped(lb: Double, dir: Int): Double {
     val halves = shown(lb) * 2
     return toLb((if (dir > 0) kotlin.math.floor(halves + 1e-6) + 1 else kotlin.math.ceil(halves - 1e-6) - 1) / 2.0)
 }
+
+/** A summary weight (an average, a pace, a projection) with the decimals Settings, Weight asks for: "182.4" or "182". */
+fun Settings.wr(lb: Double): String = if (prefs.weightDecimals == 0) shown(lb).roundToInt().toString() else w(lb)
+
+/** [wr] with the unit. */
+fun Settings.wru(lb: Double): String = wr(lb) + " " + unit

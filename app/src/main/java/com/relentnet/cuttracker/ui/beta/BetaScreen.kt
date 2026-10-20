@@ -57,7 +57,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 /** Beta: the plan for the route. A grid of tiles that fills the page; every tile is its own page. */
 @Composable
@@ -211,7 +210,7 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
             if (next?.target != null) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(s.w(next.target), color = c.text, style = cutStyle(32, 800, 1f, -0.03f, display = true, tabular = true))
-                    Text("${s.unit} on ${next.localDate.format(cpFmt)}, ${com.relentnet.cuttracker.ui.components.inDays(ChronoUnit.DAYS.between(st.today, next.localDate))}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${s.unit} on ${com.relentnet.cuttracker.data.Dates.md(next.localDate)}, ${com.relentnet.cuttracker.ui.components.inDays(ChronoUnit.DAYS.between(st.today, next.localDate))}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (i in cps.indices) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < idx) c.good else if (i == idx) c.accent else c.hairline))
@@ -244,7 +243,7 @@ private fun WeekTile(modifier: Modifier, st: AppState, onClick: () -> Unit) {
             Box(Modifier.height(8.dp))
             Meter("Workouts", st.workoutsThisWeek, s.workoutsPerWeek.coerceAtLeast(1), c.good)
         }
-        Text("${ws.format(cpFmt)} to ${ws.plusDays(6).dayOfMonth}", color = c.text2, style = cutStyle(11, 500, 1.2f, tabular = true))
+        Text("${com.relentnet.cuttracker.data.Dates.span(ws, ws.plusDays(6))}", color = c.text2, style = cutStyle(11, 500, 1.2f, tabular = true))
     }
 }
 

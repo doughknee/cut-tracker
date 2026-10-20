@@ -134,7 +134,7 @@ fun CheckRow(
                 .background(if (done) c.surface.copy(alpha = if (compact) 0f else 0.7f) else c.surface, shape)
                 .then(
                     // Up next is the raised row: accent edge. The rest sit flat with no edge at all.
-                    if (compact || !next) Modifier
+                    if (compact || !next || !prefs.showUpNext) Modifier
                     else Modifier.border(1.5.dp, c.accent.copy(alpha = 0.6f), shape),
                 )
                 .clickable(onClick = onClick, role = Role.Checkbox)
@@ -151,14 +151,14 @@ fun CheckRow(
                 contentAlignment = Alignment.Center,
             ) { if (compact) CheckBox(done, size = 20, iconSize = 11) else CheckBox(done) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (next && !done) Text("UP NEXT", color = c.accent, style = cutStyle(10, 800, 1f, 0.1f))
+                if (next && !done && prefs.showUpNext) Text("UP NEXT", color = c.accent, style = cutStyle(10, 800, 1f, 0.1f))
                 Text(
                     label,
                     color = if (done) c.text2 else c.text,
                     style = cutStyle(if (compact) 14 else 16, 600, 1.2f),
-                    textDecoration = if (done) TextDecoration.LineThrough else null,
+                    textDecoration = if (done && prefs.strikeDone) TextDecoration.LineThrough else null,
                 )
-                if (!compact && sub != null) Text(sub, color = c.text2, style = cutStyle(12, 500, 1.3f))
+                if (!compact && sub != null && prefs.showSubs) Text(sub, color = c.text2, style = cutStyle(12, 500, 1.3f))
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (!compact && tag != null) Text(tag.uppercase(), color = c.good, style = cutStyle(10, 800, 1f, 0.08f))

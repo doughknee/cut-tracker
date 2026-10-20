@@ -119,7 +119,7 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
     val haptics = LocalHaptics.current
     var weighOpen by rememberSaveable { mutableStateOf(false) }
     var pickOpen by rememberSaveable { mutableStateOf<String?>(null) }
-    var doneOpen by rememberSaveable { mutableStateOf(false) }
+    var doneOpen by rememberSaveable { mutableStateOf(st.settings.prefs.doneOpen) }
     var liftOpen by rememberSaveable { mutableStateOf(false) }
     var infoOpen by rememberSaveable { mutableStateOf(false) }
     val scroll = rememberScrollState()
@@ -173,6 +173,10 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
     // Back closes an open panel first, then takes an earlier day back to today, and only then leaves.
     androidx.activity.compose.BackHandler(enabled = past) { view(st.today) }
     androidx.activity.compose.BackHandler(enabled = weighOpen || pickOpen != null || liftOpen) { closeInline() }
+    // Keep the screen on (Settings, Meals and lifts) while the lifts are open, so a rest between sets does not lock the phone.
+    val view = androidx.compose.ui.platform.LocalView.current
+    val awake = liftOpen && st.settings.prefs.keepScreenOn
+    androidx.compose.runtime.DisposableEffect(awake) { view.keepScreenOn = awake; onDispose { view.keepScreenOn = false } }
     var confirmNext by remember { mutableStateOf(false) }
     val dayReading = st.weighIns.firstOrNull { w -> w.date == date }
     val total = st.settings.protein
@@ -215,20 +219,27 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
             Row(Modifier.fillMaxWidth().heightIn(min = 34.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(stateLine.uppercase(), color = stateColor, style = cutStyle(11, 800, 1f, 0.1f, tabular = true))
                 if (past) NavPill("Back to today ›", { view(st.today) }, accent = true)
-                else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                else if (st.settings.prefs.showChain) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Icon(CutIcons.Link, null, Modifier.size(15.dp), tint = if (st.chain.paused) c.freeze else c.good)
                     Text("${tickedInt(st.chain.count)}", color = c.text, style = cutStyle(16, 800, 1f, tabular = true))
                     Text(if (st.chain.paused) "PAUSED" else "CHAIN", color = if (st.chain.paused) c.freeze else c.text2, style = cutStyle(10, 700, 1f, 0.08f), modifier = Modifier.padding(start = 4.dp))
                 }
             }
             Text(date.format(dayFmt), color = c.text, style = cutStyle(48, 800, 1f, -0.03f, display = true), maxLines = 1)
-            Row(
-                Modifier.clip(RoundedCornerShape(6.dp)).pressable(haptic = false, onClick = onRoute).padding(end = 6.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                val dn = ProgramEngine.dayNumber(date, st.settings.startDate)
-                Sub(if (dn < 1) "Starts ${st.settings.startDate.format(java.time.format.DateTimeFormatter.ofPattern("EEE MMM d", Locale.US))}" else "Day ${dn.coerceAtMost(st.settings.totalDays)} of ${st.settings.totalDays}", size = 12)
-                Text("ROUTE ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(6.dp)).pressable(haptic = false, onClick = onRoute).padding(end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val dn = ProgramEngine.dayNumber(date, st.settings.startDate)
+                    Sub(if (dn < 1) "Starts ${com.relentnet.cuttracker.data.Dates.wmd(st.settings.startDate)}" else "Day ${dn.coerceAtMost(st.settings.totalDays)} of ${st.settings.totalDays}", size = 12)
+                    Text("ROUTE ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+                }
+                // With the weight tile off (Settings, Today), Weight is reached from here instead.
+                if (!st.settings.prefs.showWeightTile) Text(
+                    "WEIGHT ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f),
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).pressable(haptic = false, onClick = onWeight).padding(horizontal = 6.dp, vertical = 8.dp),
+                )
             }
         }
 
@@ -370,7 +381,7 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
             }
         }
 
-        WeightTile(st, onWeight)
+        if (st.settings.prefs.showWeightTile) WeightTile(st, onWeight)
         }
     }
     if (infoOpen) WallInfoSheet(onDismiss = { infoOpen = false })
@@ -388,15 +399,17 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
     val c = CutTheme.colors
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
-    val shown = tickedFloat(s.shown(avg ?: s.startWeight).toFloat())
+    val latest = st.weighIns.maxByOrNull { it.date }
+    val heroLatest = s.prefs.weightHero == "latest" && latest != null
+    val shown = tickedFloat(s.shown(if (heroLatest) latest!!.lb else avg ?: s.startWeight).toFloat())
     val gap = avg?.let { it - ProgramEngine.paceWeight(st.dayN.coerceIn(1, s.totalDays), s, ProgramEngine.paceAnchor(st.weighIns, s)) }
     val onPace = gap != null && gap <= ProgramSpec.PACE_TOLERANCE_LB
     Card(Modifier.fillMaxWidth().clickable(onClick = onWeight, role = Role.Button), padding = PaddingValues(14.dp, 12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                TileLabel("7-day average")
+                TileLabel(if (heroLatest) "Latest reading" else "7-day average")
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(if (avg == null) "--" else ProgramEngine.fmt1(shown.toDouble()), color = c.text, style = cutStyle(22, 800, 1f, tabular = true))
+                    Text(if (avg == null) "--" else com.relentnet.cuttracker.ui.weight.heroNumber(shown, s), color = c.text, style = cutStyle(22, 800, 1f, tabular = true))
                     Text(" ${s.unit}", color = c.text2, style = cutStyle(13, 600, 1f))
                 }
             }
@@ -558,10 +571,11 @@ private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int
         ) { Text("MAKE IT REST", color = c.text, style = cutStyle(11, 800, 1f, 0.06f)) }
       }
         val hit = dv.totals.protein >= proteinTarget
-        Row(Modifier.heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("${tickedInt(dv.totals.protein)}", color = if (hit) c.good else c.text, style = cutStyle(13, 800, 1f, tabular = true), softWrap = false)
-            Text(" / $proteinTarget g", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
-            if (CutTheme.prefs.showCalories) Text("   ${tickedInt(dv.totals.calories)} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
+        val pr = CutTheme.prefs
+        if (pr.showProtein || pr.showCalories) Row(Modifier.heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (pr.showProtein) Text("${tickedInt(dv.totals.protein)}", color = if (hit) c.good else c.text, style = cutStyle(13, 800, 1f, tabular = true), softWrap = false)
+            if (pr.showProtein) Text(" / $proteinTarget g", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
+            if (pr.showCalories) Text((if (pr.showProtein) "   " else "") + "${tickedInt(dv.totals.calories)} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
         }
     }
 }

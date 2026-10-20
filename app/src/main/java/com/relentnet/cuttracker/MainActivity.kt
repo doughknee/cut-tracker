@@ -25,6 +25,7 @@ import com.relentnet.cuttracker.ui.theme.ThemeMode
 import com.relentnet.cuttracker.ui.theme.Palettes
 import androidx.compose.runtime.produceState
 import com.relentnet.cuttracker.data.vocab
+import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels { AppViewModel.factory(App.of(this).repo) }
@@ -46,6 +47,12 @@ class MainActivity : ComponentActivity() {
             // The phone's "Remove animations" switch counts as calm unless Settings says always.
             val phoneCalm = remember { android.provider.Settings.Global.getFloat(contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
             val density = androidx.compose.ui.platform.LocalDensity.current
+            com.relentnet.cuttracker.ui.theme.boldBump = if (p.boldText) 200 else 0
+            // Block screenshots (Settings, Data): the phone blanks the app in Recents and refuses captures.
+            androidx.compose.runtime.LaunchedEffect(p.secureScreen) {
+                if (p.secureScreen) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
             CutTheme(mode, palette, now.toLocalTime(), highContrast = p.highContrast) {
                 CompositionLocalProvider(
                     LocalHaptics provides remember { haptics },
@@ -54,6 +61,8 @@ class MainActivity : ComponentActivity() {
                     com.relentnet.cuttracker.ui.theme.LocalCalm provides (p.reduceMotion == "on" || phoneCalm),
                     // Text size on top of the phone's own.
                     androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * p.textScale),
+                    // Bigger tap targets: every control that asks for the minimum gets 56dp instead of 48.
+                    androidx.compose.material3.LocalMinimumInteractiveComponentSize provides if (p.bigTargets) 56.dp else 48.dp,
                 ) { App(vm) }
             }
         }

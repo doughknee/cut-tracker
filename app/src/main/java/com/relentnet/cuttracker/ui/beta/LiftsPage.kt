@@ -99,12 +99,16 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
 private fun LiftSheet(s: com.relentnet.cuttracker.data.Settings, e: Exercise?, kinds: List<LibKind>, kind0: String, onDismiss: () -> Unit, onSave: (Exercise) -> Unit, onDelete: (() -> Unit)?) {
     var name by remember(e) { mutableStateOf(e?.name ?: "") }
     var kind by remember(e) { mutableStateOf(kind0) }
-    var sets by remember(e) { mutableStateOf(e?.sets ?: 3) }
-    var reps by remember(e) { mutableStateOf(e?.repTarget ?: "8 to 12") }
+    // A new lift starts from the defaults in Settings, Meals and lifts.
+    val p = s.prefs
+    val sets0 = e?.sets ?: p.liftSets
+    val reps0 = e?.repTarget ?: p.liftReps
+    var sets by remember(e) { mutableStateOf(sets0) }
+    var reps by remember(e) { mutableStateOf(reps0) }
     // The step is typed in the user's unit; an untouched field keeps the stored lb exactly.
-    val step0 = e?.let { s.liftW(it.step) } ?: if (s.kg) "2.5" else "5"
+    val step0 = e?.let { s.liftW(it.step) } ?: liftStepWords(s)
     var step by remember(e) { mutableStateOf(step0) }
-    val dirty = name != (e?.name ?: "") || kind != kind0 || sets != (e?.sets ?: 3) || reps != (e?.repTarget ?: "8 to 12") || step != step0
+    val dirty = name != (e?.name ?: "") || kind != kind0 || sets != sets0 || reps != reps0 || step != step0
     Sheet(if (e == null) "New lift" else "Edit lift", onDismiss, dirty = dirty) {
         SheetField("Name", name, { name = it }, text = true, big = true, placeholder = "What is it")
         SheetLabel("Kind")
@@ -131,3 +135,7 @@ private fun LiftSheet(s: com.relentnet.cuttracker.data.Settings, e: Exercise?, k
     }
 }
 
+
+/** The weight step a new lift starts with, in the unit shown: 5 lb or 2.5 kg times the scale in Settings ("1.25", "10"). */
+fun liftStepWords(s: com.relentnet.cuttracker.data.Settings): String =
+    ((if (s.kg) 2.5 else 5.0) * s.prefs.liftStepScale).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }

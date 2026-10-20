@@ -69,7 +69,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import com.relentnet.cuttracker.data.Vocab
 import com.relentnet.cuttracker.ui.components.Pill
 
-private val longDate: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.US)
 
 /** Four steps. Finishing writes the program settings, logs the first weigh-in and lands on Today. */
 @Composable
@@ -233,7 +232,7 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
                         Field(weeks, { weeks = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
                     val w = (weeks.int() ?: 12).coerceIn(1, 52)
-                    Hint("Ends ${d.plusDays(w * 7L).format(longDate)}. ${w * 7} ${v.holds} on the route.")
+                    Hint("Ends ${com.relentnet.cuttracker.data.Dates.long(d.plusDays(w * 7L))}. ${w * 7} ${v.holds} on the route.")
                 }
                 3 -> {
                     Big("The daily targets.")

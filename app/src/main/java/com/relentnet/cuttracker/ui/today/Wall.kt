@@ -76,8 +76,8 @@ private val wdFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale
 /** A gentle S up the wall, Monday bottom-left to Sunday top-right. Same seven anchors every week, in a 390-wide box. */
 private val ANCHORS = listOf(30 to 366, 104 to 332, 58 to 266, 146 to 236, 224 to 190, 296 to 158, 314 to 84)
 private const val MOCK_WIDTH = 390f
-private val HOLD = 44.dp
-private val HOLD_SELECTED = 60.dp
+private val HOLD_BASE = 44.dp
+private val HOLD_BIG = 52.dp
 /** Wall height below the status bar. */
 val WALL_HEIGHT = 484.dp
 
@@ -117,6 +117,10 @@ fun Wall(
     // Short screens get a shorter wall so the date headline still lands above the fold.
     val ys = (LocalConfiguration.current.screenHeightDp / 860f).coerceIn(0.72f, 1f)
     val decor = com.relentnet.cuttracker.ui.theme.LocalDecor.current
+    val p = CutTheme.prefs
+    // Bigger holds (Settings, Today) grow every hold and the selected one with it; the anchors stay.
+    val hold = if (p.bigHolds) HOLD_BIG else HOLD_BASE
+    val holdSel = hold + 16.dp
     // A sideways swipe on the wall is the week pill's arrows: left for the later week, right for the earlier one.
     val week by rememberUpdatedState(onWeek)
     BoxWithConstraints(
@@ -136,6 +140,8 @@ fun Wall(
         // Back layer: panel texture and seams, slowest.
         Box(
             Modifier.fillMaxSize().graphicsLayer { translationY = scroll.value * 0.35f }.drawBehind {
+                // A plain wall (Settings, Feel and access) drops the texture; the seams stay so the wall still reads as one.
+                if (!p.plainWall) {
                 val dot = c.text.copy(alpha = if (c.isDark) 0.09f else 0.18f)
                 val stripe = c.text.copy(alpha = if (c.isDark) 0.022f else 0.05f)
                 val step = 26.dp.toPx()
@@ -151,6 +157,7 @@ fun Wall(
                     drawLine(stripe, Offset(x0, 0f), Offset(x0 + size.height, size.height), 2.dp.toPx())
                     x0 += gap
                 }
+                }
                 drawWallDecor(decor, c, 96.dp.toPx())
                 for (seam in listOf(226.dp, 366.dp)) {
                     val sy = seam.toPx() * ys + statusTop.toPx()
@@ -162,9 +169,9 @@ fun Wall(
         // Middle layer: chalk, rope and holds.
         Box(
             Modifier.fillMaxSize().graphicsLayer { translationY = scroll.value * 0.2f }.drawBehind {
-                if (sel >= 0) {
-                    val cx = (ax(sel) + HOLD / 2).toPx()
-                    val cy = (ay(sel) + HOLD / 2).toPx()
+                if (sel >= 0 && !p.plainWall) {
+                    val cx = (ax(sel) + hold / 2).toPx()
+                    val cy = (ay(sel) + hold / 2).toPx()
                     drawCircle(Brush.radialGradient(listOf(c.text.copy(alpha = 0.18f), Color.Transparent), Offset(cx, cy), 58.dp.toPx()), 58.dp.toPx(), Offset(cx, cy))
                 }
                 val onRope = if (!st.settings.prefs.showRope) emptyList() else days.indices.filter { (st.results[days[it]] ?: DayResult.FUTURE) in ROPE }
@@ -172,8 +179,8 @@ fun Wall(
                     val a = onRope[k - 1]; val b = onRope[k]
                     drawLine(
                         c.accent.copy(alpha = 0.95f),
-                        Offset((ax(a) + HOLD / 2).toPx(), (ay(a) + HOLD / 2).toPx()),
-                        Offset((ax(b) + HOLD / 2).toPx(), (ay(b) + HOLD / 2).toPx()),
+                        Offset((ax(a) + hold / 2).toPx(), (ay(a) + hold / 2).toPx()),
+                        Offset((ax(b) + hold / 2).toPx(), (ay(b) + hold / 2).toPx()),
                         3.5.dp.toPx(), StrokeCap.Round,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.dp.toPx(), 8.dp.toPx())),
                     )
@@ -184,14 +191,14 @@ fun Wall(
                 val r = st.results[day] ?: if (day.isBefore(st.settings.startDate)) DayResult.BEFORE else DayResult.FUTURE
                 val isSel = i == sel
                 // The selected hold grows, fills cross-fade, and a fresh Send pops like a hold you just stuck.
-                val size by animateDpAsState(if (isSel) HOLD_SELECTED else HOLD, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow), label = "holdSize")
+                val size by animateDpAsState(if (isSel) holdSel else hold, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow), label = "holdSize")
                 val fill by animateColorAsState(holdFill(r, c), tween(350), label = "holdFill")
                 val pop = remember { Animatable(1f) }
                 LaunchedEffect(r == DayResult.SEND) {
                     if (r == DayResult.SEND) { pop.snapTo(0.55f); pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium)) }
                 }
-                val x = ax(i) - (size - HOLD) / 2
-                val y = ay(i) - (size - HOLD) / 2
+                val x = ax(i) - (size - hold) / 2
+                val y = ay(i) - (size - hold) / 2
                 val open = r != DayResult.FUTURE && r != DayResult.BEFORE
                 val stroke = when {
                     isSel -> if (day == st.today) c.accent else c.text
@@ -205,11 +212,11 @@ fun Wall(
                             .scale(pop.value)
                             .semantics { contentDescription = "${day.format(wdFmt)} ${day.dayOfMonth}, ${resultName(r, v)}" }
                             .then(if (open) Modifier.clickable(onClick = { onPickDay(day) }, role = Role.Button) else Modifier),
-                        stroke = stroke, strokeWidth = if (stroke != null) 2.2.dp else 0.dp,
+                        stroke = stroke, strokeWidth = if (stroke != null) 2.2.dp else 0.dp, mark = r,
                     ) {
-                        Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(if (isSel) 18 else 14, 900, 1f, tabular = true))
+                        Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(if (isSel) 18 else if (p.bigHolds) 16 else 14, 900, 1f, tabular = true))
                     }
-                    Text(
+                    if (p.weekdayLabels) Text(
                         day.format(wdFmt).uppercase(), color = if (isSel) c.text else c.text2,
                         style = cutStyle(10, 800, 1f, 0.08f), textAlign = TextAlign.Center, modifier = Modifier.width(size),
                     )

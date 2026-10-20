@@ -45,29 +45,37 @@ fun WidgetPage(vm: AppViewModel, onBack: () -> Unit) {
         BackHeader("You", "Widget", onBack)
         Sub("Weigh in, pick the day and tick the next item without opening the app.", size = 12)
 
-        // The widget's weigh-in face, as these settings draw it.
-        Card(Modifier.fillMaxWidth(), radius = 20.dp, background = c.surface, border = c.hairline) {
+        // The widget's weigh-in face, as these settings draw it: its own light or dark, over a hint of wallpaper when see-through.
+        val dark = when (p.widgetTheme) { "dark" -> true; "light" -> false; else -> androidx.compose.foundation.isSystemInDarkTheme() }
+        val wc = if (dark) com.relentnet.cuttracker.ui.theme.DarkCutColors else com.relentnet.cuttracker.ui.theme.LightCutColors
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .background(if (p.widgetSeeThrough) androidx.compose.ui.graphics.Brush.linearGradient(listOf(c.accent, c.freeze)) else androidx.compose.ui.graphics.SolidColor(c.ground))
+                .padding(if (p.widgetSeeThrough) 10.dp else 0.dp),
+        ) {
+        Card(Modifier.fillMaxWidth(), radius = 20.dp, background = wc.ground.copy(alpha = if (p.widgetSeeThrough) 0.72f else 1f), border = wc.hairline) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("${st.today.dayOfWeek.name.take(3)} · DAY ${st.dayN}", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+                Text("${st.today.dayOfWeek.name.take(3)} · DAY ${st.dayN}", color = wc.text2, style = cutStyle(10, 800, 1f, 0.08f))
                 Row(Modifier.fillMaxWidth().height(84.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val step = ProgramEngine.fmt1(p.weighStep).removePrefix("0")
                     for ((label, mid) in listOf("−$step" to false, "" to true, "+$step" to false)) {
                         Box(
-                            (if (mid) Modifier.weight(1f) else Modifier.width(54.dp)).fillMaxHeight().clip(RoundedCornerShape(12.dp)).background(c.ground),
+                            (if (mid) Modifier.weight(1f) else Modifier.width(54.dp)).fillMaxHeight().clip(RoundedCornerShape(12.dp)).background(wc.surface),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (!mid) Text(label, color = c.text, style = cutStyle(15, 800, 1f, tabular = true))
+                            if (!mid) Text(label, color = wc.text, style = cutStyle(15, 800, 1f, tabular = true))
                             else Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("WEIGH IN", color = c.accent, style = cutStyle(10, 800, 1f, 0.08f))
-                                Text(if (p.widgetHideWeight) "• • •" else s.w(last), color = c.text, style = cutStyle(28, 800, 1f, -0.02f, tabular = true))
+                                Text("WEIGH IN", color = wc.accent, style = cutStyle(10, 800, 1f, 0.08f))
+                                Text(if (p.widgetHideWeight) "• • •" else s.w(last), color = wc.text, style = cutStyle(28, 800, 1f, -0.02f, tabular = true))
                             }
                         }
                     }
                 }
-                Box(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(9.dp)).background(c.accent), contentAlignment = Alignment.Center) {
-                    Text("LOG", color = c.onAccent, style = cutStyle(11, 800, 1f, 0.08f))
+                Box(Modifier.fillMaxWidth().height(32.dp).clip(RoundedCornerShape(9.dp)).background(wc.accent), contentAlignment = Alignment.Center) {
+                    Text(if (p.widgetXp) "LOG · +${com.relentnet.cuttracker.data.ProgramSpec.XP_WEIGH} xp" else "LOG", color = wc.onAccent, style = cutStyle(11, 800, 1f, 0.08f))
                 }
             }
+        }
         }
 
         val widgets = context.getSystemService(android.appwidget.AppWidgetManager::class.java)
@@ -78,6 +86,13 @@ fun WidgetPage(vm: AppViewModel, onBack: () -> Unit) {
             SwitchRow("Hide your weight", "dots instead of the number, for a phone others see. The step and the change from yesterday still show", p.widgetHideWeight) {
                 vm.updatePrefs { it.copy(widgetHideWeight = !it.widgetHideWeight) }
             }
+        }
+        KindCard("The look", "") {
+            ChoiceRow("Light or dark", "the widget on its own, whatever the app wears", listOf("phone" to "Follow the phone", "dark" to "Dark", "light" to "Light"), p.widgetTheme) { k ->
+                vm.updatePrefs { it.copy(widgetTheme = k) }
+            }
+            SwitchRow("See-through", "the wallpaper shows faintly behind it", p.widgetSeeThrough) { vm.updatePrefs { it.copy(widgetSeeThrough = !it.widgetSeeThrough) } }
+            SwitchRow("XP", "the +10 on the log button, the day cards and the rows", p.widgetXp) { vm.updatePrefs { it.copy(widgetXp = !it.widgetXp) } }
         }
         Sub("The minus and plus follow Weigh-in steps on the Today page.", size = 12)
     }

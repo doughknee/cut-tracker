@@ -111,12 +111,13 @@ fun Field(
 
 /** Toggle switch, 46x26 drawn in a 48dp target, accent when on. TalkBack reads [label] and on or off. */
 @Composable
-fun Switch(on: Boolean, label: String? = null, onToggle: () -> Unit) {
+fun Switch(on: Boolean, label: String? = null, interactive: Boolean = true, onToggle: () -> Unit) {
     val c = CutTheme.colors
     val track by animateColorAsState(if (on) c.accent else c.mutedBorder, tween(160), label = "switchTrack")
     val bias by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else -1f, tween(160), label = "switchThumb")
     Box(
-        Modifier
+        // Not interactive: the row around it is the toggle (and the one TalkBack stop), this only draws.
+        if (!interactive) Modifier else Modifier
             .minimumInteractiveComponentSize()
             .toggleable(value = on, role = Role.Switch, onValueChange = { onToggle() })
             .then(if (label != null) Modifier.semantics { contentDescription = label } else Modifier),

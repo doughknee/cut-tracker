@@ -96,6 +96,15 @@ fun AppPage(vm: AppViewModel, onBack: () -> Unit) {
                 ChipRow(listOf("phone" to "Phone", "12" to "12-hour", "24" to "24-hour"), p.clock, onSelect = { k -> haptics.tick(); vm.updatePrefs { it.copy(clock = k) } })
             }
         }
+        // Each chip reads today's date the way it would be written.
+        val today = st.today
+        val us = today.format(java.time.format.DateTimeFormatter.ofPattern("EEE MMM d", java.util.Locale.US))
+        val uk = today.format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.US))
+        KindCard("Dates", if (p.dayFirst) "day first" else "month first", sub = "Checkpoints, the Route calendar, Weight, the week pages and the widget.") {
+            Box(Modifier.padding(14.dp, 6.dp, 14.dp, 12.dp)) {
+                ChipRow(listOf("md" to us, "dm" to uk), if (p.dayFirst) "dm" else "md", onSelect = { k -> haptics.tick(); vm.updatePrefs { it.copy(dayFirst = k == "dm") } })
+            }
+        }
         Sub("Applies at once, on the widget and in the reminders too.", size = 12)
     }
 }

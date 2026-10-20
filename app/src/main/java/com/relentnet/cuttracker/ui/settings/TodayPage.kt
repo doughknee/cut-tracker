@@ -21,6 +21,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.relentnet.cuttracker.data.AppState
 import com.relentnet.cuttracker.data.wu
@@ -57,15 +59,27 @@ fun TodayPage(vm: AppViewModel, onBack: () -> Unit) {
         KindCard("The wall", "") {
             SwitchRow("The tape", "the week on an orange tape; its arrows step the week. Off, swipe the wall instead", p.showTape) { vm.updatePrefs { it.copy(showTape = !it.showTape) } }
             SwitchRow("The rope", "the line that joins the days of your chain", p.showRope) { vm.updatePrefs { it.copy(showRope = !it.showRope) } }
+            SwitchRow("Bigger ${v.holds}", "every ${v.hold} on the wall a size up, the day number too", p.bigHolds) { vm.updatePrefs { it.copy(bigHolds = !it.bigHolds) } }
+            SwitchRow("Day names", "MON, TUE under each ${v.hold}", p.weekdayLabels) { vm.updatePrefs { it.copy(weekdayLabels = !it.weekdayLabels) } }
             SwitchRow("Holiday decorations", "on the wall and the ${v.holds} when the calendar look brings some", p.wallDecor) { vm.updatePrefs { it.copy(wallDecor = !it.wallDecor) } }
         }
 
         KindCard("The script", "") {
             SwitchRow("Hide completed", "ticked items fold into a Done list under the script", s.hideDone) { vm.updateSettings { s -> s.copy(hideDone = !s.hideDone) } }
+            if (s.hideDone) SwitchRow("Done list starts open", "the folded items show without a tap", p.doneOpen) { vm.updatePrefs { it.copy(doneOpen = !it.doneOpen) } }
+            SwitchRow("Up next", "the next item to do is raised, with UP NEXT over it", p.showUpNext) { vm.updatePrefs { it.copy(showUpNext = !it.showUpNext) } }
+            SwitchRow("The line under each item", "the plan's note, the last weigh-in", p.showSubs) { vm.updatePrefs { it.copy(showSubs = !it.showSubs) } }
+            SwitchRow("Strike through ticked items", "a line through what is done", p.strikeDone) { vm.updatePrefs { it.copy(strikeDone = !it.strikeDone) } }
             SwitchRow("XP on each item", "the +10 on the right of every row", p.showXp) { vm.updatePrefs { it.copy(showXp = !it.showXp) } }
             SwitchRow("Times on each item", "when each meal or block is planned", p.showTimes) { vm.updatePrefs { it.copy(showTimes = !it.showTimes) } }
             SwitchRow("Swipe to tick", "a swipe to the right ticks a row. Off, rows tick by tap", p.swipeToTick) { vm.updatePrefs { it.copy(swipeToTick = !it.swipeToTick) } }
+        }
+
+        KindCard("The numbers", "") {
+            SwitchRow("Protein", "grams so far and the target, beside the kind of day", p.showProtein) { vm.updatePrefs { it.copy(showProtein = !it.showProtein) } }
             SwitchRow("Calories", "beside protein in the day's totals", p.showCalories) { vm.updatePrefs { it.copy(showCalories = !it.showCalories) } }
+            SwitchRow("The chain", "the count at the top right. It still counts with this off", p.showChain) { vm.updatePrefs { it.copy(showChain = !it.showChain) } }
+            SwitchRow("The weight tile", "the 7-day average at the foot of Today. Off, Weight is the link beside Route at the top", p.showWeightTile) { vm.updatePrefs { it.copy(showWeightTile = !it.showWeightTile) } }
         }
 
         KindCard("The day", "") {
@@ -86,11 +100,16 @@ fun TodayPage(vm: AppViewModel, onBack: () -> Unit) {
     }
 }
 
-/** A row with a switch; the switch is named by the row, for TalkBack. */
+/**
+ * A row with a switch. The whole row is the toggle, so it is a big target and TalkBack reads it once:
+ * the title, the line under it, then on or off.
+ */
 @Composable
 internal fun SwitchRow(title: String, sub: String, on: Boolean, onToggle: () -> Unit) {
     val haptics = LocalHaptics.current
-    PlainRow(title, sub) { Switch(on, title) { haptics.tick(); onToggle() } }
+    Box(Modifier.toggleable(value = on, role = Role.Switch, onValueChange = { haptics.tick(); onToggle() })) {
+        PlainRow(title, sub) { Switch(on, interactive = false) {} }
+    }
 }
 
 /** A titled choice: the words on top, the chips under them. */
@@ -128,8 +147,10 @@ internal fun TodayCorner(st: AppState) {
         Column(Modifier.padding(14.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (all) v.sent.uppercase() else "TODAY · ${v.trainDay.uppercase()}", Modifier.weight(1f), color = head, style = cutStyle(11, 800, 1f, 0.1f))
-                Icon(CutIcons.Link, null, Modifier.size(13.dp), tint = c.good)
-                Text(" ${if (all) 5 else 4} CHAIN", color = c.text2, style = cutStyle(10, 700, 1f, 0.08f))
+                if (s.prefs.showChain) {
+                    Icon(CutIcons.Link, null, Modifier.size(13.dp), tint = c.good)
+                    Text(" ${if (all) 5 else 4} CHAIN", color = c.text2, style = cutStyle(10, 700, 1f, 0.08f))
+                }
             }
             val next = rows.firstOrNull { it.id !in done }?.id
             for (r in rows) if (!s.hideDone || r.id !in done) {

@@ -233,7 +233,10 @@ private fun DrawScope.star(cx: Float, cy: Float, r: Float, color: Color) {
     drawPath(p, color)
 }
 
-/** A hold with optional centered content (the day number). Wears the current look's decor. */
+/**
+ * A hold with optional centered content (the day number). Wears the current look's decor. With Marks on the holds
+ * (Settings, Feel and access) a [mark] result also gets its badge at the bottom right.
+ */
 @Composable
 fun Hold(
     shape: HoldShape,
@@ -242,12 +245,41 @@ fun Hold(
     modifier: Modifier = Modifier,
     stroke: Color? = null,
     strokeWidth: Dp = 0.dp,
+    mark: DayResult? = null,
     content: @Composable () -> Unit = {},
 ) {
     val decor = LocalDecor.current
     val c = CutTheme.colors
+    val marked = mark != null && CutTheme.prefs.holdMarks && hasMark(mark)
     Box(
-        modifier.size(size).drawBehind { drawHold(shape, fill, stroke, strokeWidth.toPx()); if (decor != Decor.NONE) drawDecor(decor, shape, fill, c) },
+        modifier.size(size).drawBehind {
+            drawHold(shape, fill, stroke, strokeWidth.toPx()); if (decor != Decor.NONE) drawDecor(decor, shape, fill, c)
+            if (marked) drawMark(mark!!, c, (size * 0.42f).coerceIn(10.dp, 18.dp).toPx())
+        },
         contentAlignment = Alignment.Center,
     ) { content() }
+}
+
+fun hasMark(r: DayResult) = r in setOf(DayResult.SEND, DayResult.MIN, DayResult.FREEZE, DayResult.SKIP, DayResult.MISSED)
+
+/**
+ * The result as a shape, for anyone who cannot tell the fills apart: a tick for a Send, a dot for a Min day, two bars
+ * for a freeze (the chain paused), a dash for a planned skip, a cross for a miss. A disc at the bottom right, in the
+ * look's own surface and text colors.
+ */
+fun DrawScope.drawMark(r: DayResult, c: CutColors, d: Float) {
+    val center = Offset(size.width - d / 2, size.height - d / 2)
+    drawCircle(c.surface, d / 2, center)
+    drawCircle(c.text, d / 2, center, style = Stroke(d * 0.09f))
+    val u = d / 10f
+    val w = Stroke(u * 1.5f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    fun at(x: Float, y: Float) = Offset(center.x + x * u, center.y + y * u)
+    when (r) {
+        DayResult.SEND -> drawPath(Path().apply { moveTo(at(-2.6f, 0.2f).x, at(-2.6f, 0.2f).y); lineTo(at(-0.7f, 2f).x, at(-0.7f, 2f).y); lineTo(at(2.8f, -2f).x, at(2.8f, -2f).y) }, c.text, style = w)
+        DayResult.MIN -> drawCircle(c.text, u * 1.7f, center)
+        DayResult.FREEZE -> { drawLine(c.text, at(-1.3f, -2.3f), at(-1.3f, 2.3f), u * 1.5f, StrokeCap.Round); drawLine(c.text, at(1.3f, -2.3f), at(1.3f, 2.3f), u * 1.5f, StrokeCap.Round) }
+        DayResult.SKIP -> drawLine(c.text, at(-2.5f, 0f), at(2.5f, 0f), u * 1.5f, StrokeCap.Round)
+        DayResult.MISSED -> { drawLine(c.text, at(-2f, -2f), at(2f, 2f), u * 1.5f, StrokeCap.Round); drawLine(c.text, at(2f, -2f), at(-2f, 2f), u * 1.5f, StrokeCap.Round) }
+        else -> Unit
+    }
 }

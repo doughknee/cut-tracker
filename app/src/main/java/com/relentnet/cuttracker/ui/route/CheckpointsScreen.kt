@@ -78,7 +78,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -128,7 +127,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                                 if (bmp != null) Image(bmp, null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
                                 Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
                                     Text(label.uppercase(), color = c.text, style = cutStyle(11, 800, 1f, 0.08f))
-                                    Text(p.date.format(cpFmt), color = c.text2, style = cutStyle(11, 600, 1f))
+                                    Text(com.relentnet.cuttracker.data.Dates.md(p.date), color = c.text2, style = cutStyle(11, 600, 1f))
                                 }
                             }
                         }
@@ -145,7 +144,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                                     .combinedClickable(onClick = { compare = p.date }, onLongClick = { haptics.tap(); confirmDelete = p.date }),
                             ) {
                                 if (bmp != null) Image(bmp, null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
-                                Text(p.date.format(cpFmt), Modifier.align(Alignment.BottomStart).padding(6.dp), color = c.text, style = cutStyle(10, 700, 1f))
+                                Text(com.relentnet.cuttracker.data.Dates.md(p.date), Modifier.align(Alignment.BottomStart).padding(6.dp), color = c.text, style = cutStyle(10, 700, 1f))
                             }
                         }
                         repeat(4 - row.size) { Box(Modifier.weight(1f)) }
@@ -153,7 +152,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                 }
                 confirmDelete?.let { d ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Sub("Delete the ${d.format(cpFmt)} photo?", Modifier.weight(1f), size = 12)
+                        Sub("Delete the ${com.relentnet.cuttracker.data.Dates.md(d)} photo?", Modifier.weight(1f), size = 12)
                         Pill("Delete", on = true, onClick = { vm.deletePhoto(d); confirmDelete = null })
                         Pill("Keep", on = false, onClick = { confirmDelete = null })
                     }
@@ -166,7 +165,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                 val week = ProgramEngine.checkpointWeek(cp, s.startDate, s.lengthWeeks)
                 val (state, avg) = checkpointState(st, cp.localDate, cp.target)
                 val isCurrent = !cp.free && cp.localDate == current
-                val dateLabel = if (cp.days > 1) "${cp.localDate.format(cpFmt)} to ${cp.lastDate.dayOfMonth}" else cp.localDate.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US))
+                val dateLabel = if (cp.days > 1) com.relentnet.cuttracker.data.Dates.span(cp.localDate, cp.lastDate) else com.relentnet.cuttracker.data.Dates.wmd(cp.localDate)
                 val (right, rc) = when {
                     cp.free -> (if (cp.days > 1) "planned skips" else "planned skip") to c.text2
                     state == CpState.HIT -> "hit at ${s.w(avg!!)}" to c.good
@@ -208,7 +207,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
             s, cp, onDismiss = { editing = null },
             onSave = { ncp ->
                 // A date is a flag's identity: moving onto a day that has one is refused, not stacked.
-                if (ncp.date != cp.date && s.checkpoints.any { it.date == ncp.date }) vm.showToast("${ncp.localDate.format(cpFmt)} already has a checkpoint")
+                if (ncp.date != cp.date && s.checkpoints.any { it.date == ncp.date }) vm.showToast("${com.relentnet.cuttracker.data.Dates.md(ncp.localDate)} already has a checkpoint")
                 else { vm.updateSettings { s -> s.copy(checkpoints = s.checkpoints.map { if (it.date == cp.date) ncp else it }.sortedBy { it.date }) }; editing = null }
             },
             onRemove = { haptics2.tap(); vm.updateWithUndo("Checkpoint deleted") { s -> s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date }) }; editing = null },
@@ -241,7 +240,7 @@ private fun CheckpointSheet(s: com.relentnet.cuttracker.data.Settings, cp: Check
                         DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d) }, date.year, date.monthValue - 1, date.dayOfMonth).show()
                     }.padding(horizontal = 14.dp),
                     contentAlignment = Alignment.CenterStart,
-                ) { Text(date.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)), color = c.text, style = cutStyle(16, 700, 1f, tabular = true)) }
+                ) { Text(com.relentnet.cuttracker.data.Dates.wmd(date), color = c.text, style = cutStyle(16, 700, 1f, tabular = true)) }
             }
             SheetField("Target", target, { target = it }, Modifier.width(130.dp), unit = s.unit)
         }

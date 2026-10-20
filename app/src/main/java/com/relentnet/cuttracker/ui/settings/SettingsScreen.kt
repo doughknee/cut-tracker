@@ -69,6 +69,7 @@ import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
+import com.relentnet.cuttracker.notify.Reminders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -91,6 +92,8 @@ object SettingsSections {
     const val TODAY = "today"
     const val FEEL = "feel"
     const val WIDGET = "widget"
+    const val WEIGHT = "weight"
+    const val ENTRIES = "entries"
 }
 
 @Composable
@@ -119,15 +122,24 @@ fun SettingsScreen(vm: AppViewModel, onSection: (String) -> Unit) {
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp) {
             CategoryRow(CutIcons.Check, "Today", todayLine(s)) { onSection(SettingsSections.TODAY) }
+            CategoryRow(CutIcons.Weight, "Weight", weightLine(s)) { onSection(SettingsSections.WEIGHT) }
+            CategoryRow(CutIcons.Lift, "Meals and lifts", "New lifts start at ${s.prefs.liftSets} sets of ${s.prefs.liftReps.ifBlank { "any" }}" + if (s.prefs.keepScreenOn) ", screen stays on" else "") { onSection(SettingsSections.ENTRIES) }
             CategoryRow(CutIcons.Today, "Nudges", when {
                 !notifOn -> "Notifications are off"
                 !s.weighReminder && !s.pickReminder -> "Both reminders off"
                 else -> listOfNotNull(
                     if (s.weighReminder) "weigh-in ${clockText(context, s.weighInTime)}" else null,
                     if (s.pickReminder) "pick a day ${clockText(context, s.pickTime)}" else null,
+                    if (s.prefs.snoozeMinutes > 0) "snooze ${s.prefs.snoozeMinutes} min" else null,
+                    if (s.prefs.lockScreenHide) "hidden when locked" else null,
                 ).joinToString(", ").replaceFirstChar { it.uppercase() }
             }) { onSection(SettingsSections.NUDGES) }
-            CategoryRow(CutIcons.Widget, "Widget", if (s.prefs.widgetHideWeight) "On the home screen, weight hidden" else "On the home screen") { onSection(SettingsSections.WIDGET) }
+            CategoryRow(CutIcons.Widget, "Widget", listOfNotNull(
+                "On the home screen",
+                when (s.prefs.widgetTheme) { "dark" -> "dark"; "light" -> "light"; else -> null },
+                if (s.prefs.widgetSeeThrough) "see-through" else null,
+                if (s.prefs.widgetHideWeight) "weight hidden" else null,
+            ).joinToString(", ")) { onSection(SettingsSections.WIDGET) }
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp) {
             CategoryRow(CutIcons.Layers, "Theme", themeLine(s)) { onSection(SettingsSections.THEME) }
@@ -135,7 +147,7 @@ fun SettingsScreen(vm: AppViewModel, onSection: (String) -> Unit) {
             CategoryRow(CutIcons.Beta, "Words and units", appLine(s)) { onSection(SettingsSections.APP) }
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp) {
-            CategoryRow(CutIcons.Data, "Data", "Export, import, online features, wipe. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
+            CategoryRow(CutIcons.Data, "Data", "Export, import, privacy, online features, wipe. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = !s.devOptions) { onSection(SettingsSections.ABOUT) }
             if (s.devOptions) CategoryRow(CutIcons.Gear, "Developer options", "Preview onboarding as a new user", last = true) { onSection(SettingsSections.DEVELOPER) }
         }
@@ -170,6 +182,8 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
         SettingsSections.TODAY -> { TodayPage(vm, onBack); return }
         SettingsSections.FEEL -> { FeelPage(vm, onBack); return }
         SettingsSections.WIDGET -> { WidgetPage(vm, onBack); return }
+        SettingsSections.WEIGHT -> { WeightPage(vm, onBack); return }
+        SettingsSections.ENTRIES -> { EntriesPage(vm, onBack); return }
     }
     val focus = section.substringAfter('/', "")
     val section = section.substringBefore('/')
@@ -290,6 +304,38 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                 KindCard("On checkpoint days", "") {
                     SwitchRow("Say so in the weigh-in", "the morning reminder reads Checkpoint day and asks for the photo", s.prefs.checkpointNote) { vm.updatePrefs { it.copy(checkpointNote = !it.checkpointNote) } }
                 }
+                KindCard("In your words", "", sub = "What each reminder says under its title. Leave one empty for the app's words.") {
+                    var weighText by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(s.prefs.weighText) }
+                    var pickText by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(s.prefs.pickText) }
+                    for ((label, value, kind) in listOf(Triple("WEIGH-IN", weighText, Reminders.KIND_WEIGH), Triple("PICK A DAY", pickText, Reminders.KIND_PICK))) {
+                        Column(Modifier.padding(14.dp, 4.dp, 14.dp, 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(label, color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
+                            com.relentnet.cuttracker.ui.components.Field(
+                                value, { t ->
+                                    if (kind == Reminders.KIND_WEIGH) { weighText = t; vm.updatePrefs { it.copy(weighText = t.take(140)) } }
+                                    else { pickText = t; vm.updatePrefs { it.copy(pickText = t.take(140)) } }
+                                }, Modifier.fillMaxWidth(),
+                                keyboard = androidx.compose.ui.text.input.KeyboardType.Text, fontSize = 14, placeholder = Reminders.text(kind), background = c.ground,
+                            )
+                        }
+                    }
+                }
+                KindCard("Snooze", if (s.prefs.snoozeMinutes > 0) "${s.prefs.snoozeMinutes} min" else "off") {
+                    ChoiceRow(
+                        "A snooze button", "on each reminder; it asks again later, and stays quiet if the job got done",
+                        listOf("0" to "None", "15" to "15 min", "30" to "30 min", "60" to "1 hour"), s.prefs.snoozeMinutes.toString(),
+                    ) { k -> vm.updatePrefs { it.copy(snoozeMinutes = k.toInt()) } }
+                }
+                KindCard("Privacy and sound", "") {
+                    SwitchRow("Hide from the lock screen", "reminders show only once the phone is unlocked", s.prefs.lockScreenHide) { vm.updatePrefs { it.copy(lockScreenHide = !it.lockScreenHide) } }
+                    PlainRow("Sound and vibration", "the phone's own settings for these reminders") {
+                        LinkText("Open") {
+                            Reminders.ensureChannel(context)
+                            context.startActivity(Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName).putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, Reminders.CHANNEL))
+                        }
+                    }
+                }
             }
             SettingsSections.DATA -> {
                 Sub("Everything lives on this phone. Export is how it moves to another one.", size = 12)
@@ -310,6 +356,13 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                     PlainRow("Export", "the same file, through the share menu") { LinkText("Share") { export(false) } }
                     PlainRow("Export with photos", "a zip, bigger") { LinkText("Share") { export(true) } }
                     PlainRow("Import", "replaces what is on this phone") { LinkText("Pick a file") { confirm = "import" } }
+                }
+                KindCard("Privacy", "", sub = "Nothing here leaves the phone either way. These keep other eyes off it.") {
+                    SwitchRow("Block screenshots", "the phone refuses screenshots and screen recording of Sendline, and Recents shows it blank", s.prefs.secureScreen) {
+                        vm.updatePrefs { it.copy(secureScreen = !it.secureScreen) }
+                    }
+                    SwitchRow("Hide reminders when locked", "the same switch as on Nudges", s.prefs.lockScreenHide) { vm.updatePrefs { it.copy(lockScreenHide = !it.lockScreenHide) } }
+                    SwitchRow("Hide your weight on the widget", "the same switch as on Widget", s.prefs.widgetHideWeight) { vm.updatePrefs { it.copy(widgetHideWeight = !it.widgetHideWeight) } }
                 }
                 KindCard("Online features", if (s.onlineFeatures) "on" else "off", sub = "Off, the app never touches the network. Each feature says what it sends and to whom, and nothing about you is ever part of it.", modifier = Modifier.pulseWhen(focus == "online")) {
                     PlainRow("Allow online features", "the master switch") { Switch(s.onlineFeatures, "Allow online features") { haptics.tick(); vm.updateSettings { s -> s.copy(onlineFeatures = !s.onlineFeatures) } } }
@@ -431,6 +484,7 @@ private fun appLine(s: com.relentnet.cuttracker.data.Settings): String = listOfN
     if (s.kg) "kg" else "lb",
     if (s.prefs.weekStartsSunday) "weeks start Sunday" else null,
     when (s.prefs.clock) { "12" -> "12-hour"; "24" -> "24-hour"; else -> null },
+    if (s.prefs.dayFirst) "day first dates" else null,
 ).joinToString(", ")
 
 /** What the Today row says: how many of its switches are off their defaults, or that it is as it comes. */
@@ -439,14 +493,31 @@ private fun todayLine(s: com.relentnet.cuttracker.data.Settings): String {
     val changed = listOfNotNull(
         if (!p.showTape) "no tape" else null, if (!p.showRope) "no rope" else null, if (s.hideDone) "hide completed" else null,
         if (!p.showXp) "no xp" else null, if (!p.swipeToTick) "tap to tick" else null, if (p.startTab != "today") "opens on ${p.startTab.replaceFirstChar { it.uppercase() }}" else null,
+        if (p.bigHolds) "bigger holds" else null, if (!p.showChain) "no chain count" else null, if (!p.showWeightTile) "no weight tile" else null,
+        if (!p.showUpNext) "no up next" else null,
     )
     return if (changed.isEmpty()) "The wall, the script, the day's edges" else changed.joinToString(", ").replaceFirstChar { it.uppercase() }
+}
+
+/** What the Weight row says. */
+private fun weightLine(s: com.relentnet.cuttracker.data.Settings): String {
+    val p = s.prefs
+    return listOfNotNull(
+        if (p.weightHero == "latest") "Latest reading" else "7-day average",
+        if (p.weightDecimals == 0) "whole numbers" else null,
+        if (p.chartWeeks > 0 && p.chartWeeks < s.lengthWeeks) "chart of the last ${p.chartWeeks} weeks" else "chart of the whole route",
+        if (p.chartDots) "every reading" else null,
+    ).joinToString(", ")
 }
 
 /** What the Feel and access row says. */
 private fun feelLine(p: com.relentnet.cuttracker.data.Prefs): String = listOfNotNull(
     when { p.textScale > 1.2f -> "Larger text"; p.textScale > 1.05f -> "Large text"; else -> "Phone text size" },
+    if (p.boldText) "bold" else null,
     if (p.highContrast) "higher contrast" else null,
+    if (p.holdMarks) "marks on the holds" else null,
+    if (p.plainWall) "plain wall" else null,
+    if (p.bigTargets) "bigger targets" else null,
     if (p.reduceMotion == "on") "calm motion" else null,
     when (p.celebrate) { "quiet" -> "quiet celebrations"; "off" -> "no celebrations"; else -> null },
 ).joinToString(", ")

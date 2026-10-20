@@ -23,6 +23,9 @@ import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Hold
 import com.relentnet.cuttracker.ui.components.HoldShape
 import com.relentnet.cuttracker.ui.components.Sub
+import com.relentnet.cuttracker.ui.components.drawMark
+import com.relentnet.cuttracker.engine.DayResult
+import androidx.compose.ui.draw.drawBehind
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
 
@@ -44,11 +47,11 @@ fun WallInfoSheet(onDismiss: () -> Unit) {
                     { ShapeKey(HoldShape.SLOPER, c.good, "Rest day") }, { ShapeKey(HoldShape.PINCH, c.miss, "No day picked") },
                 ),
             )
-            Text("COLOR · HOW IT WENT", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
+            Text(if (CutTheme.prefs.holdMarks) "COLOR AND MARK · HOW IT WENT" else "COLOR · HOW IT WENT", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
             Grid(
                 listOf(
-                    { ColorKey(c.good, "${CutTheme.vocab.send}, whole script") }, { ColorKey(c.goodDim, "Min day, chain safe") },
-                    { ColorKey(c.freeze, "Freeze or skip") }, { ColorKey(c.miss, "Missed") },
+                    { ColorKey(c.good, "${CutTheme.vocab.send}, whole script", mark = DayResult.SEND) }, { ColorKey(c.goodDim, "Min day, chain safe", mark = DayResult.MIN) },
+                    { ColorKey(c.freeze, "Freeze or skip", mark = DayResult.FREEZE) }, { ColorKey(c.miss, "Missed", mark = DayResult.MISSED) },
                     { ColorKey(Color.Transparent, "Today, still open", ring = c.accent) },
                 ),
             )
@@ -90,11 +93,13 @@ private fun ShapeKey(shape: HoldShape, fill: Color, label: String) {
 }
 
 @Composable
-private fun ColorKey(fill: Color, label: String, ring: Color? = null) {
+private fun ColorKey(fill: Color, label: String, ring: Color? = null, mark: DayResult? = null) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(5.dp)
+    val marks = mark != null && CutTheme.prefs.holdMarks
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(16.dp).clip(shape).background(fill).then(if (ring != null) Modifier.border(2.dp, ring, shape) else Modifier))
+        Box(Modifier.size(if (marks) 22.dp else 16.dp).clip(shape).background(fill).then(if (ring != null) Modifier.border(2.dp, ring, shape) else Modifier)
+            .drawBehind { if (marks) drawMark(mark!!, c, 14.dp.toPx()) })
         Text(label, color = c.text, style = cutStyle(13, 600, 1f))
     }
 }

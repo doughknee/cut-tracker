@@ -42,7 +42,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d", Locale.US)
-private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 /** How the plan is going this week. Read only; everything here is logged from Today. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -58,14 +57,14 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
     val hit = past.count { st.day(it).totals.protein >= s.protein }
     Screen(bottomInset = true) {
         BackHeader(CutTheme.vocab.beta, "This week", onBack)
-        Sub("${ws.format(cpFmt)} to ${ws.plusDays(6).dayOfMonth}. How the plan is going.", size = 12)
+        Sub("${com.relentnet.cuttracker.data.Dates.span(ws, ws.plusDays(6))}. How the plan is going.", size = 12)
         Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 for (d in days) {
                     val dv = st.day(d)
                     Column(Modifier.pressable(haptic = false) { open = d.toString() }.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(d.dayOfWeek.name.take(1), color = c.text2, style = cutStyle(10, 800, 1f))
-                        Hold(holdShape(dv.log.mode), if (dv.result == DayResult.TODAY) c.accent else holdFill(dv.result, c), 26.dp)
+                        Hold(holdShape(dv.log.mode), if (dv.result == DayResult.TODAY) c.accent else holdFill(dv.result, c), 26.dp, mark = dv.result)
                         Text("${d.dayOfMonth}", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
                     }
                 }
@@ -98,9 +97,9 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
             DayResult.SEND -> CutTheme.vocab.send; DayResult.MIN -> "Min day, chain safe"; DayResult.FREEZE -> "Missed, freeze spent"; DayResult.SKIP -> "Planned skip"
             DayResult.MISSED -> "Missed"; DayResult.TODAY -> "Today"; DayResult.FUTURE -> "Ahead"; DayResult.BEFORE -> "Before the start"
         }
-        Sheet(d.format(DateTimeFormatter.ofPattern("EEEE MMM d", Locale.US)), onDismiss = { open = null }) {
+        Sheet(com.relentnet.cuttracker.data.Dates.wwmd(d), onDismiss = { open = null }) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Hold(holdShape(dv.log.mode), if (dv.result == DayResult.TODAY) c.accent else holdFill(dv.result, c), 40.dp)
+                Hold(holdShape(dv.log.mode), if (dv.result == DayResult.TODAY) c.accent else holdFill(dv.result, c), 40.dp, mark = dv.result)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(name, color = c.text, style = cutStyle(17, 800, 1f, display = true))
                     Text(dv.log.mode?.let { CutTheme.vocab.day(it) } ?: "No day picked", color = c.text2, style = cutStyle(12, 500, 1f))

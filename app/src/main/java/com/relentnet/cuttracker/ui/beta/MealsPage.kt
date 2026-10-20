@@ -286,9 +286,10 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
         }
     }
     SheetField(if (lines.isEmpty()) "Ingredients" else "Add another", q, { q = it }, text = true, placeholder = "Search foods, like chicken breast")
+    val portion = CutTheme.prefs.foodPortion
     hits.orEmpty().forEach { f ->
         Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.ground).clickable(role = Role.Button) { onLines(lines + Ingredient(f.name, f.defaultGrams, f.protein100, f.kcal100)); q = "" }.padding(10.dp, 8.dp),
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.ground).clickable(role = Role.Button) { onLines(lines + Ingredient(f.name, if (portion) f.defaultGrams else 100.0, f.protein100, f.kcal100)); q = "" }.padding(10.dp, 8.dp),
         ) {
             Text(f.name, color = c.text, style = cutStyle(13, 700, 1.2f), maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("${fmtGrams(f.protein100)} g protein, ${Math.round(f.kcal100)} cal per 100 g" + (f.portions.firstOrNull()?.let { ", ${it.label} is ${fmtGrams(it.grams)} g" } ?: ""), color = c.text2, style = cutStyle(11, 600, 1.2f))

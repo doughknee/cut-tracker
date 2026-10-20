@@ -32,6 +32,12 @@ val ArchivoTakeover = FontFamily(archivo(900, 85f))
 /** Tabular figures so numbers tick in place instead of jittering. */
 const val TNUM = "tnum"
 
+/**
+ * Bold text (Settings, Feel and access) adds this to every weight cutStyle draws. Set by MainActivity before the theme.
+ * ponytail: process-wide; the LocalPrefs change that sets it recomposes the whole tree, so every style is rebuilt.
+ */
+@Volatile var boldBump: Int = 0
+
 private val noPad = PlatformTextStyle(includeFontPadding = false)
 private val tight = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both)
 
@@ -44,7 +50,7 @@ fun cutStyle(
     display: Boolean = false,
 ) = TextStyle(
     fontFamily = if (display) ArchivoDisplay else Archivo,
-    fontWeight = FontWeight(weight),
+    fontWeight = FontWeight((weight + boldBump).coerceAtMost(900)),
     fontSize = size.sp,
     lineHeight = (size * lineHeight).sp,
     letterSpacing = tracking.em,
