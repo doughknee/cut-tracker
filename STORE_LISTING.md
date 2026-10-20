@@ -23,6 +23,9 @@ Sendline turns a diet into a route. Every day is a hold on the wall: pick the ki
 The wall
 Your week is seven holds up a wall. Shape is the kind of day, color is how it went, the rope is your chain. Tap any hold to open that day, including the ones you forgot to log. Late checks count.
 
+On the home screen
+A widget does the daily taps without opening the app: weigh in with plus and minus, pick the kind of day, and tick the next item on the script.
+
 The route
 Twelve weeks (or however long you choose) as a calendar of holds. Checkpoint days wear a flag, green once you hit them, and a tap on one says what it asks for and how far off it is. Freezes cover two missed days a month, and a day off you plan ahead never costs you the chain.
 
@@ -42,6 +45,10 @@ Yours
 Everything stays on your phone. No analytics, no sign-in. Two features use the network and both are off until you switch them on: paste a recipe link and the app fills in the meal, or scan a barcode and it looks the product up. Back up every week to a folder you pick, or save a copy whenever you like, and restore it on a new phone from the first screen.
 
 Sendline is a logbook and a scoreboard, not medical advice. Set your own targets and check with a doctor before a diet if you have a condition.
+
+## Release notes, 1.3.0 (max 500 characters)
+
+Past days keep the score they were logged with. Weigh in before you pick the day, fix a typo on a done weigh-in, tap a logged meal to change it. Back closes what is open, every delete has Undo, steppers repeat when held. Back up every week to a folder you pick and restore on a new phone from the first screen. Lifting on a Rest day counts as a workout. Plus a home-screen widget shortcut, clearer reminders and larger text that wraps.
 
 ## Category
 
