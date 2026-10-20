@@ -59,6 +59,7 @@ What changed in Sendline, from the user's side. Newest first.
 - Restoring a backup is all or nothing: a file the app cannot read leaves your data as it was.
 - Data shows when you last exported, because the phone holds the only copy until you do.
 - Save a copy writes the backup straight to a file you pick, next to Export through the share menu.
+- Back up every week: pick a folder once and a copy lands there every seven days when you open the app. No network.
 - Moving phones: a fresh install can restore a backup from the first screen, no set-up first.
 - A denied camera offers Open settings, and coming back with it allowed opens the viewfinder.
 

@@ -117,6 +117,7 @@ object BadgeIds {
  * [afterWrite] which awards badges, level-ups and project progress. Reads are one combined [state] flow.
  */
 class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
+    private val appContext: Context = context.applicationContext
     /** This build's version name, so a seeded sample week does not open the "New in" note. */
     private val versionName: String? = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -310,6 +311,8 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     /** Called on every foreground: rolls the date, awards Came Back, remembers the open. */
     suspend fun opened() {
         refreshToday()
+        // The weekly copy, if a folder was picked; off the write lock, it only reads.
+        scope.launch { AutoBackup.runIfDue(appContext, this@Repo) }
         write { s, today ->
             val results = ProgramEngine.results(db.dayLogs().all(), db.weighIns().all(), s, today, ProgramEngine.scoredDays(db.xp().all()))
             if (s.lastOpenDate != today) settings.update { it.copy(lastOpenDate = today) }

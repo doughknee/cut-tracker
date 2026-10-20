@@ -56,6 +56,8 @@ data class Settings(
     val ledgerKept: Boolean = false,
     /** The app version whose "New in" note was last seen; a newer version with a note shows it once. */
     val seenVersion: String? = null,
+    /** A folder (system picker tree URI) that gets a backup once a week; null for off. This phone only. */
+    val autoBackupFolder: String? = null,
     /** What each kind of day asks for. */
     val plans: Map<DayMode, DayPlan> = ProgramSpec.defaultPlans(),
     /** Kinds a lift can belong to, in display order. */
@@ -116,6 +118,7 @@ class SettingsStore(context: Context) {
         val lastExport = stringPreferencesKey("lastExport")
         val ledgerKept = booleanPreferencesKey("ledgerKept")
         val seenVersion = stringPreferencesKey("seenVersion")
+        val autoBackupFolder = stringPreferencesKey("autoBackupFolder")
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
         val plans = stringPreferencesKey("plans")
         val liftKinds = stringPreferencesKey("liftKinds")
@@ -178,6 +181,7 @@ class SettingsStore(context: Context) {
             lastExport = p[K.lastExport]?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
             ledgerKept = p[K.ledgerKept] ?: d.ledgerKept,
             seenVersion = p[K.seenVersion],
+            autoBackupFolder = p[K.autoBackupFolder],
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
         )
     }
@@ -222,6 +226,7 @@ class SettingsStore(context: Context) {
         if (s.lastExport != null) p[K.lastExport] = s.lastExport.toString() else p.remove(K.lastExport)
         p[K.ledgerKept] = s.ledgerKept
         if (s.seenVersion != null) p[K.seenVersion] = s.seenVersion else p.remove(K.seenVersion)
+        if (s.autoBackupFolder != null) p[K.autoBackupFolder] = s.autoBackupFolder else p.remove(K.autoBackupFolder)
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)
     }
 

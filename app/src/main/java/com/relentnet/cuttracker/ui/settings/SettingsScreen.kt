@@ -181,6 +181,18 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
         }
     }
 
+    val folderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        runCatching { context.contentResolver.takePersistableUriPermission(uri, flags) }
+        vm.updateSettings(then = {
+            scope.launch {
+                val ok = com.relentnet.cuttracker.data.AutoBackup.runIfDue(context.applicationContext, vm.repo, force = true)
+                vm.showToast(if (ok) "Backed up. The next copy lands in a week." else "Could not write to that folder. Pick another one.")
+            }
+        }) { s -> s.copy(autoBackupFolder = uri.toString()) }
+    }
+
     fun export(withPhotos: Boolean) = scope.launch {
         val file = runCatching { withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "export").apply { mkdirs() }
@@ -251,6 +263,17 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
             SettingsSections.DATA -> {
                 Sub("Everything lives on this phone. Export is how it moves to another one.", size = 12)
                 KindCard("Backup", exportAge(s.lastExport), sub = "The only copy of your logs is on this phone until you export one. Save it somewhere that is not this phone.") {
+                    PlainRow(
+                        "Back up every week",
+                        s.autoBackupFolder?.let { "to ${com.relentnet.cuttracker.data.AutoBackup.folderName(it)}, when you open the app" } ?: "pick a folder and a copy lands there once a week",
+                    ) {
+                        if (s.autoBackupFolder == null) LinkText("Pick") { folderLauncher.launch(null) }
+                        else Switch(true, "Weekly backup") {
+                            haptics.tick()
+                            s.autoBackupFolder?.let { f -> runCatching { context.contentResolver.releasePersistableUriPermission(android.net.Uri.parse(f), Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) } }
+                            vm.updateSettings { s -> s.copy(autoBackupFolder = null) }
+                        }
+                    }
                     PlainRow("Save a copy", "a JSON file of everything but photos, wherever you pick") { LinkText("Save") { saveLauncher.launch("sendline-${LocalDate.now()}.json") } }
                     PlainRow("Export", "the same file, through the share menu") { LinkText("Share") { export(false) } }
                     PlainRow("Export with photos", "a zip, bigger") { LinkText("Share") { export(true) } }
