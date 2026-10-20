@@ -95,6 +95,7 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     fun dismissWelcomeBack() = viewModelScope.launch { repo.dismissWelcomeBack() }
     fun saveSettings(s: Settings, then: () -> Unit = {}) = viewModelScope.launch { repo.saveSettings(s); then() }
     fun resetProgram(then: () -> Unit = {}) = viewModelScope.launch { repo.resetProgram(); then() }
+    fun seedSample() = viewModelScope.launch { repo.seedSample() }
 
     companion object {
         fun factory(repo: Repo): ViewModelProvider.Factory = viewModelFactory { initializer { AppViewModel(repo) } }

@@ -252,6 +252,41 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     suspend fun saveSettings(s: Settings) = write { _, _ -> settings.save(s) }
 
+    /**
+     * A week of made-up logs for store screenshots, through the real write paths so XP and results come out right.
+     * Debug builds only; MainActivity gates it on the debuggable flag and an intent extra.
+     * Right after an install the first run races first-launch setup and leaves onboarding on; force-stop and run it again.
+     */
+    suspend fun seedSample() {
+        resetProgram()
+        val today = today()
+        // Six days behind today, so a Sunday "today" shows the whole week on the wall.
+        val start = today.minusDays(6)
+        val d = Settings()
+        settings.save(d.copy(
+            onboarded = true, tourSeen = true, startDate = start, startWeight = 182.4, targetWeight = 170.0,
+            checkpoints = ProgramSpec.defaultCheckpoints(start, 182.4, 170.0, d.lengthWeeks),
+        ))
+        refreshToday()
+        val s = settings.current()
+        fun script(mode: DayMode) = ProgramEngine.script(mode, s).map { it.id }
+        // Send is the whole script; Min is the script without the block. Mon Send, Tue Min, Wed missed (the month's
+        // first freeze), Thu Send, Fri Send, Sat Min, and today an Off day with two lines done.
+        val week = listOf(
+            DayMode.REST to script(DayMode.REST), DayMode.OFF to script(DayMode.OFF) - ProgramEngine.blockItemId(DayMode.OFF), null,
+            DayMode.REST to script(DayMode.REST), DayMode.CLIMB to script(DayMode.CLIMB), DayMode.OFF to script(DayMode.OFF) - ProgramEngine.blockItemId(DayMode.OFF),
+            DayMode.OFF to listOf(ProgramSpec.ITEM_WEIGH, s.meals.first().id),
+        )
+        for ((i, day) in week.withIndex()) {
+            val date = start.plusDays(i.toLong())
+            if (day == null) continue
+            val (mode, done) = day
+            setMode(mode, date = date)
+            logWeight(182.4 - i * 0.3, date)
+            for (id in done - ProgramSpec.ITEM_WEIGH) toggleItem(id, date)
+        }
+    }
+
     suspend fun resetProgram() = lock.withLock {
         db.dayLogs().clear(); db.weighIns().clear(); db.liftSets().clear(); db.photos().clear()
         db.xp().clear(); db.badges().clear(); db.projects().clear()

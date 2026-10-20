@@ -53,6 +53,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        // adb shell am start -n com.relentnet.cuttracker/.MainActivity --ez seed true: a sample week, debug builds only.
+        val debuggable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (debuggable && intent?.getBooleanExtra("seed", false) == true) { vm.seedSample(); return }
         if (intent?.action == Intent.ACTION_SEND) {
             // Shared text or link: Beta > Meals opens New meal with it. The subject is a browser's page title, a fallback name.
             val text = listOfNotNull(intent.getStringExtra(Intent.EXTRA_TEXT), intent.getStringExtra(Intent.EXTRA_SUBJECT)).joinToString("\n").trim()
