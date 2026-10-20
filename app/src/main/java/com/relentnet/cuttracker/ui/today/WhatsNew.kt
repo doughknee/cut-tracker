@@ -32,7 +32,7 @@ val whatsNew: Map<String, List<String>> = mapOf(
         "Hold a stepper to repeat, or tap the number to type it.",
         "A done weigh-in opens to fix a typo, and lift numbers stay put when you close the panel.",
         "Each reminder has its own switch, and the pick-a-day one answers from the notification.",
-        "Save a copy of your data to a file, and restore it on a new phone from the first screen.",
+        "Back up every week to a folder you pick (Settings, Data), and restore it on a new phone from the first screen.",
     ),
 )
 
