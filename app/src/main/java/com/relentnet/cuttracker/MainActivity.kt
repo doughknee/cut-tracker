@@ -53,6 +53,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND) {
+            // Shared text or link: Beta > Meals opens New meal with it. The subject is a browser's page title, a fallback name.
+            val text = listOfNotNull(intent.getStringExtra(Intent.EXTRA_TEXT), intent.getStringExtra(Intent.EXTRA_SUBJECT)).joinToString("\n").trim()
+            if (text.isNotEmpty()) { vm.pendingShare = text; vm.requestTab(com.relentnet.cuttracker.ui.Routes.BETA_MEALS) }
+            return
+        }
         intent?.getStringExtra(Reminders.EXTRA_TAB)?.let { vm.requestTab(it) }
         intent?.getStringExtra(EXTRA_DATE)?.let { d ->
             runCatching { java.time.LocalDate.parse(d) }.getOrNull()?.let { vm.viewDate = it; vm.requestTab(com.relentnet.cuttracker.ui.Routes.TODAY) }

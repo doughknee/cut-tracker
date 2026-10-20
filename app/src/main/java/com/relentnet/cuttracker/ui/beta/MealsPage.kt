@@ -64,6 +64,9 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
     val s = st.settings
     val haptics = LocalHaptics.current
     var sheet by rememberSaveable { mutableStateOf("") }   // "", "new", "meal:<id>", "kind:<slot id>"
+    // Something shared in from another app opens New meal with it; a second share while the sheet is up rebuilds the sheet.
+    val shared = vm.pendingShare
+    LaunchedEffect(shared) { if (shared != null) sheet = "new" }
     val kinds = s.meals.map { LibKind(it.id, it.name) }
     val ws = ProgramEngine.weekStart(st.today)
     val uses = remember(st.logs) {
@@ -81,10 +84,10 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
         empty = "No meals yet. Tap + to add one.",
     )
     when {
-        sheet == "new" -> MealSheet(null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = "" },
-            onSave = { m -> vm.saveSettings(s.copy(library = s.library + m)); sheet = "" }, onDelete = null,
+        sheet == "new" -> key(shared) { MealSheet(null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = ""; vm.pendingShare = null },
+            onSave = { m -> vm.saveSettings(s.copy(library = s.library + m)); sheet = ""; vm.pendingShare = null }, onDelete = null, shared = shared,
             importOn = s.recipeImportOn, onAllowImport = { vm.saveSettings(s.copy(onlineFeatures = true, recipeImport = true)) },
-            barcodeOn = s.barcodeLookupOn, onAllowBarcode = { vm.saveSettings(s.copy(onlineFeatures = true, barcodeLookup = true)) })
+            barcodeOn = s.barcodeLookupOn, onAllowBarcode = { vm.saveSettings(s.copy(onlineFeatures = true, barcodeLookup = true)) }) }
         sheet.startsWith("meal:") -> s.library.firstOrNull { it.id == sheet.removePrefix("meal:") }?.let { m ->
             MealSheet(m, kinds, m.kind, onDismiss = { sheet = "" },
                 onSave = { nm -> vm.saveSettings(s.copy(library = s.library.map { if (it.id == m.id) nm else it })); sheet = "" },
@@ -120,16 +123,20 @@ fun addMealKind(s: Settings, name: String): Settings {
 private fun MealSheet(
     m: LibMeal?, kinds: List<LibKind>, kind0: String, onDismiss: () -> Unit, onSave: (LibMeal) -> Unit, onDelete: (() -> Unit)?,
     importOn: Boolean = false, onAllowImport: () -> Unit = {}, barcodeOn: Boolean = false, onAllowBarcode: () -> Unit = {},
+    shared: String? = null,
 ) {
     val c = CutTheme.colors
     val context = LocalContext.current
-    var name by remember(m) { mutableStateOf(m?.name ?: "") }
+    // A shared link goes in the link field; whatever text came with it (or plain text alone) is the name until the page says better.
+    val sharedLink = shared?.let { Regex("""https?://\S+""").find(it)?.value }
+    val sharedName = shared?.replace(sharedLink ?: "", "")?.trim()?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim() ?: ""
+    var name by remember(m) { mutableStateOf(m?.name ?: sharedName) }
     var kind by remember(m) { mutableStateOf(kind0) }
     var pro by remember(m) { mutableStateOf(m?.protein?.toString() ?: "") }
     var cal by remember(m) { mutableStateOf(m?.calories?.toString() ?: "") }
     var recipe by remember(m) { mutableStateOf(m?.recipe ?: "") }
     var lines by remember(m) { mutableStateOf(m?.ingredients ?: emptyList()) }
-    var link by remember(m) { mutableStateOf("") }
+    var link by remember(m) { mutableStateOf(sharedLink ?: "") }
     var fetching by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<Pair<String, Boolean>?>(null) }   // text, ok
     var scanning by remember { mutableStateOf(false) }
