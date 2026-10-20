@@ -64,7 +64,7 @@ private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Loca
 fun BetaScreen(
     vm: AppViewModel,
     onMeals: () -> Unit, onLifts: () -> Unit, onDay: (DayMode) -> Unit,
-    onCheckpoints: () -> Unit, onTargets: () -> Unit, onWeek: () -> Unit, onSettings: () -> Unit,
+    onCheckpoints: () -> Unit, onTargets: () -> Unit, onWeek: () -> Unit,
 ) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
@@ -75,7 +75,6 @@ fun BetaScreen(
                 Eyebrow("The plan for the route")
                 Text(CutTheme.vocab.beta, color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
             }
-            com.relentnet.cuttracker.ui.components.SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).offset(y = (-16).dp))
         }
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f)) {
         val scrolls = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f || maxHeight < 560.dp

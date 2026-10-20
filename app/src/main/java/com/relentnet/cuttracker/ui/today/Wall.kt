@@ -64,7 +64,6 @@ import com.relentnet.cuttracker.ui.components.holdShape
 import com.relentnet.cuttracker.ui.components.drawWallDecor
 import com.relentnet.cuttracker.ui.components.pressable
 import com.relentnet.cuttracker.ui.components.ChromeButton
-import com.relentnet.cuttracker.ui.components.SettingsGear
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -105,7 +104,6 @@ fun Wall(
     onPickDay: (LocalDate) -> Unit,
     onWeek: (Int) -> Unit,
     onInfo: () -> Unit,
-    onSettings: () -> Unit,
 ) {
     val c = CutTheme.colors
     val v = CutTheme.vocab
@@ -230,9 +228,11 @@ fun Wall(
             Text("${v.level(st.level).uppercase()} · WEEK ${wall.coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true))
             TapeStep(CutIcons.Forward, "Later week", canLater) { onWeek(1) }
         }
-        // Settings sits top right on every tab.
-        SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).padding(top = 12.dp + statusTop, end = 20.dp))
-        ChromeButton(CutIcons.Info, "How to read the wall", Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 74.dp), onClick = onInfo)
+        Box(
+            Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 46.dp).size(44.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                .clickable(onClickLabel = "How to read the wall", role = Role.Button, onClick = onInfo),
+            contentAlignment = Alignment.Center,
+        ) { Icon(CutIcons.Info, contentDescription = "How to read the wall", Modifier.size(20.dp), tint = c.text2) }
     }
 }
 

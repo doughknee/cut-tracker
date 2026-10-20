@@ -112,7 +112,7 @@ import java.util.Locale
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d", Locale.US)
 
 @Composable
-fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, onRoute: () -> Unit) {
+fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val now by vm.nowTime.collectAsStateWithLifecycle()
@@ -197,7 +197,6 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
             onPickDay = { haptics.tick(); view(it) },
             onWeek = { view(date.plusWeeks(it.toLong())) },
             onInfo = { infoOpen = true },
-            onSettings = onSettings,
         )
         Column(
             Modifier

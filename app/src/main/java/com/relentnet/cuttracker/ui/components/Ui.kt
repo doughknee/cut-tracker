@@ -233,6 +233,3 @@ fun ChromeButton(icon: ImageVector, label: String, modifier: Modifier = Modifier
     ) { Icon(icon, contentDescription = label, Modifier.size(15.dp), tint = if (!enabled) c.dim else tint ?: c.text2) }
 }
 
-/** Settings, from the top right of every tab. */
-@Composable
-fun SettingsGear(onClick: () -> Unit, modifier: Modifier = Modifier) = ChromeButton(CutIcons.Gear, "Open settings", modifier, tint = CutTheme.colors.accent, onClick = onClick)

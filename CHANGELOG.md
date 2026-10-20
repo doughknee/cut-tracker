@@ -4,10 +4,12 @@ What changed in Sendline, from the user's side. Newest first.
 
 ## Unreleased
 
-### Settings from every tab
+### The You tab and the tape
 
-- The gear sits at the top right of Today, Beta and Route, in the same spot. Back from Settings names the tab you came from.
-- The week on Today's wall moved to a pill at the foot of the wall, beside the wall guide. Swipe the wall sideways for the week before or after.
+- Settings is the You tab, the fourth one along the bottom. No more gear.
+- The orange tape on Today is the week switcher: its arrows step the week, and it reads V1 · WEEK 2.
+- The wall guide on Today is a plain i in the corner of the wall.
+- Swipe the wall sideways for the week before or after.
 
 ### Settings, sorted
 

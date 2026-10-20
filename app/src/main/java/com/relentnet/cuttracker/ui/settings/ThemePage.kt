@@ -99,7 +99,7 @@ fun ThemePage(vm: AppViewModel, onBack: () -> Unit) {
     val current = Palettes.of(s, today)
     val dark = c.isDark
     Screen(bottomInset = true) {
-        BackHeader("Settings", "Theme", onBack)
+        BackHeader("You", "Theme", onBack)
         val v = CutTheme.vocab
         Sub(v.looksSub, size = 12)
         Preview(current, dark, if (s.paletteByCalendar) "$calReason, by the calendar" else v.lookLine(current.id, current.line))

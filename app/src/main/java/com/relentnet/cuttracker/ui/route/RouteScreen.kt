@@ -114,7 +114,7 @@ fun currentCheckpointDate(st: AppState): LocalDate? =
     st.settings.checkpoints.filter { !it.free }.map { it.localDate }.sorted().firstOrNull { !st.today.isAfter(it) }
 
 @Composable
-fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDate) -> Unit, onSettings: () -> Unit) {
+fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDate) -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val haptics = LocalHaptics.current
@@ -141,7 +141,6 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
                         Stat("${st.chain.count}", "Chain", c.text, icon = true)
                     }
                 }
-                com.relentnet.cuttracker.ui.components.SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).offset(y = (-16).dp))
             }
             HoldCalendar(st, current, onDay = { pop = it; haptics.tick() }, onCheckpoints = onCheckpoints)
             NextCheckpoint(st, current, onCheckpoints)

@@ -91,14 +91,18 @@ object SettingsSections {
 }
 
 @Composable
-fun SettingsScreen(vm: AppViewModel, backLabel: String, onBack: () -> Unit, onSection: (String) -> Unit) {
+fun SettingsScreen(vm: AppViewModel, onSection: (String) -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val context = LocalContext.current
     val notifOn = remember { NotificationManagerCompat.from(context).areNotificationsEnabled() }
-    Screen(bottomInset = true) {
-        BackHeader(backLabel = backLabel, title = "Settings", onBack = onBack)
+    // The You tab: a tab header like Beta's, no back.
+    Screen {
+        Column(Modifier.padding(top = 8.dp)) {
+            com.relentnet.cuttracker.ui.components.Eyebrow("Settings")
+            Text("You", color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp))
+        }
         // The privacy line comes first, because it is the one thing every settings page promises.
         Card(Modifier.fillMaxWidth().pressable { onSection(SettingsSections.DATA + "/online") }, radius = 14.dp, background = c.ground, border = c.hairline, padding = PaddingValues(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -236,7 +240,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
     }
     val title = when (section) { SettingsSections.NUDGES -> "Nudges"; SettingsSections.DATA -> "Data"; SettingsSections.DEVELOPER -> "Developer options"; else -> "About" }
     Screen(bottomInset = true) {
-        BackHeader(backLabel = "Settings", title = title, onBack = onBack)
+        BackHeader(backLabel = "You", title = title, onBack = onBack)
         when (section) {
             SettingsSections.NUDGES -> {
                 Sub("Two notifications a day at most. Nothing about streaks.", size = 12)

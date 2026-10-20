@@ -96,7 +96,7 @@ object Routes {
     fun betaDay(mode: com.relentnet.cuttracker.data.DayMode) = "beta/day/${mode.name}"
     const val SETTINGS_SECTION = "settings/{section}/{focus}"
     fun settingsSection(key: String) = "settings/" + (if ('/' in key) key else "$key/-")
-    val tabs = listOf(TODAY, BETA, ROUTE)
+    val tabs = listOf(TODAY, BETA, ROUTE, SETTINGS)
 }
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
@@ -105,6 +105,7 @@ private val TABS = listOf(
     Tab(Routes.TODAY, "Today", CutIcons.Today),
     Tab(Routes.BETA, "Beta", CutIcons.Beta),
     Tab(Routes.ROUTE, "Route", CutIcons.Route),
+    Tab(Routes.SETTINGS, "You", CutIcons.You),
 )
 
 @Composable
@@ -148,14 +149,13 @@ fun App(vm: AppViewModel) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(0) { inclusive = true }; launchSingleTop = true } })
                     }
                     composable(Routes.TODAY) { TabRoom {
-                        TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) }, onRoute = { nav.goTab(Routes.ROUTE) })
+                        TodayScreen(vm, onWeight = { nav.navigate(Routes.WEIGHT) }, onRoute = { nav.goTab(Routes.ROUTE) })
                     } }
                     composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }) }
                     composable(Routes.BETA) { TabRoom {
                         BetaScreen(
                             vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onDay = { nav.navigate(Routes.betaDay(it)) },
                             onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onTargets = { nav.navigate(Routes.BETA_TARGETS) }, onWeek = { nav.navigate(Routes.BETA_WEEK) },
-                            onSettings = { nav.navigate(Routes.SETTINGS) },
                         )
                     } }
                     composable(Routes.BETA_MEALS) { MealsPage(vm, onBack = { nav.popBackStack() }) }
@@ -176,14 +176,10 @@ fun App(vm: AppViewModel) {
                     composable(Routes.ONBOARDING_PREVIEW) {
                         OnboardingScreen(vm, preview = true, onDone = { nav.popBackStack() })
                     }
-                    composable(Routes.ROUTE) { TabRoom { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }, onSettings = { nav.navigate(Routes.SETTINGS) }) } }
+                    composable(Routes.ROUTE) { TabRoom { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) } }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }, onRoute = { nav.goTab(Routes.ROUTE) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
-                    composable(Routes.SETTINGS) {
-                        // Back names the tab Settings was opened from.
-                        val from = when (nav.previousBackStackEntry?.destination?.route) { Routes.BETA -> CutTheme.vocab.beta; Routes.ROUTE -> "Route"; else -> "Today" }
-                        SettingsScreen(vm, backLabel = from, onBack = { nav.popBackStack() }, onSection = { nav.navigate(Routes.settingsSection(it)) })
-                    }
+                    composable(Routes.SETTINGS) { TabRoom { SettingsScreen(vm, onSection = { nav.navigate(Routes.settingsSection(it)) }) } }
                 }
             }
         }

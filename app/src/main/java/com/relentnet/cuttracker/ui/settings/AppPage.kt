@@ -54,7 +54,7 @@ fun AppPage(vm: AppViewModel, onBack: () -> Unit) {
     val haptics = LocalHaptics.current
     val v = CutTheme.vocab
     Screen(bottomInset = true) {
-        BackHeader("Settings", "App", onBack)
+        BackHeader("You", "App", onBack)
         Sub("How Sendline talks, counts and feels. The look is on Theme.", size = 12)
         TodayCorner(st)
 
