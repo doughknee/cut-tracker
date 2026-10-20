@@ -144,11 +144,16 @@ Unattended, at the user's request: audit everything and fix what a daily user fe
 - Second wave (after 3 am, the user asked to keep going all night): two more audits on areas the first wave did not cover (widget, Route and Weight edges, onboarding, meal sheet, scanner, looks), the widget placed and driven on the release build, store shots retaken on 1.3.0, a 404 page and sitemap for the site.
 - Round 10: meal sheet input survives process death (verified with am kill), honest totals, plain network errors, the scanner releases the camera, label reader timing, look-code twins, sheet guards on the chalk and day-plan sheets.
 - Round 11: Targets moves default flags (FollowFlagsTest), the widget's quiet card and stale-tap guard, pace clamped to the route, second-route chart and photos, future-start copy, checkpoint add logic, onboarding guards, state derived off the main thread and shared.
+- Round 12, a review of rounds 10 and 11 found nine issues, all fixed: a recipe link refetched after a restart and overwrote edits, a protein-only recipe left stale calories, the chart's daily dots showed last route, moved flags could land on a skip, edited flag notes were overwritten, a 0 g serving made NaN, the camera could bind after the scanner closed, the popover could read more ticks than items, the widget said "1 days".
+- UI tests (DONI-468, done): seven Compose instrumented tests on the emulator, covering back closing the meal picker, Undo after a delete, typing a target, the discard question, a whole day to a Send, a frozen day filled in late, a backup round trip. Run with the phone disconnected (CLAUDE.md, Commands).
+- Round 13, a copy audit of every user-facing string: one word for one thing (No day picked, Freeze, Planned skip, checkpoint, Delete or Take out, tick, item, xp, goal, Ahead, Wipe), honest late-pick copy, plurals, "to a Min day".
+- Restore a backup from the first onboarding screen of a fresh install (DONI-466, tested on the emulator end to end, left In Review for the phone).
+- Light-mode pass of eight screens (one legend fix), and a day-one walk as a new user (no issues found).
 
 Tests added: `HistoryTest` (ledger-scored history, workouts), `InputParsingTest` (numbers and search), BackupTest covers the new settings fields.
 
 Verified on the emulator: back behaviour, weigh-in fix, typed targets, Undo, the discard question, the reminder buttons, large-text layouts, release onboarding and smoke pass with no FATAL in logcat. Installed 1.3.0 (versionCode 4) on the Pixel over 1.2.0 with `install -r`; data kept; the app was not opened there overnight.
 
-Not verified: the home screen widget on the release build (needs launcher drag), camera and label reading (no real camera), the export share sheet and import picker end to end (other apps), TalkBack by ear.
+Verified later in the night: the widget on the release build (placed with a launcher drag, day pick and item tick from the widget), Save a copy and restore through the system file picker. Still not verified: camera and label reading (no real camera), TalkBack by ear.
 
 Left as is, on purpose: future-day numbers on Route stay dim (below 4.5:1 contrast) because the look depends on it; the weigh-in reminder has no inline reply per the 2026-10-19 decision.
