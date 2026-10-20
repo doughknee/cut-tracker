@@ -69,7 +69,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
     var sw by rememberSaveable { mutableStateOf("") }
     var tw by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(s.targetWeight)) }
-    var start by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var start by rememberSaveable { mutableStateOf(com.relentnet.cuttracker.engine.ProgramEngine.programDay(java.time.LocalDateTime.now(), s.resetHour).toString()) }
     var weeks by rememberSaveable { mutableStateOf(s.lengthWeeks.toString()) }
     var time by rememberSaveable { mutableStateOf(s.weighInTime.toString()) }
     var cal by rememberSaveable { mutableStateOf("") }
@@ -94,18 +94,16 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                 val targetWeight = tw.toDoubleOrNull() ?: s.targetWeight
                 val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
                 val w = weeks.toIntOrNull()?.coerceIn(1, 52) ?: 12
-                vm.saveSettings(
-                    s.copy(
+                vm.updateSettings(then = {
+                    vm.repo.scope.launch { if (!startDate.isAfter(LocalDate.now())) vm.repo.logWeight(startWeight); vm.showToast("Day 1. Pick a day.") }
+                    onDone()
+                }) { s -> s.copy(
                         onboarded = true, phase = 1, startWeight = startWeight, targetWeight = targetWeight,
                         startDate = startDate, lengthWeeks = w, weighInTime = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime),
                         caloriesP1 = cal.toIntOrNull() ?: s.caloriesP1, protein = pro.toIntOrNull() ?: s.protein,
                         checkpoints = ProgramSpec.defaultCheckpoints(startDate, startWeight, targetWeight, w),
                         welcomeBackSeen = null, lastOpenDate = null,
-                    ),
-                ) {
-                    vm.repo.scope.launch { if (!startDate.isAfter(LocalDate.now())) vm.repo.logWeight(startWeight); vm.showToast("Day 1. Pick a day.") }
-                    onDone()
-                }
+                    ) }
                 return
             }
         }

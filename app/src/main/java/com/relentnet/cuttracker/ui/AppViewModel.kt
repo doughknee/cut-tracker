@@ -93,9 +93,11 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     fun savePhoto(path: String) = viewModelScope.launch { repo.savePhoto(path) }
     fun deletePhoto(date: java.time.LocalDate) = viewModelScope.launch { repo.deletePhoto(date) }
     fun dismissWelcomeBack() = viewModelScope.launch { repo.dismissWelcomeBack() }
-    fun saveSettings(s: Settings, then: () -> Unit = {}) = viewModelScope.launch { repo.saveSettings(s); then() }
+    /** Every settings edit goes through here: [f] gets the latest stored settings, never a copy a screen held. */
+    fun updateSettings(then: () -> Unit = {}, f: (Settings) -> Settings) = viewModelScope.launch { repo.updateSettings(f); then() }
     fun resetProgram(then: () -> Unit = {}) = viewModelScope.launch { repo.resetProgram(); then() }
     fun seedSample() = viewModelScope.launch { repo.seedSample() }
+    fun replaceLibraryMeal(old: com.relentnet.cuttracker.data.LibMeal, new: com.relentnet.cuttracker.data.LibMeal?) = viewModelScope.launch { repo.replaceLibraryMeal(old, new) }
 
     companion object {
         fun factory(repo: Repo): ViewModelProvider.Factory = viewModelFactory { initializer { AppViewModel(repo) } }

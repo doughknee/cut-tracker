@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import androidx.room.withTransaction
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -153,7 +154,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val photos = arr[7] as List<ProgressPhoto>
         val log = logs.firstOrNull { it.date == today } ?: DayLog(today)
         val items = ProgramEngine.script(log.mode, s, log.picks)
-        val results = ProgramEngine.results(logs, weighIns, s, today)
+        val results = ProgramEngine.results(logs, weighIns, s, today, ProgramEngine.scoredDays(xpEvents))
         AppState(
             settings = s, today = today, log = log, items = items,
             totals = ProgramEngine.totals(items, log.doneItemIds),
@@ -170,9 +171,11 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: LocalDate? = null) = write(date) { s, d ->
         val log = db.dayLogs().get(d) ?: DayLog(d)
-        // Weigh-in and meals are the same items on every kind of day; only the block changes with the mode.
-        val shared = s.meals.map { it.id }.toSet() + ProgramSpec.ITEM_WEIGH
-        val keep = log.doneItemIds.filter { it in shared }.toSet()
+        // "Change" (null) keeps every tick so picking the same kind again loses nothing; a kind keeps what its script has.
+        val keep = if (mode == null) log.doneItemIds else {
+            val ids = ProgramEngine.script(mode, s, log.picks).map { it.id }.toSet() + s.meals.map { it.id } + ProgramSpec.ITEM_WEIGH
+            log.doneItemIds.filter { it in ids }.toSet()
+        }
         db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, picks = log.picks))
     }
 
@@ -188,6 +191,28 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val log = db.dayLogs().get(d) ?: DayLog(d)
         val picks = if (ref == null) log.picks - slotId else log.picks + (slotId to ref)
         db.dayLogs().upsert(log.copy(doneItemIds = log.doneItemIds + slotId, picks = picks))
+    }
+
+    /**
+     * Changes or deletes ([new] = null) a library meal. Past days that logged [old], by pick or as their slot's default,
+     * keep its numbers as a one-off entry first, so history and This week do not move.
+     */
+    suspend fun replaceLibraryMeal(old: LibMeal, new: LibMeal?) = write { s, today ->
+        if (new == null || new.protein != old.protein || new.calories != old.calories || new.name != old.name) {
+            val ref = "lib:${old.id}"
+            val frozen = ProgramEngine.customRef(old.protein, old.calories, old.name)
+            val byDefault = s.meals.filter { it.defaultLib == old.id }.map { it.id }.toSet()
+            for (log in db.dayLogs().all()) {
+                if (!log.date.isBefore(today)) continue
+                val picks = log.picks.mapValues { (_, v) -> if (v == ref) frozen else v } +
+                    byDefault.filter { it in log.doneItemIds && it !in log.picks }.associateWith { frozen }
+                if (picks != log.picks) db.dayLogs().upsert(log.copy(picks = picks))
+            }
+        }
+        settings.update { st ->
+            if (new == null) st.copy(library = st.library.filter { it.id != old.id }, meals = st.meals.map { if (it.defaultLib == old.id) it.copy(defaultLib = null) else it })
+            else st.copy(library = st.library.map { if (it.id == old.id) new else it })
+        }
     }
 
     suspend fun saveLibraryMeal(m: LibMeal) = write { _, _ ->
@@ -223,7 +248,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
             db.xp().insert(XpEvent(date = today, at = Instant.now(), kind = XpKind.WEEK_WON, amount = ProgramSpec.XP_WEEK_WON, ref = ws.toString()))
             gained += ProgramSpec.XP_WEEK_WON
         }
-        events.tryEmit(UiEvent.Toast("+$gained xp saved"))
+        events.tryEmit(UiEvent.Toast(if (gained > 0) "Session saved · +$gained xp" else "Session updated"))
     }
 
     suspend fun savePhoto(path: String) = write { _, today ->
@@ -241,16 +266,20 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     suspend fun dismissWelcomeBack() = write { _, today -> settings.update { it.copy(welcomeBackSeen = today) } }
 
+    /** Runs [block] under the write lock in one transaction: a restore either lands whole or leaves the data as it was. */
+    suspend fun replaceAll(block: suspend () -> Unit) = lock.withLock { db.withTransaction { block() } }
+
     /** Called on every foreground: rolls the date, awards Came Back, remembers the open. */
     suspend fun opened() {
         refreshToday()
         write { s, today ->
-            val results = ProgramEngine.results(db.dayLogs().all(), db.weighIns().all(), s, today)
+            val results = ProgramEngine.results(db.dayLogs().all(), db.weighIns().all(), s, today, ProgramEngine.scoredDays(db.xp().all()))
             if (s.lastOpenDate != today) settings.update { it.copy(lastOpenDate = today) }
         }
     }
 
-    suspend fun saveSettings(s: Settings) = write { _, _ -> settings.save(s) }
+    /** Applies [f] to the stored settings inside the write lock, so two quick edits never undo each other. */
+    suspend fun updateSettings(f: (Settings) -> Settings) = write { _, _ -> settings.update(f) }
 
     /**
      * A week of made-up logs for store screenshots, through the real write paths so XP and results come out right.
@@ -340,7 +369,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val today = todayFlow.value
         val logs = db.dayLogs().all()
         val weighIns = db.weighIns().all()
-        val results = ProgramEngine.results(logs, weighIns, s, today)
+        val results = ProgramEngine.results(logs, weighIns, s, today, ProgramEngine.scoredDays(db.xp().all()))
         val chain = ProgramEngine.chain(results, today)
         if (ProgramEngine.sends(results) >= 1) awardBadge(BadgeIds.FIRST_SEND)
         for (n in ProgramSpec.CHAIN_BADGES) if (chain.count >= n) awardBadge(BadgeIds.chain(n))

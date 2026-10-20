@@ -63,7 +63,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
     val s = st.settings
     val haptics = LocalHaptics.current
     val plan = ProgramEngine.plan(mode, s)
-    fun save(p: DayPlan) = vm.saveSettings(s.copy(plans = s.plans + (mode to p)))
+    fun save(p: DayPlan) = vm.updateSettings { s -> s.copy(plans = s.plans + (mode to p)) }
     var sheet by rememberSaveable { mutableStateOf("") }   // "", "pick", "new", "lift:<id>", "item:<id>"
     val items = ProgramEngine.script(mode, s)
     val where = dayWhere(mode, s)
@@ -128,7 +128,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
                 SheetLabel("Sets on a ${dayTitle(mode).lowercase()}")
                 MiniStepper(sets.toString(), onMinus = { sets = (sets - 1).coerceAtLeast(1) }, onPlus = { sets = (sets + 1).coerceAtMost(10) }, unit = "× ${e.repTarget.ifBlank { "reps" }}")
                 SheetNote("Sets change the lift itself, on every day that uses it. Reps and the weight step are on the Lifts page.")
-                SheetButtons("Done", onPrimary = { vm.saveSettings(s.copy(exercises = s.exercises.map { if (it.id == e.id) it.copy(sets = sets) else it })); sheet = "" },
+                SheetButtons("Done", onPrimary = { vm.updateSettings { s -> s.copy(exercises = s.exercises.map { if (it.id == e.id) it.copy(sets = sets) else it }) }; sheet = "" },
                     secondary = "Take out", onSecondary = { haptics.tap(); save(plan.copy(lifts = plan.lifts - e.id)); sheet = "" })
             }
         } ?: run { sheet = "" }

@@ -194,11 +194,21 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                         }
                         if (fix != null) LinkText("Allow", onClick = fix) else Icon(CutIcons.Check, null, Modifier.size(16.dp), tint = c.good)
                     }
-                    PlainRow("Weigh-in", "before food") { TimePick(s.weighInTime) { vm.saveSettings(s.copy(weighInTime = it)) } }
-                    PlainRow("Pick a day", "if the day is still unset") { TimePick(s.pickTime) { vm.saveSettings(s.copy(pickTime = it)) } }
+                    PlainRow("Weigh-in", if (s.weighReminder) "before food, skipped once you weighed in" else "off") {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (s.weighReminder) TimePick(s.weighInTime) { vm.updateSettings { s -> s.copy(weighInTime = it) } }
+                            Switch(s.weighReminder, "Weigh-in reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(weighReminder = !s.weighReminder) } }
+                        }
+                    }
+                    PlainRow("Pick a day", if (s.pickReminder) "only if the day is still unset" else "off") {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (s.pickReminder) TimePick(s.pickTime) { vm.updateSettings { s -> s.copy(pickTime = it) } }
+                            Switch(s.pickReminder, "Pick-a-day reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(pickReminder = !s.pickReminder) } }
+                        }
+                    }
                 }
                 KindCard("The day", "") {
-                    PlainRow("Rolls over at", "a late night still counts as today until then") { TimePick(LocalTime.of(s.resetHour, 0)) { vm.saveSettings(s.copy(resetHour = it.hour)) } }
+                    PlainRow("Rolls over at", "a late night still counts as today until then") { TimePick(LocalTime.of(s.resetHour, 0)) { vm.updateSettings { s -> s.copy(resetHour = it.hour) } } }
                 }
             }
             SettingsSections.DATA -> {
@@ -209,12 +219,12 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     PlainRow("Import", "a JSON or zip you exported") { LinkText("Pick a file") { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) } }
                 }
                 KindCard("Online features", if (s.onlineFeatures) "on" else "off", sub = "Off, the app never touches the network. Each feature says what it sends and to whom, and nothing about you is ever part of it.", modifier = Modifier.pulseWhen(focus == "online")) {
-                    PlainRow("Allow online features", "the master switch") { Switch(s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(onlineFeatures = !s.onlineFeatures)) } }
+                    PlainRow("Allow online features", "the master switch") { Switch(s.onlineFeatures, "Allow online features") { haptics.tick(); vm.updateSettings { s -> s.copy(onlineFeatures = !s.onlineFeatures) } } }
                     PlainRow("Recipe import by link", "downloads the one page you paste in New meal, straight from that site") {
-                        Switch(s.onlineFeatures && s.recipeImport) { if (s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(recipeImport = !s.recipeImport)) } }
+                        Switch(s.onlineFeatures && s.recipeImport, "Recipe import") { haptics.tick(); vm.updateSettings { s -> if (s.onlineFeatures && s.recipeImport) s.copy(recipeImport = false) else s.copy(onlineFeatures = true, recipeImport = true) } }
                     }
                     PlainRow("Barcode lookup", "sends the digits you scan in New meal to Open Food Facts, a public food database, and nothing else") {
-                        Switch(s.onlineFeatures && s.barcodeLookup) { if (s.onlineFeatures) { haptics.tick(); vm.saveSettings(s.copy(barcodeLookup = !s.barcodeLookup)) } }
+                        Switch(s.onlineFeatures && s.barcodeLookup, "Barcode lookup") { haptics.tick(); vm.updateSettings { s -> if (s.onlineFeatures && s.barcodeLookup) s.copy(barcodeLookup = false) else s.copy(onlineFeatures = true, barcodeLookup = true) } }
                     }
                     PlainRow("The code that does it", "public, on GitHub") {
                         LinkText("Recipe") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker/blob/main/app/src/main/java/com/relentnet/cuttracker/data/RecipeImport.kt"))) }
@@ -277,10 +287,10 @@ private fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
     val shape = RoundedCornerShape(8.dp)
     Box(
         Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape)
-            .clickable(role = Role.Button) { TimePickerDialog(context, { _, h, m -> onPick(LocalTime.of(h, m)) }, value.hour, value.minute, true).show() }
+            .clickable(role = Role.Button) { TimePickerDialog(context, { _, h, m -> onPick(LocalTime.of(h, m)) }, value.hour, value.minute, android.text.format.DateFormat.is24HourFormat(context)).show() }
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(value.format(timeFmt), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
+    ) { Text(value.format(if (android.text.format.DateFormat.is24HourFormat(context)) timeFmt else DateTimeFormatter.ofPattern("h:mm a", Locale.US)), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
 }
 
 /** What the Appearance row says: the mode, and the look the app wears right now. */

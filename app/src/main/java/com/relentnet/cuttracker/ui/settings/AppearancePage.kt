@@ -105,13 +105,13 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
 
         KindCard("Dark or light", "") {
             Box(Modifier.padding(14.dp, 6.dp, 14.dp, 12.dp)) {
-                ChipRow(listOf("system" to "System", "dark" to "Dark", "light" to "Light", "schedule" to "Dark at night"), s.theme, onSelect = { haptics.tick(); vm.saveSettings(s.copy(theme = it)) })
+                ChipRow(listOf("system" to "System", "dark" to "Dark", "light" to "Light", "schedule" to "Dark at night"), s.theme, onSelect = { haptics.tick(); vm.updateSettings { s -> s.copy(theme = it) } })
             }
             if (s.theme == "schedule") Sub("Dark from 19:00 to 07:00, light the rest of the day.", Modifier.padding(14.dp, 0.dp, 14.dp, 12.dp), size = 12)
         }
 
         KindCard("Calendar", if (s.paletteByCalendar) "on" else "off", sub = "The look follows the month, and a holiday takes the wall for its days. A long route gets to change its clothes.") {
-            PlainRow("Follow the calendar", if (s.paletteByCalendar) "today: $calReason" else "off, the look below stays") { Switch(s.paletteByCalendar) { haptics.tick(); vm.saveSettings(s.copy(paletteByCalendar = !s.paletteByCalendar)) } }
+            PlainRow("Follow the calendar", if (s.paletteByCalendar) "today: $calReason" else "off, the look below stays") { Switch(s.paletteByCalendar, "Follow the calendar") { haptics.tick(); vm.updateSettings { s -> s.copy(paletteByCalendar = !s.paletteByCalendar) } } }
             Column(Modifier.padding(14.dp, 10.dp, 14.dp, 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (m in Month.entries) {
@@ -145,7 +145,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
         var sheet by remember { mutableStateOf<String?>(null) }
         var code by remember { mutableStateOf("") }
         val looks = s.customLooks
-        fun add(look: CustomLook) { haptics.tick(); vm.saveSettings(s.copy(customLooks = looks.filter { it.id != look.id } + look, palette = look.id, paletteByCalendar = false)) }
+        fun add(look: CustomLook) { haptics.tick(); vm.updateSettings { s -> s.copy(customLooks = s.customLooks.filter { it.id != look.id } + look, palette = look.id, paletteByCalendar = false) } }
         // The tap is the show: the tile pulses and a hairline ring runs out from it across the grid.
         val scope = rememberCoroutineScope()
         val ripple = remember { Animatable(0f) }
@@ -156,7 +156,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
         fun pick(id: String) {
             haptics.tick(); tapped = id to tapped.second + 1; origin = centers[id] ?: Offset.Zero
             scope.launch { ripple.snapTo(0f); ripple.animateTo(1f, tween(650, easing = FastOutSlowInEasing)) }
-            vm.saveSettings(s.copy(palette = id, paletteByCalendar = false))
+            vm.updateSettings { s -> s.copy(palette = id, paletteByCalendar = false) }
         }
         KindCard("Looks", "${Palettes.all.size + looks.size}", sub = if (s.paletteByCalendar) "Pick one and the calendar lets go." else null) {
             Column(
@@ -181,7 +181,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
                             is CustomLook -> PaletteTile(
                                 t.palette(), dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f).then(place), pulse = if (tapped.first == t.id) tapped.second else 0,
                                 onEdit = { sheet = t.id },
-                                onDelete = { haptics.tick(); vm.saveSettings(s.copy(customLooks = looks.filter { it.id != t.id }, palette = if (s.palette == t.id) "sandstone" else s.palette)) },
+                                onDelete = { haptics.tick(); vm.updateSettings { s -> s.copy(customLooks = s.customLooks.filter { it.id != t.id }, palette = if (s.palette == t.id) "sandstone" else s.palette) } },
                             ) { pick(t.id) }
                             else -> NewLookTile(Modifier.weight(1f)) { sheet = "" }
                         }
@@ -200,12 +200,12 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
             ChalkSheet(
                 editing, dark, onDismiss = { sheet = null },
                 onSave = { add(it.copy(id = editing?.id ?: (CustomLook.PREFIX + System.currentTimeMillis().toString(36)))); sheet = null },
-                onDelete = if (editing != null) ({ vm.saveSettings(s.copy(customLooks = looks.filter { it.id != editing.id }, palette = if (s.palette == editing.id) "sandstone" else s.palette)); sheet = null }) else null,
+                onDelete = if (editing != null) ({ vm.updateSettings { s -> s.copy(customLooks = s.customLooks.filter { it.id != editing.id }, palette = if (s.palette == editing.id) "sandstone" else s.palette) }; sheet = null }) else null,
             )
         }
 
         KindCard("Feel", "") {
-            PlainRow("Haptics and confetti", "a tick on every check, a burst on a Send") { Switch(s.haptics) { vm.saveSettings(s.copy(haptics = !s.haptics)) } }
+            PlainRow("Haptics and confetti", "a tick on every check, a burst on a Send") { Switch(s.haptics, "Haptics and confetti") { vm.updateSettings { s -> s.copy(haptics = !s.haptics) } } }
         }
         Sub("Applies at once. The widget keeps its own colors.", size = 12)
     }

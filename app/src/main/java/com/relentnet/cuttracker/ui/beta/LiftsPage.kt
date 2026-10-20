@@ -47,30 +47,39 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
         "Lifts", "${s.exercises.size} lifts you can put in a block. The number is sets.", onBack,
         kinds, rows, searchHint = "Search lifts",
         onRow = { sheet = "lift:" + it.key }, onAdd = { sheet = "new" }, onEditKind = { sheet = "kind:" + it.key },
-        onNewKind = { name -> if (name !in s.liftKinds) vm.saveSettings(s.copy(liftKinds = s.liftKinds + name)) },
+        onNewKind = { name -> vm.updateSettings { s -> if (name.isBlank() || s.liftKinds.any { it.equals(name.trim(), ignoreCase = true) }) s else s.copy(liftKinds = s.liftKinds + name.trim()) } },
         empty = "No lifts yet. Tap + to add one.",
     )
     when {
         sheet == "new" -> LiftSheet(null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = "" },
-            onSave = { e -> vm.saveSettings(s.copy(exercises = s.exercises + e)); sheet = "" }, onDelete = null)
+            onSave = { e -> vm.updateSettings { s -> s.copy(exercises = s.exercises + e) }; sheet = "" }, onDelete = null)
         sheet.startsWith("lift:") -> s.exercises.firstOrNull { it.id == sheet.removePrefix("lift:") }?.let { e ->
             LiftSheet(e, kinds, e.kind, onDismiss = { sheet = "" },
-                onSave = { ne -> vm.saveSettings(s.copy(exercises = s.exercises.map { if (it.id == e.id) ne else it })); sheet = "" },
+                onSave = { ne -> vm.updateSettings { s -> s.copy(exercises = s.exercises.map { if (it.id == e.id) ne else it }) }; sheet = "" },
                 onDelete = {
                     haptics.tap()
-                    vm.saveSettings(s.copy(exercises = s.exercises.filter { it.id != e.id }, plans = s.plans.mapValues { (_, p) -> p.copy(lifts = p.lifts - e.id) }))
+                    vm.updateSettings { s -> s.copy(exercises = s.exercises.filter { it.id != e.id }, plans = s.plans.mapValues { (_, p) -> p.copy(lifts = p.lifts - e.id) }) }
                     sheet = ""
                 })
         } ?: run { sheet = "" }
         sheet.startsWith("kind:") -> sheet.removePrefix("kind:").takeIf { it in s.liftKinds }?.let { k ->
             KindSheet(k, "lifts", onDismiss = { sheet = "" },
                 onSave = { name ->
-                    vm.saveSettings(s.copy(liftKinds = s.liftKinds.map { if (it == k) name else it }, exercises = s.exercises.map { if (it.kind == k) it.copy(kind = name) else it }))
+                    vm.updateSettings { s ->
+                        val n = name.trim()
+                        val other = s.liftKinds.firstOrNull { it != k && it.equals(n, ignoreCase = true) }
+                        val to = other ?: n
+                        if (n.isBlank()) s
+                        else s.copy(
+                            liftKinds = if (other != null) s.liftKinds - k else s.liftKinds.map { if (it == k) to else it },
+                            exercises = s.exercises.map { if (it.kind == k) it.copy(kind = to) else it },
+                        )
+                    }
                     sheet = ""
                 },
                 onRemove = {
                     haptics.tap()
-                    vm.saveSettings(s.copy(liftKinds = s.liftKinds - k, exercises = s.exercises.map { if (it.kind == k) it.copy(kind = "") else it }))
+                    vm.updateSettings { s -> s.copy(liftKinds = s.liftKinds - k, exercises = s.exercises.map { if (it.kind == k) it.copy(kind = "") else it }) }
                     sheet = ""
                 })
         } ?: run { sheet = "" }

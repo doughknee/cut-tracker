@@ -121,7 +121,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     val editDate: LocalDate? = if (past) date else null
     LaunchedEffect(st.today) { if (vm.viewDate != null && !vm.viewDate!!.isBefore(st.today)) vm.viewDate = null }
     // First Today after onboarding: open the rules sheet once, then never again on its own.
-    LaunchedEffect(st.settings.tourSeen) { if (!st.settings.tourSeen) { infoOpen = true; vm.saveSettings(st.settings.copy(tourSeen = true)) } }
+    LaunchedEffect(st.settings.tourSeen) { if (!st.settings.tourSeen) { infoOpen = true; vm.updateSettings { s -> s.copy(tourSeen = true) } } }
     val dv = st.day(date)
     val items = dv.items
     val done = dv.log.doneItemIds
@@ -207,7 +207,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
             },
             label = "modeSection",
         ) { stage -> when (stage) {
-            0 -> ToppedOut(st, onNext = { vm.saveSettings(st.settings.copy(onboarded = false)) })
+            0 -> ToppedOut(st, onNext = { vm.updateSettings { s -> s.copy(onboarded = false) } })
             1 -> LateCard(
                 at = st.settings.pickTime,
                 onRest = { vm.setMode(DayMode.REST) },
@@ -620,7 +620,7 @@ private fun CustomMealForm(toLibrary: Boolean, onLog: (String, Int, Int, Boolean
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Switch(save) { save = !save }
+                    Switch(save, "Save to the library") { save = !save }
                     Sub("Save to library", size = 12)
                 }
                 BigButton("Log it", onClick = { onLog(name, pro.toIntOrNull() ?: 0, cal.toIntOrNull() ?: 0, save) }, modifier = Modifier.width(110.dp), height = 40.dp, fontSize = 12, enabled = pro.toIntOrNull() != null || cal.toIntOrNull() != null)

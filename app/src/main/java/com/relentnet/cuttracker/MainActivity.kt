@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val haptics = Haptics(this) { vm.state.value.settings.haptics }
-        handleIntent(intent)
+        if (savedInstanceState == null) handleIntent(intent)
         setContent {
             val st by vm.state.collectAsStateWithLifecycle()
             val mode = ThemeMode.of(st.settings.theme)

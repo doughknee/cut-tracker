@@ -101,6 +101,7 @@ private fun body(color: ColorProvider = W.text, size: Int = 12, bold: Boolean = 
 class CutWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repo = App.of(context).repo
+        repo.refreshToday()
         val initial = repo.state.first { it.loaded }
         // Collected inside the composition: Glance keeps this session alive and re-renders on every state change.
         provideContent {

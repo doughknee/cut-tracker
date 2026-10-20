@@ -26,8 +26,8 @@ class App : Application() {
             repo.state.filter { it.loaded }.map { listOf(it.today, it.log, it.chain, it.items.size) }.distinctUntilChanged().debounce(300).collect { updateWidgets(this@App) }
         }
         repo.scope.launch {
-            settings.flow.map { Triple(it.onboarded, it.weighInTime, it.pickTime) }.distinctUntilChanged().collect { (onboarded, _, _) ->
-                if (onboarded) Reminders.schedule(this@App, settings.current())
+            settings.flow.map { listOf(it.onboarded, it.weighInTime, it.pickTime, it.weighReminder, it.pickReminder) }.distinctUntilChanged().collect {
+                Reminders.schedule(this@App, settings.current())
             }
         }
     }

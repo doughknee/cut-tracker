@@ -47,6 +47,9 @@ data class Settings(
     val library: List<LibMeal> = ProgramSpec.library,
     /** The rules sheet opened itself once on the first Today. */
     val tourSeen: Boolean = false,
+    /** Each reminder can be switched off on its own. */
+    val weighReminder: Boolean = true,
+    val pickReminder: Boolean = true,
     /** What each kind of day asks for. */
     val plans: Map<DayMode, DayPlan> = ProgramSpec.defaultPlans(),
     /** Kinds a lift can belong to, in display order. */
@@ -100,6 +103,8 @@ class SettingsStore(context: Context) {
         val resetHour = intPreferencesKey("resetHour")
         val haptics = booleanPreferencesKey("haptics")
         val tourSeen = booleanPreferencesKey("tourSeen")
+        val weighReminder = booleanPreferencesKey("weighReminder")
+        val pickReminder = booleanPreferencesKey("pickReminder")
         val theme = stringPreferencesKey("theme")
         val lastOpenDate = stringPreferencesKey("lastOpenDate")
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
@@ -142,7 +147,8 @@ class SettingsStore(context: Context) {
                 .map { m -> if (m.kind.isNotBlank()) m else m.copy(kind = ProgramSpec.inferMealKind(m, meals)) },
             exercises = exercises,
             plans = plans,
-            liftKinds = p[K.liftKinds]?.let { runCatching { json.decodeFromString(ListSerializer(String.serializer()), it) }.getOrNull() } ?: d.liftKinds,
+            liftKinds = (p[K.liftKinds]?.let { runCatching { json.decodeFromString(ListSerializer(String.serializer()), it) }.getOrNull() } ?: d.liftKinds)
+                .filter { it.isNotBlank() }.distinctBy { it.trim().lowercase() },
             onlineFeatures = p[K.onlineFeatures] ?: d.onlineFeatures,
             palette = p[K.palette] ?: d.palette,
             paletteByCalendar = p[K.paletteByCalendar] ?: d.paletteByCalendar,
@@ -156,6 +162,8 @@ class SettingsStore(context: Context) {
             resetHour = p[K.resetHour] ?: d.resetHour,
             haptics = p[K.haptics] ?: d.haptics,
             tourSeen = p[K.tourSeen] ?: d.tourSeen,
+            weighReminder = p[K.weighReminder] ?: d.weighReminder,
+            pickReminder = p[K.pickReminder] ?: d.pickReminder,
             theme = p[K.theme] ?: d.theme,
             lastOpenDate = p[K.lastOpenDate]?.let(LocalDate::parse),
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
@@ -195,6 +203,8 @@ class SettingsStore(context: Context) {
         p[K.resetHour] = s.resetHour
         p[K.haptics] = s.haptics
         p[K.tourSeen] = s.tourSeen
+        p[K.weighReminder] = s.weighReminder
+        p[K.pickReminder] = s.pickReminder
         p[K.theme] = s.theme
         if (s.lastOpenDate != null) p[K.lastOpenDate] = s.lastOpenDate.toString() else p.remove(K.lastOpenDate)
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)

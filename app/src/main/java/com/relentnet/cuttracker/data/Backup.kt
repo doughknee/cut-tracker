@@ -31,6 +31,8 @@ data class SettingsDto(
     val onlineFeatures: Boolean = false, val recipeImport: Boolean = true, val barcodeLookup: Boolean = false,
     val palette: String = "sandstone", val paletteByCalendar: Boolean = false,
     val customLooks: List<CustomLook> = emptyList(),
+    val tourSeen: Boolean = true,
+    val weighReminder: Boolean = true, val pickReminder: Boolean = true,
     // Last on purpose: a v1 export ends its settings with the library, and the test for that cuts the file there.
     val library: List<LibMeal> = ProgramSpec.library,
 )
@@ -48,7 +50,8 @@ val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true; prettyP
 fun Settings.toDto() = SettingsDto(
     onboarded, phase, startDate.toString(), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
     weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
-    plans.mapKeys { it.key.name }, liftKinds, onlineFeatures, recipeImport, barcodeLookup, palette, paletteByCalendar, customLooks, library,
+    plans.mapKeys { it.key.name }, liftKinds, onlineFeatures, recipeImport, barcodeLookup, palette, paletteByCalendar, customLooks, tourSeen,
+    weighReminder, pickReminder, library,
 )
 
 fun SettingsDto.toSettings() = Settings(
@@ -57,6 +60,7 @@ fun SettingsDto.toSettings() = Settings(
     lastOpenDate?.let(LocalDate::parse), welcomeBackSeen?.let(LocalDate::parse), library,
     plans = plans?.mapKeys { DayMode.valueOf(it.key) } ?: ProgramSpec.defaultPlans(meals, exercises), liftKinds = liftKinds,
     onlineFeatures = onlineFeatures, recipeImport = recipeImport, barcodeLookup = barcodeLookup, palette = palette, paletteByCalendar = paletteByCalendar, customLooks = customLooks,
+    tourSeen = tourSeen, weighReminder = weighReminder, pickReminder = pickReminder,
 )
 
 suspend fun Repo.buildBackup(): Backup = Backup(
@@ -105,22 +109,30 @@ suspend fun Repo.restoreFrom(input: java.io.InputStream) {
 
 /** Replaces everything with [b]. Photo rows are kept only when the file exists in the photos folder (restored from a zip or still on device). */
 suspend fun Repo.restoreBackup(b: Backup) {
-    db.dayLogs().clear(); db.weighIns().clear(); db.liftSets().clear(); db.photos().clear()
-    db.xp().clear(); db.badges().clear(); db.projects().clear()
-    for (d in b.dayLogs) {
+    // Everything is parsed before anything is cleared: a file this build cannot read leaves the data untouched.
+    val logs = b.dayLogs.map { d ->
         // A v1 export carries only the dinner index; it becomes a library pick.
         val picks = if (d.picks.isEmpty() && d.dinnerIndex != null) mapOf("d" to "lib:lib_d${d.dinnerIndex + 1}") else d.picks
-        db.dayLogs().upsert(DayLog(LocalDate.parse(d.date), d.mode?.let { DayMode.valueOf(it) }, d.done.toSet(), d.dinnerIndex, picks))
+        DayLog(LocalDate.parse(d.date), d.mode?.let { m -> DayMode.entries.firstOrNull { it.name == m } }, d.done.toSet(), d.dinnerIndex, picks)
     }
-    for (w in b.weighIns) db.weighIns().upsert(WeighIn(LocalDate.parse(w.date), w.lb))
-    db.liftSets().insertAll(b.liftSets.map { LiftSet(date = LocalDate.parse(it.date), exerciseId = it.exerciseId, weightLb = it.weightLb, reps = it.reps, setIndex = it.setIndex) })
-    for (p in b.photos) {
-        val f = photosDir.resolve(p.file)
-        if (f.exists()) db.photos().upsert(ProgressPhoto(LocalDate.parse(p.date), f.absolutePath))
+    val weighIns = b.weighIns.map { WeighIn(LocalDate.parse(it.date), it.lb) }
+    val sets = b.liftSets.map { LiftSet(date = LocalDate.parse(it.date), exerciseId = it.exerciseId, weightLb = it.weightLb, reps = it.reps, setIndex = it.setIndex) }
+    val photos = b.photos.mapNotNull { p -> photosDir.resolve(p.file).takeIf { it.exists() }?.let { ProgressPhoto(LocalDate.parse(p.date), it.absolutePath) } }
+    val xp = b.xpEvents.map { XpEvent(date = LocalDate.parse(it.date), at = Instant.ofEpochMilli(it.at), kind = it.kind, amount = it.amount, ref = it.ref) }
+    val badges = b.badges.map { Badge(it.id, Instant.ofEpochMilli(it.earnedAt)) }
+    val projects = b.projects.map { WeeklyProject(LocalDate.parse(it.weekStart), it.id, it.progress, it.done) }
+    val settingsIn = b.settings.toSettings()
+    replaceAll {
+        db.dayLogs().clear(); db.weighIns().clear(); db.liftSets().clear(); db.photos().clear()
+        db.xp().clear(); db.badges().clear(); db.projects().clear()
+        for (l in logs) db.dayLogs().upsert(l)
+        for (w in weighIns) db.weighIns().upsert(w)
+        db.liftSets().insertAll(sets)
+        for (p in photos) db.photos().upsert(p)
+        db.xp().insertAll(xp)
+        for (bd in badges) db.badges().insert(bd)
+        for (p in projects) db.projects().upsert(p)
+        settings.save(settingsIn)
     }
-    db.xp().insertAll(b.xpEvents.map { XpEvent(date = LocalDate.parse(it.date), at = Instant.ofEpochMilli(it.at), kind = it.kind, amount = it.amount, ref = it.ref) })
-    for (bd in b.badges) db.badges().insert(Badge(bd.id, Instant.ofEpochMilli(bd.earnedAt)))
-    for (p in b.projects) db.projects().upsert(WeeklyProject(LocalDate.parse(p.weekStart), p.id, p.progress, p.done))
-    settings.save(b.settings.toSettings())
     refreshToday()
 }

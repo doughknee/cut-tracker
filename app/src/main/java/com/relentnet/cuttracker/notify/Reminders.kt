@@ -40,9 +40,11 @@ object Reminders {
         }
     }
 
+    /** Sets both alarms, or cancels the ones that are off (and both before onboarding is done). */
     fun schedule(context: Context, s: Settings) {
-        scheduleOne(context, KIND_WEIGH, s.weighInTime)
-        scheduleOne(context, KIND_PICK, s.pickTime)
+        val am = context.getSystemService(AlarmManager::class.java)
+        if (s.onboarded && s.weighReminder) scheduleOne(context, KIND_WEIGH, s.weighInTime) else am.cancel(pending(context, KIND_WEIGH))
+        if (s.onboarded && s.pickReminder) scheduleOne(context, KIND_PICK, s.pickTime) else am.cancel(pending(context, KIND_PICK))
     }
 
     private fun scheduleOne(context: Context, kind: String, at: LocalTime) {
@@ -66,7 +68,7 @@ object Reminders {
     fun post(context: Context, kind: String) {
         ensureChannel(context)
         val open = PendingIntent.getActivity(
-            context, 10, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, "today").putExtra(EXTRA_WEIGH, kind == KIND_WEIGH).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            context, if (kind == KIND_WEIGH) 11 else 12, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, "today").putExtra(EXTRA_WEIGH, kind == KIND_WEIGH).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(context, CHANNEL)
@@ -90,10 +92,11 @@ class AlarmReceiver : BroadcastReceiver() {
             runBlocking {
                 val s = app.settings.current()
                 when (kind) {
-                    Reminders.KIND_WEIGH -> Reminders.post(context, kind)
+                    // Weighed in already, on the widget or early in the app: nothing to nudge.
+                    Reminders.KIND_WEIGH -> if (s.weighReminder && app.db.weighIns().all().none { it.date == app.repo.today() }) Reminders.post(context, kind)
                     Reminders.KIND_PICK -> {
                         val today = app.repo.today()
-                        if (app.db.dayLogs().get(today)?.mode == null) Reminders.post(context, kind)
+                        if (s.pickReminder && app.db.dayLogs().get(today)?.mode == null) Reminders.post(context, kind)
                     }
                 }
                 Reminders.schedule(context, s)
@@ -103,13 +106,13 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 }
 
-/** Alarms do not survive a reboot or an update; put them back. */
+/** Alarms do not survive a reboot, an update or a clock or time zone change; put them back and roll the day. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = App.of(context)
         val result = goAsync()
         Thread {
-            runBlocking { Reminders.schedule(context, app.settings.current()) }
+            runBlocking { Reminders.schedule(context, app.settings.current()); app.repo.refreshToday() }
             result.finish()
         }.start()
     }

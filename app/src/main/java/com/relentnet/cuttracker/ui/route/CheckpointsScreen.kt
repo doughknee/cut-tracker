@@ -190,7 +190,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
         val taken = s.checkpoints.firstOrNull { !it.free && it.localDate == d }
         if (taken != null) { editing = taken.date; return@Fab }
         val ncp = Checkpoint(d.toString(), ProgramEngine.paceWeight(ProgramEngine.dayNumber(d, s.startDate), s, ProgramEngine.paceAnchor(st.weighIns, s)).let { kotlin.math.round(it * 2) / 2 }, note = "Pace check.")
-        vm.saveSettings(s.copy(checkpoints = (s.checkpoints + ncp).sortedBy { it.date }))
+        vm.updateSettings { s -> s.copy(checkpoints = (s.checkpoints + ncp).sortedBy { it.date }) }
         editing = ncp.date
     }
     }
@@ -199,8 +199,8 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
         if (cp == null) editing = null
         else CheckpointSheet(
             cp, onDismiss = { editing = null },
-            onSave = { ncp -> vm.saveSettings(s.copy(checkpoints = s.checkpoints.map { if (it.date == cp.date) ncp else it }.sortedBy { it.date })); editing = null },
-            onRemove = { haptics2.tap(); vm.saveSettings(s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date })); editing = null },
+            onSave = { ncp -> vm.updateSettings { s -> s.copy(checkpoints = s.checkpoints.map { if (it.date == cp.date) ncp else it }.sortedBy { it.date }) }; editing = null },
+            onRemove = { haptics2.tap(); vm.updateSettings { s -> s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date }) }; editing = null },
         )
     }
 }

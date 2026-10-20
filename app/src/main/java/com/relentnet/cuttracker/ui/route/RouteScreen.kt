@@ -131,9 +131,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
             HoldPopover(
                 st, date, onClose = { pop = null }, onEdit = { pop = null; onEditDay(date) }, onCheckpoints = { pop = null; onCheckpoints() },
                 onToggleSkip = {
-                    val cps = st.settings.checkpoints
-                    val existing = cps.firstOrNull { it.free && it.covers(date) }
-                    vm.saveSettings(st.settings.copy(checkpoints = if (existing != null) cps - existing else cps + Checkpoint(date.toString(), free = true, note = "Planned skip.")))
+                    vm.updateSettings { s -> val cps = s.checkpoints; val existing = cps.firstOrNull { it.free && it.covers(date) }; s.copy(checkpoints = if (existing != null) cps - existing else cps + Checkpoint(date.toString(), free = true, note = "Planned skip.")) }
                     pop = null
                 },
             )

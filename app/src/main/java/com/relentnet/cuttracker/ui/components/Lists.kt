@@ -111,7 +111,8 @@ fun NumRow(
     Column(modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(c.hairline))
         Row(
-            Modifier.fillMaxWidth().then(if (onClick != null) Modifier.pressable(haptic = false, onClick = onClick) else Modifier).padding(14.dp, 10.dp),
+            // A row with a switch and nothing else to open toggles from anywhere on the row.
+            Modifier.fillMaxWidth().then((onClick ?: onSwitch)?.let { Modifier.pressable(haptic = false, onClick = it) } ?: Modifier).padding(14.dp, 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (lead != null) lead()
@@ -124,7 +125,7 @@ fun NumRow(
                 if (!sub.isNullOrBlank()) Text(sub, color = c.text2, style = cutStyle(11, 500, 1.2f, tabular = true), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (right != null) Text(right, color = rightColor, style = cutStyle(11, 700, 1f, tabular = true))
-            if (on != null && onSwitch != null) Switch(on, onSwitch)
+            if (on != null && onSwitch != null) Switch(on, title, onSwitch)
             if (chevron) Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
         }
     }

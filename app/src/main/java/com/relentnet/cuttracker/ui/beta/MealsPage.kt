@@ -81,33 +81,37 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
         "Meals", "${s.library.size} meals you can put on a day. The number is protein.", onBack,
         kinds, rows, searchHint = "Search meals",
         onRow = { sheet = "meal:" + it.key }, onAdd = { sheet = "new" }, onEditKind = { sheet = "kind:" + it.key },
-        onNewKind = { name -> vm.saveSettings(addMealKind(s, name)) },
+        onNewKind = { name -> vm.updateSettings { s -> addMealKind(s, name) } },
         empty = "No meals yet. Tap + to add one.",
     )
     when {
         sheet == "new" -> key(shared) { MealSheet(null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = ""; vm.pendingShare = null },
-            onSave = { m -> vm.saveSettings(s.copy(library = s.library + m)); sheet = ""; vm.pendingShare = null }, onDelete = null, shared = shared,
-            importOn = s.recipeImportOn, onAllowImport = { vm.saveSettings(s.copy(onlineFeatures = true, recipeImport = true)) },
-            barcodeOn = s.barcodeLookupOn, onAllowBarcode = { vm.saveSettings(s.copy(onlineFeatures = true, barcodeLookup = true)) }) }
+            onSave = { m -> vm.updateSettings { s -> s.copy(library = s.library + m) }; sheet = ""; vm.pendingShare = null }, onDelete = null, shared = shared,
+            importOn = s.recipeImportOn, onAllowImport = { vm.updateSettings { s -> s.copy(onlineFeatures = true, recipeImport = true) } },
+            barcodeOn = s.barcodeLookupOn, onAllowBarcode = { vm.updateSettings { s -> s.copy(onlineFeatures = true, barcodeLookup = true) } }) }
         sheet.startsWith("meal:") -> s.library.firstOrNull { it.id == sheet.removePrefix("meal:") }?.let { m ->
             MealSheet(m, kinds, m.kind, onDismiss = { sheet = "" },
-                onSave = { nm -> vm.saveSettings(s.copy(library = s.library.map { if (it.id == m.id) nm else it })); sheet = "" },
+                onSave = { nm -> vm.replaceLibraryMeal(m, nm); sheet = "" },
                 onDelete = {
                     haptics.tap()
-                    vm.saveSettings(s.copy(library = s.library.filter { it.id != m.id }, meals = s.meals.map { if (it.defaultLib == m.id) it.copy(defaultLib = null) else it }))
+                    vm.replaceLibraryMeal(m, null)
                     sheet = ""
                 })
         } ?: run { sheet = "" }
         sheet.startsWith("kind:") -> s.meals.firstOrNull { it.id == sheet.removePrefix("kind:") }?.let { slot ->
             KindSheet(slot.name, "meals", onDismiss = { sheet = "" },
-                onSave = { name -> vm.saveSettings(s.copy(meals = s.meals.map { if (it.id == slot.id) it.copy(name = name) else it })); sheet = "" },
+                onSave = { name ->
+                    if (s.meals.any { it.id != slot.id && it.name.trim().equals(name.trim(), ignoreCase = true) }) vm.showToast("There is already a kind called ${name.trim()}")
+                    else vm.updateSettings { s -> s.copy(meals = s.meals.map { if (it.id == slot.id) it.copy(name = name.trim()) else it }) }
+                    sheet = ""
+                },
                 onRemove = {
                     haptics.tap()
-                    vm.saveSettings(s.copy(
+                    vm.updateSettings { s -> s.copy(
                         meals = s.meals.filter { it.id != slot.id },
                         library = s.library.map { if (it.kind == slot.id) it.copy(kind = "") else it },
                         plans = s.plans.mapValues { (_, p) -> p.copy(slots = p.slots - slot.id) },
-                    ))
+                    ) }
                     sheet = ""
                 })
         } ?: run { sheet = "" }
@@ -116,8 +120,9 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
 
 /** A new kind is a new slot on the script, on for every kind of day until a day page says otherwise. */
 fun addMealKind(s: Settings, name: String): Settings {
+    if (name.isBlank() || s.meals.any { it.name.trim().equals(name.trim(), ignoreCase = true) }) return s
     val id = "m" + System.currentTimeMillis()
-    return s.copy(meals = s.meals + Meal(id, name, "", "", 0, 0, 10, true, null), plans = s.plans.mapValues { (_, p) -> p.copy(slots = p.slots + id) })
+    return s.copy(meals = s.meals + Meal(id, name.trim(), "", "", 0, 0, 10, true, null), plans = s.plans.mapValues { (_, p) -> p.copy(slots = p.slots + id) })
 }
 
 @Composable

@@ -11,6 +11,8 @@ import com.relentnet.cuttracker.data.Meal
 import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.data.Settings
 import com.relentnet.cuttracker.data.WeighIn
+import com.relentnet.cuttracker.data.XpEvent
+import com.relentnet.cuttracker.data.XpKind
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -227,10 +229,24 @@ object ProgramEngine {
     private val MISSED_UNLESS_MIN = DayResult.MISSED
 
     /**
-     * Result for every program day from start through [today]. Freezes: two per calendar month, auto-applied to the
+     * What each day scored when it was last written, from the ledger's `send` and `min` rows. Past days read this, so
+     * a later change to the plan, the protein target or a meal never re-scores history.
+     */
+    fun scoredDays(xp: List<XpEvent>): Map<LocalDate, DayResult> {
+        val out = HashMap<LocalDate, DayResult>()
+        for (e in xp) when (e.kind) {
+            XpKind.SEND -> out[e.date] = DayResult.SEND
+            XpKind.MIN -> if (out[e.date] != DayResult.SEND) out[e.date] = DayResult.MIN
+        }
+        return out
+    }
+
+    /**
+     * Result for every program day from start through [today]. With [scored] (from [scoredDays]) a past day keeps the
+     * result it was written with; without it every day is computed from today's settings. Freezes: two per calendar month, auto-applied to the
      * first two missed days of that month. Today is TODAY unless already Min or Send. Planned skips are SKIP.
      */
-    fun results(logs: List<DayLog>, weighIns: List<WeighIn>, s: Settings, today: LocalDate): Map<LocalDate, DayResult> {
+    fun results(logs: List<DayLog>, weighIns: List<WeighIn>, s: Settings, today: LocalDate, scored: Map<LocalDate, DayResult>? = null): Map<LocalDate, DayResult> {
         val byDate = logs.associateBy { it.date }
         val weighed = weighIns.map { it.date }.toSet()
         val out = LinkedHashMap<LocalDate, DayResult>()
@@ -241,6 +257,7 @@ object ProgramEngine {
             val r: DayResult = when {
                 d.isAfter(today) -> DayResult.FUTURE
                 s.checkpoints.any { it.free && it.covers(d) } -> DayResult.SKIP
+                scored != null && d.isBefore(today) -> scored[d] ?: DayResult.MISSED
                 else -> resultOf(byDate[d], d in weighed, s)
             }
             out[d] = when {
@@ -300,12 +317,8 @@ object ProgramEngine {
         last != null && (now.first > last.first || now.second > last.second)
 
     /** True once any exercise session in the week of [day] beat its previous session. */
-    /** A workout is a Climb day with the push block checked or an Off day with the core block checked. */
-    fun isWorkout(log: DayLog): Boolean = when (log.mode) {
-        DayMode.CLIMB -> ProgramSpec.ITEM_PUSH in log.doneItemIds
-        DayMode.OFF -> ProgramSpec.ITEM_CORE in log.doneItemIds
-        else -> false
-    }
+    /** A workout is a day whose lift block is checked: push on a Climb day, core on an Off or Rest day. */
+    fun isWorkout(log: DayLog): Boolean = log.mode?.let { blockItemId(it) in log.doneItemIds } ?: false
 
     /** Workouts logged in the Monday-to-Sunday week of [day]. */
     fun workoutsInWeek(logs: List<DayLog>, day: LocalDate): Int {

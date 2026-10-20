@@ -49,7 +49,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val haptics = LocalHaptics.current
-    fun set(f: (Settings) -> Settings) { haptics.tick(); vm.saveSettings(f(s)) }
+    fun set(f: (Settings) -> Settings) { haptics.tick(); vm.updateSettings { s -> f(s) } }
     val total = s.startWeight - s.targetWeight
     val rate = total / s.lengthWeeks
     val pct = if (s.startWeight > 0) rate / s.startWeight * 100 else 0.0
@@ -78,7 +78,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
                 val shape = RoundedCornerShape(8.dp)
                 Box(
                     Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape).clickable(role = Role.Button) {
-                        DatePickerDialog(context, { _, y, m, d -> vm.saveSettings(s.copy(startDate = LocalDate.of(y, m + 1, d))) }, s.startDate.year, s.startDate.monthValue - 1, s.startDate.dayOfMonth).show()
+                        DatePickerDialog(context, { _, y, m, d -> vm.updateSettings { s -> s.copy(startDate = LocalDate.of(y, m + 1, d)) } }, s.startDate.year, s.startDate.monthValue - 1, s.startDate.dayOfMonth).show()
                     }.padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) { Text(s.startDate.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }

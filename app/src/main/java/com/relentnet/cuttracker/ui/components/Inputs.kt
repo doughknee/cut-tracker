@@ -28,6 +28,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
 
-/** Bordered numeric or text field in the prototype's style. Enter fires [onDone]. */
+/** Bordered numeric or text field in the prototype's style. Next moves to the next field; Done fires [onDone] and closes the keyboard. */
 @Composable
 fun Field(
     value: String,
@@ -77,7 +82,7 @@ fun Field(
         singleLine = singleLine,
         cursorBrush = SolidColor(c.accent),
         keyboardOptions = KeyboardOptions(keyboardType = keyboard, imeAction = imeAction),
-        keyboardActions = KeyboardActions(onDone = { onDone() }, onNext = { onDone() }),
+        keyboardActions = KeyboardActions(onDone = { onDone(); defaultKeyboardAction(ImeAction.Done) }),
         decorationBox = { inner ->
             Box(Modifier.fillMaxWidth().padding(horizontal = padding, vertical = if (singleLine) 0.dp else 10.dp), contentAlignment = if (center) Alignment.Center else if (singleLine) Alignment.CenterStart else Alignment.TopStart) {
                 if (value.isEmpty() && placeholder != null) {
@@ -89,20 +94,24 @@ fun Field(
     )
 }
 
-/** Toggle switch, 46x26, accent when on. */
+/** Toggle switch, 46x26 drawn in a 48dp target, accent when on. TalkBack reads [label] and on or off. */
 @Composable
-fun Switch(on: Boolean, onToggle: () -> Unit) {
+fun Switch(on: Boolean, label: String? = null, onToggle: () -> Unit) {
     val c = CutTheme.colors
+    val track by animateColorAsState(if (on) c.accent else c.mutedBorder, tween(160), label = "switchTrack")
+    val bias by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else -1f, tween(160), label = "switchThumb")
     Box(
         Modifier
-            .height(26.dp)
-            .width(46.dp)
-            .clip(RoundedCornerShape(13.dp))
-            .background(if (on) c.accent else c.mutedBorder)
-            .clickable(onClick = onToggle, role = Role.Switch)
-            .padding(3.dp),
-        contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
+            .minimumInteractiveComponentSize()
+            .toggleable(value = on, role = Role.Switch, onValueChange = { onToggle() })
+            .then(if (label != null) Modifier.semantics { contentDescription = label } else Modifier),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.height(20.dp).width(20.dp).clip(RoundedCornerShape(10.dp)).background(Color.White))
+        Box(
+            Modifier.height(26.dp).width(46.dp).clip(RoundedCornerShape(13.dp)).background(track).padding(3.dp),
+            contentAlignment = BiasAlignment(bias, 0f),
+        ) {
+            Box(Modifier.height(20.dp).width(20.dp).clip(RoundedCornerShape(10.dp)).background(if (c.isDark) c.text else c.surface))
+        }
     }
 }
