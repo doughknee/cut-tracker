@@ -102,16 +102,19 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
         ) {
-            Eyebrow(if (t is Takeover.Send) "Send" else "Level up", color = c.accent)
+            val v = CutTheme.vocab
+            val big = if (t is Takeover.Send) v.sent else v.level(t.levelOrZero())
+            Eyebrow(if (t is Takeover.Send) v.sendTag else "Level up", color = c.accent)
             Text(
-                if (t is Takeover.Send) "Sent" else "V${t.levelOrZero()}",
+                big,
                 color = c.accent,
-                style = cutStyle(if (t is Takeover.Send) 96 else 120, 900, 0.9f, -0.05f).copy(fontFamily = ArchivoTakeover),
+                // The plain words are longer than Sent and V3; they come down a size so they stay on one line.
+                style = cutStyle(if (big.length > 4) 64 else if (t is Takeover.Send) 96 else 120, 900, 0.9f, -0.05f).copy(fontFamily = ArchivoTakeover),
                 textAlign = TextAlign.Center, modifier = Modifier.scale(slam.value),
             )
-            Eyebrow(if (t is Takeover.Send) "+${ProgramSpec.XP_SEND} xp" else "New grade")
+            Eyebrow(if (t is Takeover.Send) "+${ProgramSpec.XP_SEND} xp" else v.newGrade)
             Text(
-                if (t is Takeover.Send) "Every item ticked. Today's hold just went green." else "The chain keeps going.",
+                if (t is Takeover.Send) v.wentGreen else "The chain keeps going.",
                 color = c.text2, style = cutStyle(13, 500, 1.4f), textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 260.dp),
             )
             BigButton("Nice", onClick = onDismiss, modifier = Modifier.widthIn(max = 220.dp).padding(top = 10.dp).width(220.dp))

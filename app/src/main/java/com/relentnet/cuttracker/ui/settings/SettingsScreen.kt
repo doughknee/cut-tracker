@@ -121,7 +121,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
             CategoryRow(CutIcons.Data, "Data", "Export, import, online features, wipe. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = true) { onSection(SettingsSections.ABOUT) }
         }
-        Sub("The route itself, targets, meals, lifts and checkpoints live on the Beta tab.", size = 12)
+        Sub("The route itself, targets, meals, lifts and checkpoints live on the ${CutTheme.vocab.beta} tab.", size = 12)
     }
 }
 

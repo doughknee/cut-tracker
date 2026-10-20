@@ -61,6 +61,7 @@ import com.relentnet.cuttracker.ui.theme.cutStyle
 @Composable
 fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
     val c = CutTheme.colors
+    val v = CutTheme.vocab
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val haptics = LocalHaptics.current
@@ -70,19 +71,19 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
     val items = ProgramEngine.script(mode, s)
     val where = dayWhere(mode, s)
     val blockName = if (mode == DayMode.CLIMB) "Push block" else "Core + push block"
-    val blockWhere = if (mode == DayMode.CLIMB) "at the gym, after the session" else "at home, 15 minutes"
+    val blockWhere = if (mode == DayMode.CLIMB) v.blockWhere else "at home, 15 minutes"
     val lifts = ProgramEngine.exercisesFor(mode, s)
 
     Box(Modifier.fillMaxSize()) {
         Screen(bottomInset = true, fab = true) {
-            BackHeader("Beta", dayTitle(mode), onBack)
+            BackHeader(v.beta, v.day(mode), onBack)
             Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Hold(holdShape(mode), c.accent, 44.dp)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.Bottom) {
                             Text("${ProgramEngine.totalXp(items)}", color = c.accent, style = cutStyle(22, 800, 1f, -0.02f, display = true, tabular = true))
-                            Text("xp for a full Send", color = c.text, style = cutStyle(15, 800, 1f, display = true), modifier = Modifier.padding(bottom = 1.dp))
+                            Text(v.fullSend, color = c.text, style = cutStyle(15, 800, 1f, display = true), modifier = Modifier.padding(bottom = 1.dp))
                         }
                         Text(where, color = c.text2, style = cutStyle(12, 500, 1.35f))
                     }
@@ -110,13 +111,13 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
             }
             KindCard("The rest of the day", "${plan.items.count { it.on } + 1} of ${plan.items.size + 1}") {
                 NumRow("${ProgramSpec.XP_WEIGH}", "Weigh in", unit = "xp", sub = "always on", on = true, onSwitch = { haptics.tap() })
-                for (it in plan.items) NumRow(
+                for (it in plan.items.map(v::item)) NumRow(
                     if (it.xp > 0) "${it.xp}" else "–", it.label, unit = if (it.xp > 0) "xp" else null, sub = it.sub.ifBlank { null },
                     on = it.on, onSwitch = { haptics.tick(); save { plan -> plan.copy(items = plan.items.map { x -> if (x.id == it.id) x.copy(on = !x.on) else x }) } },
                     onClick = { sheet = "item:" + it.id },
                 )
             }
-            Sub("Switch an item off and Today stops asking for it on a ${dayTitle(mode).lowercase()}. The xp adds up to the Send.", size = 12)
+            Sub("Switch an item off and Today stops asking for it on a ${v.day(mode).lowercase()}. The xp adds up to the ${v.send}.", size = 12)
         }
         Fab(Modifier.align(Alignment.BottomEnd)) { sheet = "new" }
     }
@@ -135,8 +136,8 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
             }
         } ?: run { sheet = "" }
         sheet == "new" || sheet.startsWith("item:") -> {
-            val it = plan.items.firstOrNull { x -> x.id == sheet.removePrefix("item:") }
-            if (sheet != "new" && it == null) { sheet = "" } else ItemSheet(it, dayTitle(mode), onDismiss = { sheet = "" },
+            val it = plan.items.firstOrNull { x -> x.id == sheet.removePrefix("item:") }?.let(v::item)
+            if (sheet != "new" && it == null) { sheet = "" } else ItemSheet(it, v.day(mode), onDismiss = { sheet = "" },
                 onSave = { ni -> save { plan -> plan.copy(items = if (it == null) plan.items + ni else plan.items.map { x -> if (x.id == ni.id) ni else x }) }; sheet = "" },
                 onRemove = if (it == null) null else ({ haptics.tap(); save { plan -> plan.copy(items = plan.items.filter { x -> x.id != it.id }) }; sheet = "" }))
         }
@@ -177,7 +178,7 @@ private fun LiftPicker(kinds: List<String>, all: List<com.relentnet.cuttracker.d
         val shown = all.filter { e ->
             (filter.isEmpty() || (filter == other && (e.kind.isBlank() || e.kind !in kinds)) || e.kind == filter) && matchesQuery(query, e.name, e.kind)
         }
-        if (shown.isEmpty()) SheetNote("No lift matches. Add it from Lifts on Beta.")
+        if (shown.isEmpty()) SheetNote("No lift matches. Add it from Lifts on ${CutTheme.vocab.beta}.")
         else Card(Modifier.fillMaxWidth(), radius = 14.dp, background = c.ground, border = c.hairline) {
             for (e in shown) {
                 val on = e.id in chosen

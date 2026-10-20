@@ -2,6 +2,15 @@
 
 What changed in Sendline, from the user's side. Newest first.
 
+## Unreleased
+
+### For people who do not climb
+
+- Setup asks "Do you climb?". Something else asks what you call your training (Run, Gym, Practice) and the app drops the climbing words: Climb day is Training day, the session takes your word, a Send is a Full day, V0 to V10 are Level 1 to 11, the Beta tab is Plan, and a hold is a day.
+- Switch any time under Settings, Appearance, Words. The wall, the shapes, the rope, the colors and every number stay the same.
+- The widget, the reminders, the takeover and the badges follow the same words.
+- A backup carries the choice, and an older backup restores as climbing.
+
 ## 1.3.0 (versionCode 4), 2026-10-20
 
 ### History stays put

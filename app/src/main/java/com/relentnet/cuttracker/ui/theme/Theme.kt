@@ -58,6 +58,9 @@ val LocalCutColors = staticCompositionLocalOf { DarkCutColors }
 /** What the current look pins to the holds. Holds read it so every hold in the app dresses up at once. */
 val LocalDecor = staticCompositionLocalOf { Decor.NONE }
 
+/** The words the screens speak: climbing, or plain for people who do not climb. */
+val LocalVocab = staticCompositionLocalOf { com.relentnet.cuttracker.data.Vocab.CLIMBING }
+
 enum class ThemeMode { SYSTEM, DARK, LIGHT, SCHEDULE;
     companion object { fun of(s: String) = when (s) { "dark" -> DARK; "light" -> LIGHT; "schedule" -> SCHEDULE; else -> SYSTEM } }
 }
@@ -65,6 +68,8 @@ enum class ThemeMode { SYSTEM, DARK, LIGHT, SCHEDULE;
 object CutTheme {
     val colors: CutColors
         @Composable get() = LocalCutColors.current
+    val vocab: com.relentnet.cuttracker.data.Vocab
+        @Composable get() = LocalVocab.current
 }
 
 /** Whether [mode] means dark right now; [now] matters only for the schedule. */

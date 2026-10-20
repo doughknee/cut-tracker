@@ -94,7 +94,6 @@ import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.components.TileLabel
 import com.relentnet.cuttracker.ui.components.tickedFloat
 import com.relentnet.cuttracker.ui.components.tickedInt
-import com.relentnet.cuttracker.ui.beta.dayTitle
 import com.relentnet.cuttracker.ui.beta.dayWhere
 import com.relentnet.cuttracker.ui.weight.paceWords
 import com.relentnet.cuttracker.ui.theme.CutIcons
@@ -172,13 +171,13 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     val total = st.settings.protein
     val (stateLine, stateColor) = when {
         st.ended && !past -> "Route complete" to c.good
-        !past && dv.isSend -> "Sent" to c.good
+        !past && dv.isSend -> CutTheme.vocab.sent to c.good
         !past && dv.isMin -> "Chain safe · today" to c.good
         !past && mode == null -> "Today · pick a day" to c.accent
         !past && ProgramSpec.ITEM_WEIGH !in done && dv.totals.protein < total -> "Today · weigh in + ${total - dv.totals.protein}g to a Min day" to c.accent
         !past && dv.totals.protein < total -> "Today · ${total - dv.totals.protein}g to a Min day" to c.accent
         !past -> "Today · weigh in for a Min day" to c.accent
-        else -> "${resultName(dv.result)} · earlier day" to when (dv.result) {
+        else -> "${resultName(dv.result, CutTheme.vocab)} · earlier day" to when (dv.result) {
             DayResult.SEND, DayResult.MIN -> c.good
             DayResult.FREEZE, DayResult.SKIP -> c.freeze
             else -> c.text2
@@ -445,9 +444,9 @@ private fun ToppedOut(st: AppState, onNext: () -> Unit) {
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     Card(Modifier.fillMaxWidth(), border = c.good, borderWidth = 2.dp, radius = 14.dp, padding = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Topped out.", color = c.text, style = cutStyle(22, 800, 1.1f, -0.02f, display = true))
+            Text(CutTheme.vocab.toppedOut, color = c.text, style = cutStyle(22, 800, 1.1f, -0.02f, display = true))
             Sub(
-                "${st.settings.totalDays} days, ${st.sends} send" + (if (st.sends == 1) "" else "s") + ", chain ${st.chain.count}" +
+                "${st.settings.totalDays} days, ${CutTheme.vocab.sendCount(st.sends)}, chain ${st.chain.count}" +
                     (if (avg != null) ", ${ProgramEngine.fmt1(avg)} lb on the last average." else ".") +
                     " Everything you logged stays. Start the next route whenever you are ready.",
             )
@@ -468,7 +467,7 @@ private fun LateCard(at: java.time.LocalTime, onRest: () -> Unit, onClimb: () ->
             Sub("Rest day is the guess. Tap it, weigh in and hit protein, and the chain is safe. Nothing else required tonight.")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BigButton("Yep, Rest day", onClick = onRest, modifier = Modifier.weight(1f), height = 48.dp, fontSize = 13)
-                BigButton("I climbed", onClick = onClimb, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 13)
+                BigButton(CutTheme.vocab.trained, onClick = onClimb, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 13)
             }
             Text(
                 "IT WAS AN OFF DAY", color = c.text2, style = cutStyle(11, 800, 1f, 0.08f),
@@ -487,11 +486,11 @@ private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
     fun sub(mode: DayMode, items: List<ScriptItem>) = "${dayWhere(mode, st.settings)} ${com.relentnet.cuttracker.ui.components.count(items.size, "item")}, ${ProgramEngine.totalXp(items)} xp."
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PickCard(Modifier.weight(1f).fillMaxHeight(), HoldShape.CRIMP, dayTitle(DayMode.CLIMB), sub(DayMode.CLIMB, climb)) { onPick(DayMode.CLIMB) }
-            PickCard(Modifier.weight(1f).fillMaxHeight(), HoldShape.JUG, dayTitle(DayMode.OFF), sub(DayMode.OFF, off)) { onPick(DayMode.OFF) }
+            PickCard(Modifier.weight(1f).fillMaxHeight(), HoldShape.CRIMP, CutTheme.vocab.day(DayMode.CLIMB), sub(DayMode.CLIMB, climb)) { onPick(DayMode.CLIMB) }
+            PickCard(Modifier.weight(1f).fillMaxHeight(), HoldShape.JUG, CutTheme.vocab.day(DayMode.OFF), sub(DayMode.OFF, off)) { onPick(DayMode.OFF) }
         }
         PickCard(
-            Modifier.fillMaxWidth(), HoldShape.SLOPER, dayTitle(DayMode.REST),
+            Modifier.fillMaxWidth(), HoldShape.SLOPER, CutTheme.vocab.day(DayMode.REST),
             sub(DayMode.REST, rest) + " Workouts ${st.workoutsThisWeek} of ${st.settings.workoutsPerWeek} this week.",
             wide = true,
         ) { onPick(DayMode.REST) }
@@ -543,7 +542,7 @@ private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int
             Box(Modifier.size(24.dp).clip(RoundedCornerShape(12.dp)).background(c.accent), contentAlignment = Alignment.Center) {
                 Hold(holdShape(mode), c.onAccent, 15.dp)
             }
-            Text(when (mode) { DayMode.CLIMB -> "Climb day"; DayMode.REST -> "Rest day"; else -> "Off day" }, color = c.text2, style = cutStyle(12, 600, 1f, 0.04f))
+            Text(CutTheme.vocab.day(mode ?: DayMode.OFF), color = c.text2, style = cutStyle(12, 600, 1f, 0.04f))
             Text("Change", color = c.accent, style = cutStyle(12, 800, 1f, 0.06f))
         }
         if (onMakeRest != null) Box(

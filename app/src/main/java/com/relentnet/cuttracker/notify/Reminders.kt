@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.notify
 
+import com.relentnet.cuttracker.data.vocab
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -81,8 +82,9 @@ object Reminders {
             .apply {
                 // The same two answers as Today's evening card, right from the shade.
                 if (kind == KIND_PICK) {
+                    val v = runBlocking { App.of(context).settings.current() }.vocab
                     addAction(0, "Yep, Rest day", pickIntent(context, "REST", day))
-                    addAction(0, "I climbed", pickIntent(context, "CLIMB", day))
+                    addAction(0, v.trained, pickIntent(context, "CLIMB", day))
                 }
             }
             .build()

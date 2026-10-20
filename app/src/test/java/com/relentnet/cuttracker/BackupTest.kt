@@ -32,6 +32,7 @@ class BackupTest {
         library = listOf(LibMeal("lib_x", "Eggs + toast", 30, 400, "Three eggs, two slices.")),
         customLooks = listOf(CustomLook("custom_a", "Mine", 200, 2)), palette = "custom_a",
         tourSeen = true, weighReminder = false, pickReminder = false, lastExport = LocalDate.of(2026, 10, 24), ledgerKept = true,
+        training = "Run",
     )
 
     private val backup = Backup(
@@ -55,6 +56,13 @@ class BackupTest {
         val back = backupJson.decodeFromString(Backup.serializer(), json)
         assertEquals(backup, back)
         assertEquals(settings, back.settings.toSettings())
+        assertEquals("Run", back.settings.toSettings().training)
+    }
+
+    @Test fun anExportFromBeforeNormalModeReadsAsClimbing() {
+        val json = backupJson.encodeToString(Backup.serializer(), backup).replace(Regex("\\s*\"training\": \"Run\","), "")
+        assertTrue("training" !in json)
+        assertEquals(null, backupJson.decodeFromString(Backup.serializer(), json).settings.toSettings().training)
     }
 
     @Test fun unknownKeysFromANewerAppAreIgnored() {

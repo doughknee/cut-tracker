@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.widget
 
+import com.relentnet.cuttracker.data.vocab
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -307,7 +308,7 @@ private fun PickStage(st: AppState) {
         Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
             val climb = ProgramEngine.script(DayMode.CLIMB, st.settings)
             val off = ProgramEngine.script(DayMode.OFF, st.settings)
-            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, "Climb day", "${count(climb.size, "item")} · ${ProgramEngine.totalXp(climb)} xp")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, st.settings.vocab.trainDay, "${count(climb.size, "item")} · ${ProgramEngine.totalXp(climb)} xp")
             Spacer(GlanceModifier.width(8.dp))
             PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${count(off.size, "item")} · ${ProgramEngine.totalXp(off)} xp")
             Spacer(GlanceModifier.width(8.dp))
@@ -355,7 +356,7 @@ private fun Dashboard(st: AppState) {
             WeekHolds(st)
             Spacer(GlanceModifier.width(6.dp))
             Text(
-                when (st.mode) { DayMode.CLIMB -> "CLIMB DAY"; DayMode.REST -> "REST DAY"; else -> "OFF DAY" } + " · DAY ${st.dayN}",
+                st.settings.vocab.day(st.mode ?: DayMode.OFF).uppercase() + " · DAY ${st.dayN}",
                 style = eyebrow(), modifier = GlanceModifier.defaultWeight(),
             )
             ChainBadge(st, safe)
@@ -364,8 +365,8 @@ private fun Dashboard(st: AppState) {
         Column(GlanceModifier.fillMaxWidth().defaultWeight()) {
             if (sent) {
                 Column(GlanceModifier.fillMaxWidth().defaultWeight().background(W.surface).cornerRadius(8.dp).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Sent", style = TextStyle(color = W.good, fontSize = 18.sp, fontWeight = FontWeight.Bold))
-                    Text("Every item ticked. Hold went green.", style = eyebrow(size = 10).copy(fontWeight = FontWeight.Medium), maxLines = 1)
+                    Text(st.settings.vocab.sent, style = TextStyle(color = W.good, fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                    Text(st.settings.vocab.widgetGreen, style = eyebrow(size = 10).copy(fontWeight = FontWeight.Medium), maxLines = 1)
                 }
             } else {
                 for (r in rowsFor(st)) { ItemRow(r); Spacer(GlanceModifier.height(3.dp)) }

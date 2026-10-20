@@ -36,18 +36,18 @@ fun WallInfoSheet(onDismiss: () -> Unit) {
     }) {
         Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp, 10.dp, 20.dp, 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Reading the wall", color = c.text, style = cutStyle(20, 800, 1f, -0.02f, display = true))
-            Sub("Every hold is one day. The shape is the kind of day you picked, the color is how it went. The rope is your chain. Tap any hold to open that day; late checks still count.")
+            Sub(CutTheme.vocab.wallInfo)
             Text("SHAPE · KIND OF DAY", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
             Grid(
                 listOf(
-                    { ShapeKey(HoldShape.JUG, c.good, "Off day") }, { ShapeKey(HoldShape.CRIMP, c.good, "Climb day") },
+                    { ShapeKey(HoldShape.JUG, c.good, "Off day") }, { ShapeKey(HoldShape.CRIMP, c.good, CutTheme.vocab.trainDay) },
                     { ShapeKey(HoldShape.SLOPER, c.good, "Rest day") }, { ShapeKey(HoldShape.PINCH, c.miss, "No day picked") },
                 ),
             )
             Text("COLOR · HOW IT WENT", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
             Grid(
                 listOf(
-                    { ColorKey(c.good, "Send, whole script") }, { ColorKey(c.goodDim, "Min day, chain safe") },
+                    { ColorKey(c.good, "${CutTheme.vocab.send}, whole script") }, { ColorKey(c.goodDim, "Min day, chain safe") },
                     { ColorKey(c.freeze, "Freeze or skip") }, { ColorKey(c.miss, "Missed") },
                     { ColorKey(Color.Transparent, "Today, still open", ring = c.accent) },
                 ),

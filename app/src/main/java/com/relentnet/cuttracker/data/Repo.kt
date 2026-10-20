@@ -107,9 +107,9 @@ object BadgeIds {
     data class Spec(val id: String, val name: String)
 
     /** Badge shelf order: the first Send, then the chain milestones. */
-    val all: List<Spec> = listOf(Spec(FIRST_SEND, "First Send")) + ProgramSpec.CHAIN_BADGES.map { Spec(chain(it), "$it Chain") }
+    fun all(v: Vocab): List<Spec> = listOf(Spec(FIRST_SEND, v.firstSend)) + ProgramSpec.CHAIN_BADGES.map { Spec(chain(it), "$it Chain") }
 
-    fun name(id: String) = all.firstOrNull { it.id == id }?.name ?: id
+    fun name(id: String, v: Vocab) = all(v).firstOrNull { it.id == id }?.name ?: id
 }
 
 /**
@@ -458,6 +458,6 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     }
 
     private suspend fun awardBadge(id: String) {
-        if (db.badges().insert(Badge(id, Instant.now())) != -1L) events.tryEmit(UiEvent.Badge(id, BadgeIds.name(id)))
+        if (db.badges().insert(Badge(id, Instant.now())) != -1L) events.tryEmit(UiEvent.Badge(id, BadgeIds.name(id, settings.current().vocab)))
     }
 }

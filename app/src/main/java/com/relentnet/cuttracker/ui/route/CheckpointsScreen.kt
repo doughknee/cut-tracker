@@ -170,7 +170,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                 }
                 NumRow(
                     if (cp.free) "–" else ProgramEngine.fmt1(cp.target ?: 0.0), dateLabel, unit = if (cp.free) null else "lb",
-                    sub = cp.note.ifBlank { null }, right = right, rightColor = rc,
+                    sub = CutTheme.vocab.note(cp.note).ifBlank { null }, right = right, rightColor = rc,
                     onClick = { editing = cp.date },
                 )
             }
@@ -220,7 +220,7 @@ private fun CheckpointSheet(cp: Checkpoint, onDismiss: () -> Unit, onSave: (Chec
     var note by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(cp.note) }
     Sheet(if (cp.free) "Planned skip" else "Edit checkpoint", onDismiss, dirty = date != cp.localDate || target != (cp.target?.let { ProgramEngine.fmt1(it) } ?: "") || note != cp.note) {
         if (cp.free) {
-            Sub("A planned skip. Chain kept, no freeze spent, not a Send.", size = 12)
+            Sub("A planned skip. Chain kept, no freeze spent, not a ${CutTheme.vocab.send}.", size = 12)
             SheetButtons("Unskip", onPrimary = onRemove, secondary = "Keep", onSecondary = onDismiss)
             return@Sheet
         }

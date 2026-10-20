@@ -60,7 +60,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
         else -> "A steady cut. The pace line and the checkpoints follow these numbers." to false
     }
     Screen(bottomInset = true) {
-        BackHeader("Beta", "Targets", onBack)
+        BackHeader(CutTheme.vocab.beta, "Targets", onBack)
         Sub("What a day has to hit, and where the route ends.", size = 12)
         KindCard("Every day", "") {
             PlainRow("Protein", "the one that keeps the chain") { MiniStepper("${s.protein}", { set { it.copy(protein = (it.protein - 5).coerceAtLeast(0)) } }, { set { it.copy(protein = it.protein + 5) } }, "g", onType = { v -> set { it.copy(protein = v.toInt().coerceIn(0, 500)) } }) }

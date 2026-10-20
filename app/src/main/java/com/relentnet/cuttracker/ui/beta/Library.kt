@@ -88,7 +88,7 @@ fun LibraryScreen(
         ) {
             item("head") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BackHeader("Beta", title, onBack)
+                    BackHeader(CutTheme.vocab.beta, title, onBack)
                     Sub(sub, size = 12)
                     Field(query, { query = it }, Modifier.fillMaxWidth().padding(top = 4.dp), height = 44.dp, fontSize = 15, weight = 600, keyboard = KeyboardType.Text, imeAction = ImeAction.Search, borderWidth = 1.dp, radius = 10.dp, padding = 12.dp, placeholder = searchHint)
                     ChipRow(listOf("" to "All") + kinds.map { it.key to it.label }, filter, onSelect = { filter = it }) {
@@ -101,7 +101,7 @@ fun LibraryScreen(
                             Field(
                                 newKind, { newKind = it }, Modifier.weight(1f), height = 40.dp, fontSize = 14, weight = 700, keyboard = KeyboardType.Text, imeAction = ImeAction.Done,
                                 onDone = { if (newKind.isNotBlank()) { onNewKind(newKind.trim()); newKind = ""; kindForm = false } },
-                                borderWidth = 1.dp, border = c.accent, radius = 10.dp, padding = 10.dp, placeholder = "New kind, like Pre-climb", focusRequester = focus,
+                                borderWidth = 1.dp, border = c.accent, radius = 10.dp, padding = 10.dp, placeholder = CutTheme.vocab.kindPlaceholder, focusRequester = focus,
                             )
                             IconBtn(CutIcons.Check, "Add the kind", accent = true) { if (newKind.isNotBlank()) { onNewKind(newKind.trim()); newKind = ""; kindForm = false } }
                         }

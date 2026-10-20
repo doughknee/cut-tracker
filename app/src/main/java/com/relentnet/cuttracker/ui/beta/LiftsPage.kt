@@ -31,6 +31,7 @@ import com.relentnet.cuttracker.ui.components.SheetLabel
 fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
+    val v = com.relentnet.cuttracker.ui.theme.CutTheme.vocab
     val haptics = LocalHaptics.current
     var sheet by rememberSaveable { mutableStateOf("") }   // "", "new", "lift:<id>", "kind:<name>"
     val kinds = s.liftKinds.map { LibKind(it, it) }
@@ -40,7 +41,7 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
         val sub = listOfNotNull(
             e.repTarget.takeIf { it.isNotBlank() }?.let { "$it reps" },
             best?.let { (w, r) -> "best " + (if (e.step <= 0.0) "×$r" else "${fmtStep(w)}×$r") },
-            days.takeIf { it.isNotEmpty() }?.joinToString(", ") { dayTitle(it).lowercase() + "s" },
+            days.takeIf { it.isNotEmpty() }?.joinToString(", ") { v.day(it).lowercase() + "s" },
         ).joinToString(", ")
         LibRow(e.id, if (e.kind in s.liftKinds) e.kind else "", "${e.sets}×", null, e.name, sub)
     }

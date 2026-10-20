@@ -67,8 +67,8 @@ fun ChalkSheet(look: CustomLook?, dark: Boolean, onDismiss: () -> Unit, onSave: 
     val p = draft.palette()
     val live = p.colors(dark)
     val dirty = hue != (look?.hue ?: 24) || stone != (look?.stone ?: 0) || name != (look?.name ?: "")
-    Sheet(if (look == null) "Chalk your own" else "Edit look", onDismiss, dirty = dirty) {
-        Text("One hue on one stone. The sends and the freeze pick themselves so nothing clashes.", color = c.text2, style = cutStyle(12, 500, 1.4f))
+    Sheet(if (look == null) CutTheme.vocab.chalkOwn else "Edit look", onDismiss, dirty = dirty) {
+        Text(CutTheme.vocab.chalkSheetSub, color = c.text2, style = cutStyle(12, 500, 1.4f))
         CompositionLocalProvider(LocalCutColors provides live, LocalDecor provides Decor.NONE) {
             Box(Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(12.dp)).background(live.wall).border(1.dp, live.hairline, RoundedCornerShape(12.dp))) {
                 Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -106,7 +106,7 @@ fun ChalkSheet(look: CustomLook?, dark: Boolean, onDismiss: () -> Unit, onSave: 
             Text("tap to copy", color = c.text2, style = cutStyle(11, 600, 1f))
         }
         SheetButtons(
-            if (look == null) "Chalk it" else "Save", onPrimary = { onSave(draft.copy(name = name.trim().ifBlank { draft.autoName })) },
+            if (look == null) CutTheme.vocab.chalkIt else "Save", onPrimary = { onSave(draft.copy(name = name.trim().ifBlank { draft.autoName })) },
             secondary = if (onDelete != null) "Delete" else null, onSecondary = onDelete,
         )
     }

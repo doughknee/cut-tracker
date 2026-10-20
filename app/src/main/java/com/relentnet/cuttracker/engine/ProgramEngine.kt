@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.engine
 
+import com.relentnet.cuttracker.data.vocab
 import com.relentnet.cuttracker.data.Checkpoint
 import com.relentnet.cuttracker.data.DayLog
 import com.relentnet.cuttracker.data.DayMode
@@ -82,7 +83,7 @@ object ProgramEngine {
         val lifts = exercisesFor(mode, s)
         if (lifts.isEmpty()) return null
         val names = lifts.joinToString(", ") { it.name }
-        return if (mode == DayMode.CLIMB) ScriptItem(ProgramSpec.ITEM_PUSH, "Push block", "$names. Last 15 min at the gym.", "12:15", ProgramSpec.XP_PUSH, workout = true)
+        return if (mode == DayMode.CLIMB) ScriptItem(ProgramSpec.ITEM_PUSH, "Push block", "$names. ${s.vocab.blockSub}", "12:15", ProgramSpec.XP_PUSH, workout = true)
         else ScriptItem(ProgramSpec.ITEM_CORE, "Core + push block", "$names. 15 min at home.", "any", ProgramSpec.XP_CORE, workout = true)
     }
 
@@ -90,7 +91,7 @@ object ProgramEngine {
         if (mode == null) return emptyList()
         val plan = plan(mode, s)
         val weigh = ScriptItem(ProgramSpec.ITEM_WEIGH, "Weigh in", "Before food. Log it, ignore the number.", "8:30", ProgramSpec.XP_WEIGH)
-        val workout = plan.items.filter { it.on }.map { ScriptItem(it.id, it.label, it.sub, it.time, it.xp, workout = it.id == ProgramSpec.ITEM_CLIMB) } + listOfNotNull(blockItem(mode, s))
+        val workout = plan.items.filter { it.on }.map(s.vocab::item).map { ScriptItem(it.id, it.label, it.sub, it.time, it.xp, workout = it.id == ProgramSpec.ITEM_CLIMB) } + listOfNotNull(blockItem(mode, s))
         val meals = s.meals.filter { it.id in plan.slots }.map { m -> mealItem(m, picks[m.id], s) }
         return if (meals.isEmpty()) listOf(weigh) + workout
         else listOf(weigh, meals.first()) + workout + meals.drop(1)

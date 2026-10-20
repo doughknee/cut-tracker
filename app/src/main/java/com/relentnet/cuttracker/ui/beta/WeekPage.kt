@@ -57,7 +57,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
     var open by rememberSaveable { mutableStateOf<String?>(null) }
     val hit = past.count { st.day(it).totals.protein >= s.protein }
     Screen(bottomInset = true) {
-        BackHeader("Beta", "This week", onBack)
+        BackHeader(CutTheme.vocab.beta, "This week", onBack)
         Sub("${ws.format(cpFmt)} to ${ws.plusDays(6).dayOfMonth}. How the plan is going.", size = 12)
         Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -82,7 +82,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
         }
         KindCard("Workouts", "${st.workoutsThisWeek} of ${s.workoutsPerWeek}") {
             val planned = days.map { d -> d to st.day(d) }.filter { (_, dv) -> dv.items.any { it.workout && it.id != ProgramSpec.ITEM_CLIMB } }
-            if (planned.isEmpty()) Sub("No block picked yet this week. Pick a Climb or Off day on Today.", Modifier.padding(14.dp, 4.dp, 14.dp, 14.dp), size = 12)
+            if (planned.isEmpty()) Sub("No block picked yet this week. Pick a ${CutTheme.vocab.train} or Off day on Today.", Modifier.padding(14.dp, 4.dp, 14.dp, 14.dp), size = 12)
             for ((d, dv) in planned) {
                 val block = dv.items.first { it.workout && it.id != ProgramSpec.ITEM_CLIMB }
                 val done = block.id in dv.log.doneItemIds
@@ -95,7 +95,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
         val d = LocalDate.parse(iso)
         val dv = st.day(d)
         val name = when (dv.result) {
-            DayResult.SEND -> "Send"; DayResult.MIN -> "Min day, chain safe"; DayResult.FREEZE -> "Missed, freeze spent"; DayResult.SKIP -> "Planned skip"
+            DayResult.SEND -> CutTheme.vocab.send; DayResult.MIN -> "Min day, chain safe"; DayResult.FREEZE -> "Missed, freeze spent"; DayResult.SKIP -> "Planned skip"
             DayResult.MISSED -> "Missed"; DayResult.TODAY -> "Today"; DayResult.FUTURE -> "Ahead"; DayResult.BEFORE -> "Before the start"
         }
         Sheet(d.format(DateTimeFormatter.ofPattern("EEEE MMM d", Locale.US)), onDismiss = { open = null }) {
@@ -103,7 +103,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
                 Hold(holdShape(dv.log.mode), if (dv.result == DayResult.TODAY) c.accent else holdFill(dv.result, c), 40.dp)
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(name, color = c.text, style = cutStyle(17, 800, 1f, display = true))
-                    Text(dv.log.mode?.let { dayTitle(it) } ?: "No day picked", color = c.text2, style = cutStyle(12, 500, 1f))
+                    Text(dv.log.mode?.let { CutTheme.vocab.day(it) } ?: "No day picked", color = c.text2, style = cutStyle(12, 500, 1f))
                 }
             }
             if (dv.items.isNotEmpty()) {

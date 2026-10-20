@@ -129,7 +129,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Stat("${st.sends}", "Sends", c.good)
+                    Stat("${st.sends}", CutTheme.vocab.sends, c.good)
                     Stat("${st.chain.count}", "Chain", c.text, icon = true)
                 }
             }
@@ -212,7 +212,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                             else -> null
                         }
                         val said = day.format(java.time.format.DateTimeFormatter.ofPattern("EEEE MMMM d", java.util.Locale.US)) +
-                            (if (r != null && r != DayResult.BEFORE) ", " + resultName(r) else "") +
+                            (if (r != null && r != DayResult.BEFORE) ", " + resultName(r, CutTheme.vocab) else "") +
                             (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${ProgramEngine.fmt1(it)} lb" } ?: "") else if (cp?.free == true && r != DayResult.SKIP) ", planned skip" else "")
                         Box(
                             Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier)
@@ -258,7 +258,7 @@ private fun NextCheckpoint(st: AppState, current: LocalDate?, onCheckpoints: () 
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 TileLabel("Next checkpoint")
                 Text(cp.localDate.format(cpFmt) + (cp.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "") + " · $whenText", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
-                if (cp.note.isNotBlank()) Sub(cp.note, size = 11)
+                if (cp.note.isNotBlank()) Sub(CutTheme.vocab.note(cp.note), size = 11)
             }
         }
     }
@@ -272,13 +272,13 @@ private fun Legend() {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
             Key("Off") { Hold(HoldShape.JUG, c.mutedBorder, 13.dp) }
-            Key("Climb") { Hold(HoldShape.CRIMP, c.mutedBorder, 13.dp) }
+            Key(CutTheme.vocab.train) { Hold(HoldShape.CRIMP, c.mutedBorder, 13.dp) }
             Key("Rest") { Hold(HoldShape.SLOPER, c.mutedBorder, 13.dp) }
             Key("Not picked") { Hold(HoldShape.PINCH, c.mutedBorder, 13.dp) }
             Key("Checkpoint") { Icon(CutIcons.Flag, null, Modifier.size(11.dp), tint = c.mutedBorder) }
         }
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-            Key("Send") { Swatch(c.good) }
+            Key(CutTheme.vocab.send) { Swatch(c.good) }
             Key("Min") { Swatch(c.goodDim) }
             Key("Freeze or skip") { Swatch(c.freeze) }
             Key("Missed") { Swatch(c.miss) }
@@ -309,7 +309,7 @@ private fun badgeIcon(id: String): ImageVector = if (id.startsWith("chain_")) Cu
 fun BadgeShelf(earned: Set<String>) {
     val c = CutTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (row in BadgeIds.all.chunked(3)) {
+        for (row in BadgeIds.all(CutTheme.vocab).chunked(3)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (b in row) {
                     val on = b.id in earned
@@ -340,12 +340,13 @@ fun Modifier.dashedBorder(color: Color, radius: Float = 10f) = drawBehind {
 @Composable
 private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEdit: () -> Unit, onCheckpoints: () -> Unit, onToggleSkip: () -> Unit) {
     val c = CutTheme.colors
+    val v = CutTheme.vocab
     androidx.activity.compose.BackHandler { onClose() }
     val r = st.results[date] ?: DayResult.FUTURE
     val cp = st.settings.checkpoints.firstOrNull { !it.free && it.localDate == date }
     // A checkpoint ahead is the whole story of that day; a checkpoint behind is a second line under the day's result.
     val cpAhead = cp != null && r == DayResult.FUTURE
-    val cpNote = cp?.note?.takeIf { it.isNotBlank() }?.let { " $it" } ?: ""
+    val cpNote = cp?.note?.let(v::note)?.takeIf { it.isNotBlank() }?.let { " $it" } ?: ""
     val cpColor = cp?.let { if (it.localDate == currentCheckpointDate(st)) c.accent else c.text2 } ?: c.text2
     val cpLine = cp?.takeIf { !cpAhead }?.let {
         val (state, avg) = checkpointState(st, it.localDate, it.target)
@@ -365,7 +366,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val weight = st.weighIns.firstOrNull { it.date == date }?.lb
     val skipped = st.settings.checkpoints.any { it.free && it.covers(date) }
     val (title, color) = if (cpAhead) ("Checkpoint" + (cp!!.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "")) to cpColor else when (r) {
-        DayResult.SEND -> "Send · +$xp xp" to c.good
+        DayResult.SEND -> "${v.send} · +$xp xp" to c.good
         DayResult.MIN -> "Min day · +$xp xp" to c.good
         DayResult.FREEZE -> "Freeze · 0 xp" to c.text2
         DayResult.SKIP -> "Planned skip" to c.freeze
@@ -377,12 +378,12 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val detail = if (cpAhead) when (val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, date).toInt()) { 0 -> "Today."; 1 -> "Tomorrow."; else -> "In $days days." } + cpNote else when (r) {
         DayResult.FREEZE -> "Missed. A freeze covered it, chain kept."
         DayResult.SKIP -> "A planned skip. Chain kept, no freeze spent."
-        DayResult.MISSED -> "Nothing logged. Grey hold, that is all."
-        DayResult.TODAY -> "In progress. Finish the script for a Send."
+        DayResult.MISSED -> "Nothing logged. Grey ${v.hold}, that is all."
+        DayResult.TODAY -> "In progress. Finish the script for a ${v.send}."
         DayResult.FUTURE -> if (skipped) "Planned skip. Chain kept, no freeze spent." else "Not here yet. Plan a skip if you know you will be off."
         DayResult.BEFORE -> "Before the start."
         else -> buildList {
-            when (log?.mode) { DayMode.CLIMB -> add("Climb day."); DayMode.OFF -> add("Off day."); DayMode.REST -> add("Rest day."); null -> add("No day picked.") }
+            add(log?.mode?.let { v.day(it) + "." } ?: "No day picked.")
             if (items.isNotEmpty()) add("$done of ${maxOf(done, items.size)} items.")
             if (weight != null) add("${ProgramEngine.fmt1(weight)} lb.")
             st.liftSets.filter { it.date == date }.groupBy { it.exerciseId }.forEach { (id, sets) ->

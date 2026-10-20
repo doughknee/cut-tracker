@@ -24,6 +24,7 @@ import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.ThemeMode
 import com.relentnet.cuttracker.ui.theme.Palettes
 import androidx.compose.runtime.produceState
+import com.relentnet.cuttracker.data.vocab
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels { AppViewModel.factory(App.of(this).repo) }
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
             val now by produceState(java.time.LocalDateTime.now()) { while (true) { kotlinx.coroutines.delay(60_000); value = java.time.LocalDateTime.now() } }
             val palette = Palettes.of(st.settings, now.toLocalDate())
             CutTheme(mode, palette, now.toLocalTime()) {
-                CompositionLocalProvider(LocalHaptics provides remember { haptics }) { App(vm) }
+                CompositionLocalProvider(LocalHaptics provides remember { haptics }, com.relentnet.cuttracker.ui.theme.LocalVocab provides st.settings.vocab) { App(vm) }
             }
         }
     }

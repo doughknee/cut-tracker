@@ -315,7 +315,7 @@ fun BottomNav(current: String?, onGo: (String) -> Unit) {
                 ) {
                     val lift by animateFloatAsState(if (on) 1.12f else 1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow), label = "tab")
                     Icon(t.icon, contentDescription = null, Modifier.size(22.dp).scale(lift), tint = tint)
-                    Text(t.label.uppercase(), color = tint, style = cutStyle(11, 700, 1f, 0.06f), modifier = Modifier.padding(top = 4.dp))
+                    Text((if (t.route == Routes.BETA) CutTheme.vocab.beta else t.label).uppercase(), color = tint, style = cutStyle(11, 700, 1f, 0.06f), modifier = Modifier.padding(top = 4.dp))
                 }
             }
         }

@@ -79,8 +79,8 @@ private val HOLD_SELECTED = 60.dp
 /** Wall height below the status bar. */
 val WALL_HEIGHT = 484.dp
 
-fun resultName(r: DayResult): String = when (r) {
-    DayResult.SEND -> "Send"
+fun resultName(r: DayResult, v: com.relentnet.cuttracker.data.Vocab): String = when (r) {
+    DayResult.SEND -> v.send
     DayResult.MIN -> "Min day"
     DayResult.FREEZE -> "Freeze"
     DayResult.SKIP -> "Planned skip"
@@ -105,6 +105,7 @@ fun Wall(
     onSettings: () -> Unit,
 ) {
     val c = CutTheme.colors
+    val v = CutTheme.vocab
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val weekStart = ProgramEngine.weekStart(selected)
     val days = (0 until 7).map { weekStart.plusDays(it.toLong()) }
@@ -191,7 +192,7 @@ fun Wall(
                         holdShape(modes[day]), fill, size,
                         Modifier
                             .scale(pop.value)
-                            .semantics { contentDescription = "${day.format(wdFmt)} ${day.dayOfMonth}, ${resultName(r)}" }
+                            .semantics { contentDescription = "${day.format(wdFmt)} ${day.dayOfMonth}, ${resultName(r, v)}" }
                             .then(if (open) Modifier.clickable(onClick = { onPickDay(day) }, role = Role.Button) else Modifier),
                         stroke = stroke, strokeWidth = if (stroke != null) 2.2.dp else 0.dp,
                     ) {
@@ -208,7 +209,7 @@ fun Wall(
         // Front layer: route tag and the week chrome, full speed.
         Box(
             Modifier.offset((-6).dp, 186.dp * ys + statusTop).rotate(-8f).background(c.accent).padding(16.dp, 5.dp, 12.dp, 5.dp),
-        ) { Text("V${st.level} · WEEK ${ProgramEngine.weekOf(selected, st.settings.startDate).coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true)) }
+        ) { Text("${v.level(st.level).uppercase()} · WEEK ${ProgramEngine.weekOf(selected, st.settings.startDate).coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true)) }
         Row(
             Modifier.fillMaxWidth().padding(top = 16.dp + statusTop).padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,

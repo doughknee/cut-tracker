@@ -59,6 +59,9 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.text.input.KeyboardType
+import com.relentnet.cuttracker.data.Vocab
+import com.relentnet.cuttracker.ui.components.Pill
 
 private val longDate: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.US)
 
@@ -79,6 +82,10 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     var time by rememberSaveable { mutableStateOf(s.weighInTime.toString()) }
     var cal by rememberSaveable { mutableStateOf("") }
     var pro by rememberSaveable { mutableStateOf("") }
+    // Do you climb? Something else keeps the wall and swaps the climbing words; the name is the session item's.
+    var climbs by rememberSaveable { mutableStateOf(s.training == null) }
+    var trainName by rememberSaveable { mutableStateOf(s.training ?: "") }
+    val v = if (climbs) Vocab.CLIMBING else Vocab.plain(trainName)
     // Starting the next route keeps every log, badge and XP; only the program changes.
     val again = st.logs.isNotEmpty() || st.weighIns.isNotEmpty()
     var starting by rememberSaveable { mutableStateOf(false) }
@@ -133,7 +140,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                         startDate = startDate, lengthWeeks = w, weighInTime = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime),
                         caloriesP1 = cal.int() ?: s.caloriesP1, protein = pro.int() ?: s.protein,
                         checkpoints = ProgramSpec.defaultCheckpoints(startDate, startWeight, targetWeight, w),
-                        welcomeBackSeen = null, lastOpenDate = null,
+                        welcomeBackSeen = null, lastOpenDate = null, training = if (climbs) null else trainName.trim(),
                     ) }
                 return
             }
@@ -154,12 +161,23 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Text("SENDLINE", color = c.accent, style = cutStyle(12, 800, 1f, 0.14f))
                     Big(if (again) "Next route." else "Twelve weeks.\nFour taps a day.")
                     Body(if (again) "Your logs, badges and xp stay. Set a new start, a new goal and a new length." else "Weigh in, eat the script, do the block, tick it off. The app keeps score so you don't have to. Nothing here resets, ever.")
+                    if (!again) {
+                        Fld("Do you climb?") {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Pill("Climbing", on = climbs, onClick = { climbs = true })
+                                Pill("Something else", on = !climbs, onClick = { climbs = false })
+                            }
+                        }
+                        if (!climbs) Fld("What do you call your training?") {
+                            Field(trainName, { trainName = it }, Modifier.fillMaxWidth(), height = 52.dp, fontSize = 20, keyboard = KeyboardType.Text, placeholder = "Run, Gym, Practice", radius = 12.dp, padding = 14.dp, background = c.surface)
+                        }
+                    }
                     Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        HoldKey(HoldShape.CRIMP, "Climb day", "session + push block")
+                        HoldKey(HoldShape.CRIMP, v.trainDay, "session + push block")
                         HoldKey(HoldShape.JUG, "Off day", "a short block at home")
                         HoldKey(HoldShape.SLOPER, "Rest day", "weigh in, eat the script")
                     }
-                    Hint("Every day is a hold. Pick which kind, finish the script, and the hold goes green. Not medical advice; check with a doctor if you have a condition, and stop if you feel unwell.")
+                    Hint("${v.onboardHold} Not medical advice; check with a doctor if you have a condition, and stop if you feel unwell.")
                     if (!again) Text(
                         if (restoring) "RESTORING…" else "MOVING PHONES? RESTORE A BACKUP",
                         color = c.accent, style = cutStyle(11, 800, 1f, 0.08f),
@@ -190,7 +208,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                         Field(weeks, { weeks = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
                     val w = (weeks.int() ?: 12).coerceIn(1, 52)
-                    Hint("Ends ${d.plusDays(w * 7L).format(longDate)}. ${w * 7} holds on the route.")
+                    Hint("Ends ${d.plusDays(w * 7L).format(longDate)}. ${w * 7} ${v.holds} on the route.")
                 }
                 3 -> {
                     Big("The daily targets.")
@@ -200,7 +218,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Protein, grams") {
                         Field(pro, { pro = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
-                    Hint("Prefilled from your weights as a common starting point. Protein is the one that keeps the chain: weigh in and hit it, and the day counts even when the rest slips. Change both any time on Beta, under Targets.")
+                    Hint("Prefilled from your weights as a common starting point. Protein is the one that keeps the chain: weigh in and hit it, and the day counts even when the rest slips. Change both any time on ${v.beta}, under Targets.")
                 }
                 else -> {
                     Big("One nudge a day.")

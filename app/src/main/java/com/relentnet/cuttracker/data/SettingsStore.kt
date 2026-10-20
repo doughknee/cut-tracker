@@ -77,6 +77,8 @@ data class Settings(
     val barcodeLookup: Boolean = false,
     /** Ticked rows fold into a Done list under Today's script. Off keeps them in place, ticked. */
     val hideDone: Boolean = false,
+    /** Null keeps the climbing words. Otherwise what the user calls their training (Run, Gym), and the app speaks plainly; see [Vocab]. */
+    val training: String? = null,
 ) {
     val recipeImportOn: Boolean get() = onlineFeatures && recipeImport
     val barcodeLookupOn: Boolean get() = onlineFeatures && barcodeLookup
@@ -131,6 +133,7 @@ class SettingsStore(context: Context) {
         val customLooks = stringPreferencesKey("customLooks")
         val recipeImport = booleanPreferencesKey("recipeImport")
         val barcodeLookup = booleanPreferencesKey("barcodeLookup")
+        val training = stringPreferencesKey("training")
     }
 
     val flow: Flow<Settings> = ds.data.map { p -> read(p) }
@@ -187,6 +190,7 @@ class SettingsStore(context: Context) {
             seenVersion = p[K.seenVersion],
             autoBackupFolder = p[K.autoBackupFolder],
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
+            training = p[K.training],
         )
     }
 
@@ -233,6 +237,7 @@ class SettingsStore(context: Context) {
         if (s.seenVersion != null) p[K.seenVersion] = s.seenVersion else p.remove(K.seenVersion)
         if (s.autoBackupFolder != null) p[K.autoBackupFolder] = s.autoBackupFolder else p.remove(K.autoBackupFolder)
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)
+        if (s.training != null) p[K.training] = s.training else p.remove(K.training)
     }
 
     suspend fun clear() = ds.edit { it.clear() }

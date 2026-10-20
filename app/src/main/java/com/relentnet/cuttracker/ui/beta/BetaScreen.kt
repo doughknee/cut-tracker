@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.data.vocab
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
@@ -63,7 +64,7 @@ fun BetaScreen(
     val s = st.settings
     Column(Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.statusBars).padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 14.dp)) {
         Eyebrow("The plan for the route")
-        Text("Beta", color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+        Text(CutTheme.vocab.beta, color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f)) {
         val scrolls = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f || maxHeight < 560.dp
         Column(
@@ -162,7 +163,7 @@ private fun DayTile(modifier: Modifier, mode: DayMode, st: AppState, onClick: ()
     }
     TileFrame(modifier, onClick = onClick) {
         TileTop(shape = holdShape(mode))
-        Text(dayTitle(mode), color = c.text, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
+        Text(CutTheme.vocab.day(mode), color = c.text, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
         Column(Modifier.weight(1f).padding(top = 6.dp), verticalArrangement = Arrangement.Center) {
             Text(line, color = c.text2, style = cutStyle(11, 500, 1.35f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text("${items.size} on, ${ProgramEngine.totalXp(items)} xp", color = c.text2, style = cutStyle(11, 500, 1.35f, tabular = true), maxLines = 1)
@@ -170,14 +171,14 @@ private fun DayTile(modifier: Modifier, mode: DayMode, st: AppState, onClick: ()
     }
 }
 
-fun dayTitle(mode: DayMode) = when (mode) { DayMode.CLIMB -> "Climb day"; DayMode.OFF -> "Off day"; DayMode.REST -> "Rest day" }
 
 /** What a kind of day asks, in one sentence that follows the plan: the day page and Today's cards both say it. */
 fun dayWhere(mode: DayMode, s: com.relentnet.cuttracker.data.Settings): String {
     val block = ProgramEngine.exercisesFor(mode, s).isNotEmpty()
+    val v = s.vocab
     return when (mode) {
-        DayMode.CLIMB -> if (block) "Session, then the push block at the gym." else "Session at the gym. No block."
-        DayMode.OFF -> if (block) "No climbing. A short block at home." else "No climbing. Weigh in and eat the script."
+        DayMode.CLIMB -> if (block) v.sessionThenBlock else v.sessionNoBlock
+        DayMode.OFF -> if (block) "${v.noSession} A short block at home." else "${v.noSession} Weigh in and eat the script."
         DayMode.REST -> if (block) "Weigh in and eat the script. A short block at home." else "Weigh in and eat the script. Nothing else is asked."
     }
 }
