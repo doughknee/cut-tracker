@@ -127,3 +127,24 @@ Differences from the prototype, and why:
 - Inexact AlarmManager instead of WorkManager when exact alarms are denied (same behavior, no extra dependency).
 - Tapping a workout item checks it (v3 prototype) instead of opening Lift (older v2 copy in the handoff).
 - Chain is a count of Send + Min + Freeze days that never resets; "paused" shows when the last completed day was an unfrozen miss (matches the prototype's 11 to 12 behavior).
+
+## Overnight pass, 2026-10-20 (DONI-536)
+
+Unattended, at the user's request: audit everything and fix what a daily user feels. Method: a walk of every screen on the emulator with a seeded sample week, three read-only code audits in parallel (data and engine, Today/Route/Weight, Beta/Settings), fixes in committed rounds that each passed `assembleDebug` and `testDebugUnitTest`, a large-text pass (font scale 1.3 on a 360dp screen), and a fresh-install pass of the signed release on the emulator. Commits `4e9495b` onward, ending with round 8.
+
+- Round 1, data: settings edits are atomic (quick edits no longer undo each other); past days keep the result their ledger recorded, so plan, protein or meal changes never re-score history; meal edits and deletes freeze past picks; "Change" keeps ticks; a Rest-day block counts as a workout; restore is parse-first and one transaction under the write lock; backups carry the new settings; per-reminder switches; the weigh-in reminder skips once weighed; alarms survive time zone and clock changes; kinds are unique ignoring case and a lift-kind rename onto an existing kind merges instead of crashing; the launch intent is not replayed on recreate; keyboard Next and Done work; switches have state for TalkBack.
+- Round 2, Today and shared UI: back closes open panels, popovers, takeovers and onboarding steps before leaving; swipes tick the day on screen; a done weigh-in opens to fix a typo; lift drafts survive; steppers repeat while held and can be typed; numbers parse with commas; focused fields scroll above the keyboard; Undo after deletes; import and reset ask first; export cannot crash; photos decode off the main thread.
+- Round 3, libraries: word-order and accent-insensitive search, search in the lift and meal pickers, a discard question on sheets with unsaved edits, room under floating add buttons.
+- Round 4, access: large text wraps instead of squeezing (Today totals, Route header, Beta grid scrolls); 48dp targets; TalkBack names and states; FAB shadow from tokens.
+- Round 5, Settings: last export date shown, Nudges in the phone's clock format, a Data icon, two-line row descriptions.
+- Round 6: the pick-a-day reminder answers itself from the shade (Yep, Rest day / I climbed). The weigh-in reminder deliberately gets no inline reply (decision log).
+- Round 7, release check: fixed an onboarding crash on a comma-typed start weight and typed stepper values appending to the old number; onboarding copy points targets at Beta.
+- Round 8, an independent review of the whole diff found seven regressions, all fixed: editing a past day re-judged it by today's targets (now it can only rise unless you untick or change its kind); steppers fired on touch-down so a scroll could change a value; Save session missed a number still being typed; a meal rename froze past picks; Undo restored the whole settings snapshot; day plan switches used screen state; a stale pick-a-day button could set the next day. Number fields now select their contents on focus.
+
+Tests added: `HistoryTest` (ledger-scored history, workouts), `InputParsingTest` (numbers and search), BackupTest covers the new settings fields.
+
+Verified on the emulator: back behaviour, weigh-in fix, typed targets, Undo, the discard question, the reminder buttons, large-text layouts, release onboarding and smoke pass with no FATAL in logcat. Installed 1.3.0 (versionCode 4) on the Pixel over 1.2.0 with `install -r`; data kept; the app was not opened there overnight.
+
+Not verified: the home screen widget on the release build (needs launcher drag), camera and label reading (no real camera), the export share sheet and import picker end to end (other apps), TalkBack by ear.
+
+Left as is, on purpose: future-day numbers on Route stay dim (below 4.5:1 contrast) because the look depends on it; the weigh-in reminder has no inline reply per the 2026-10-19 decision.
