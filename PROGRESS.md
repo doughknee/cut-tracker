@@ -130,6 +130,14 @@ Differences from the prototype, and why:
 
 ## Overnight pass, 2026-10-20 (DONI-536)
 
+**In the morning.** The phone has the latest 1.3.0 release build, installed at 05:27 and never opened, with your data kept. Open it and the "New in 1.3.0" note shows once. Everything is committed and pushed, and the site and store listing are current. The full list of changes is the 1.3.0 entry in CHANGELOG.md. 60 unit tests and 11 UI tests pass. Worth trying first:
+- Weigh in from the widget's number. It opens Today with the field ready.
+- Tap a logged meal under Done to change it.
+- Hold a stepper on Targets.
+- In Settings > Data, set up Back up every week.
+
+One idea left for you to decide: logging food outside the plan's slots, such as an extra shake. The prototype has no such entry, so it was not built.
+
 Unattended, at the user's request: audit everything and fix what a daily user feels. Method: a walk of every screen on the emulator with a seeded sample week, three read-only code audits in parallel (data and engine, Today/Route/Weight, Beta/Settings), fixes in committed rounds that each passed `assembleDebug` and `testDebugUnitTest`, a large-text pass (font scale 1.3 on a 360dp screen), and a fresh-install pass of the signed release on the emulator. Commits `4e9495b` onward, ending with round 8.
 
 - Round 1, data: settings edits are atomic (quick edits no longer undo each other); past days keep the result their ledger recorded, so plan, protein or meal changes never re-score history; meal edits and deletes freeze past picks; "Change" keeps ticks; a Rest-day block counts as a workout; restore is parse-first and one transaction under the write lock; backups carry the new settings; per-reminder switches; the weigh-in reminder skips once weighed; alarms survive time zone and clock changes; kinds are unique ignoring case and a lift-kind rename onto an existing kind merges instead of crashing; the launch intent is not replayed on recreate; keyboard Next and Done work; switches have state for TalkBack.
