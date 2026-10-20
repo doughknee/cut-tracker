@@ -10,6 +10,12 @@ Sendline
 
 The cut for climbers. Weigh in, eat the script, send the day. Offline.
 
+## Get it
+
+<!-- The website (docs/index.html) shows this under its headline. Once the Play listing is live, put its link here, https://play.google.com/store/apps/details?id=com.relentnet.cuttracker, and the site's button points at it. -->
+
+Coming soon to Google Play.
+
 ## Full description (max 4000 characters)
 
 Sendline turns a diet into a route. Every day is a hold on the wall: pick the kind of day (Climb, Off or Rest), weigh in, eat the script, do the block, check it off. Finish everything and the day is a Send. Weigh in and hit protein and it is a Min day, which keeps your chain alive even when the rest slips.

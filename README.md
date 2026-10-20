@@ -45,7 +45,7 @@ Then:
 
 The signed APK lands at `app/build/outputs/apk/release/app-release.apk`.
 
-For Google Play build the bundle instead; `STORE_LISTING.md` has the listing copy, the Data safety answers and the release checklist, and `docs/privacy.html` is the privacy policy, published at https://doughknee.github.io/cut-tracker/privacy.html:
+For Google Play build the bundle instead; `STORE_LISTING.md` has the listing copy, the Data safety answers and the release checklist, and `docs/privacy.html` is the privacy policy, published at https://doughknee.github.io/cut-tracker/privacy.html. The site's front page, `docs/index.html` at https://doughknee.github.io/cut-tracker/, reads `CHANGELOG.md`, `STORE_LISTING.md` and `store/` from `main` on every load, so updating those and pushing updates the page:
 
 ```bash
 ./gradlew :app:bundleRelease
