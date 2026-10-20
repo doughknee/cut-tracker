@@ -154,7 +154,7 @@ private fun DayTile(modifier: Modifier, mode: DayMode, st: AppState, onClick: ()
     val block = ProgramEngine.exercisesFor(mode, st.settings).isNotEmpty()
     val line = when (mode) {
         DayMode.CLIMB -> if (block) "Session + push" else "Session only"
-        DayMode.OFF -> if (block) "Core at home" else "No block"
+        DayMode.OFF -> if (block) "Block at home" else "No block"
         DayMode.REST -> if (block) "Weigh in + block" else "Weigh in + eat"
     }
     TileFrame(modifier, onClick = onClick) {
@@ -174,7 +174,7 @@ fun dayWhere(mode: DayMode, s: com.relentnet.cuttracker.data.Settings): String {
     val block = ProgramEngine.exercisesFor(mode, s).isNotEmpty()
     return when (mode) {
         DayMode.CLIMB -> if (block) "Session, then the push block at the gym." else "Session at the gym. No block."
-        DayMode.OFF -> if (block) "No climbing. A short core block at home." else "No climbing. Weigh in and eat the script."
+        DayMode.OFF -> if (block) "No climbing. A short block at home." else "No climbing. Weigh in and eat the script."
         DayMode.REST -> if (block) "Weigh in and eat the script. A short block at home." else "Weigh in and eat the script. Nothing else is asked."
     }
 }
