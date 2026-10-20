@@ -35,7 +35,8 @@ class AppViewModel(val repo: Repo) : ViewModel() {
 
     var takeover by mutableStateOf<Takeover?>(null)
         private set
-    var toast by mutableStateOf<String?>(null)
+    data class ToastMsg(val text: String, val action: String? = null, val onAction: (() -> Unit)? = null)
+    var toast by mutableStateOf<ToastMsg?>(null)
         private set
     /** A past program day being edited on Today; null means today. */
     var viewDate by mutableStateOf<java.time.LocalDate?>(null)
@@ -74,11 +75,30 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         }
     }
 
-    fun showToast(text: String) {
-        toast = text
+    fun dismissToast() { toastJob?.cancel(); toast = null }
+
+    fun showToast(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
+        toast = ToastMsg(text, action, onAction)
         toastJob?.cancel()
-        toastJob = viewModelScope.launch { delay(1400); toast = null }
+        toastJob = viewModelScope.launch { delay(if (action != null) 6000 else 1800); toast = null }
     }
+
+    /** Applies [f] and offers Undo, which puts the settings back as they were just before. For deletes. */
+    fun updateWithUndo(text: String, f: (Settings) -> Settings) = viewModelScope.launch {
+        val before = repo.settings.current()
+        repo.updateSettings(f)
+        showToast(text, "Undo") { viewModelScope.launch { repo.updateSettings { before } } }
+    }
+
+    /** Deletes a library meal (past days keep what they logged) and offers Undo. */
+    fun deleteMeal(m: com.relentnet.cuttracker.data.LibMeal) = viewModelScope.launch {
+        val before = repo.settings.current()
+        repo.replaceLibraryMeal(m, null)
+        showToast("${m.name} deleted", "Undo") { viewModelScope.launch { repo.updateSettings { before } } }
+    }
+
+    /** Lift numbers typed on Today, keyed "<date>:<exercise id>", so closing the panel or tapping elsewhere keeps them. */
+    val liftDraft = androidx.compose.runtime.mutableStateMapOf<String, Pair<Double, Int>>()
 
     fun opened() = viewModelScope.launch { repo.opened() }
     fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: java.time.LocalDate? = null) = viewModelScope.launch { repo.setMode(mode, preCheck, date) }

@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui.settings
 
+import com.relentnet.cuttracker.ui.components.ConfirmDialog
 import android.app.AlarmManager
 import android.app.TimePickerDialog
 import android.content.Intent
@@ -147,7 +148,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptics = LocalHaptics.current
-    var resetStage by remember { mutableIntStateOf(0) }
+    var confirm by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -155,17 +156,17 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
             val ok = withContext(Dispatchers.IO) {
                 runCatching { context.contentResolver.openInputStream(uri)!!.use { vm.repo.restoreFrom(it) } }.isSuccess
             }
-            vm.showToast(if (ok) "Imported" else "Could not read that file")
+            vm.showToast(if (ok) "Imported. Everything from the backup is in place." else "Could not read that file. Nothing changed.")
         }
     }
 
     fun export(withPhotos: Boolean) = scope.launch {
-        val file = withContext(Dispatchers.IO) {
+        val file = runCatching { withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "export").apply { mkdirs() }
             val name = "sendline-" + LocalDate.now()
             if (withPhotos) File(dir, "$name.zip").also { vm.repo.writeZip(it) }
             else File(dir, "$name.json").apply { writeText(backupJson.encodeToString(Backup.serializer(), vm.repo.buildBackup())) }
-        }
+        } }.getOrElse { vm.showToast("Export failed. Is the phone out of space?"); return@launch }
         val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
         val send = Intent(Intent.ACTION_SEND).apply {
             type = if (withPhotos) "application/zip" else "application/json"
@@ -174,6 +175,20 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
         context.startActivity(Intent.createChooser(send, "Export Sendline"))
     }
 
+    when (confirm) {
+        "import" -> ConfirmDialog(
+            "Replace everything?",
+            "Importing puts the backup's logs, photos and settings in place of what is on this phone now. Export first if you want to keep it.",
+            "Pick a file", onConfirm = { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) },
+            onDismiss = { confirm = null }, extra = "Export first" to { export(false) },
+        )
+        "reset" -> ConfirmDialog(
+            "Wipe everything?",
+            "Logs, photos, badges, XP and settings are deleted from this phone, and onboarding starts over. This cannot be undone.",
+            "Wipe it", onConfirm = { vm.resetProgram { vm.showToast("Program reset") } },
+            onDismiss = { confirm = null }, extra = "Export first" to { export(false) },
+        )
+    }
     val title = when (section) { SettingsSections.NUDGES -> "Nudges"; SettingsSections.APPEARANCE -> "Appearance"; SettingsSections.DATA -> "Data"; else -> "About" }
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Settings", title = title, onBack = onBack)
@@ -216,7 +231,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                 KindCard("Backup", "") {
                     PlainRow("Export", "a JSON file of everything but photos") { LinkText("Share") { export(false) } }
                     PlainRow("Export with photos", "a zip, bigger") { LinkText("Share") { export(true) } }
-                    PlainRow("Import", "a JSON or zip you exported") { LinkText("Pick a file") { importLauncher.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*")) } }
+                    PlainRow("Import", "replaces what is on this phone") { LinkText("Pick a file") { confirm = "import" } }
                 }
                 KindCard("Online features", if (s.onlineFeatures) "on" else "off", sub = "Off, the app never touches the network. Each feature says what it sends and to whom, and nothing about you is ever part of it.", modifier = Modifier.pulseWhen(focus == "online")) {
                     PlainRow("Allow online features", "the master switch") { Switch(s.onlineFeatures, "Allow online features") { haptics.tick(); vm.updateSettings { s -> s.copy(onlineFeatures = !s.onlineFeatures) } } }
@@ -232,14 +247,8 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     }
                 }
                 KindCard("Danger", "") {
-                    PlainRow(
-                        when (resetStage) { 0 -> "Reset program"; 1 -> "Tap again to wipe everything"; else -> "Last chance" },
-                        "logs, photos, settings, all of it",
-                    ) {
-                        LinkText(when (resetStage) { 0 -> "Reset"; 1 -> "Again"; else -> "Wipe" }, color = c.accent) {
-                            haptics.tap()
-                            if (resetStage < 2) resetStage++ else { resetStage = 0; vm.resetProgram { vm.showToast("Program reset") } }
-                        }
+                    PlainRow("Reset program", "logs, photos, settings, all of it") {
+                        LinkText("Reset", color = c.accent) { haptics.tap(); confirm = "reset" }
                     }
                 }
             }

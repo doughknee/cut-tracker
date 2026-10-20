@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -94,6 +96,7 @@ fun CheckRow(
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var swiped by remember { mutableFloatStateOf(0f) }
+    val swipeCb by androidx.compose.runtime.rememberUpdatedState(onSwipeCheck)
     val shape = RoundedCornerShape(10.dp)
 
     Box(Modifier.fillMaxWidth().clip(shape)) {
@@ -115,7 +118,7 @@ fun CheckRow(
                             onDragEnd = {
                                 val past = offset.value > threshold
                                 scope.launch {
-                                    if (past) { onSwipeCheck(); offset.snapTo(0f) } else offset.animateTo(0f, tween(200))
+                                    if (past) { swipeCb?.invoke(); offset.snapTo(0f) } else offset.animateTo(0f, tween(200))
                                 }
                             },
                             onDragCancel = { scope.launch { offset.animateTo(0f, tween(200)) } },
@@ -133,6 +136,7 @@ fun CheckRow(
                     else Modifier.border(1.5.dp, c.accent.copy(alpha = 0.6f), shape),
                 )
                 .clickable(onClick = onClick, role = Role.Checkbox)
+                .semantics { stateDescription = if (done) "Done" else "Not done" }
                 .heightIn(min = if (compact) 40.dp else 56.dp)
                 .padding(start = if (compact) 12.dp else 7.dp, end = if (compact) 12.dp else 14.dp, top = if (compact) 6.dp else 8.dp, bottom = if (compact) 6.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,

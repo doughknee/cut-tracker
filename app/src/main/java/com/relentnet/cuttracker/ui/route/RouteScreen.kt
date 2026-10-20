@@ -325,6 +325,7 @@ fun Modifier.dashedBorder(color: Color, radius: Float = 10f) = drawBehind {
 @Composable
 private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEdit: () -> Unit, onCheckpoints: () -> Unit, onToggleSkip: () -> Unit) {
     val c = CutTheme.colors
+    androidx.activity.compose.BackHandler { onClose() }
     val r = st.results[date] ?: DayResult.FUTURE
     val cp = st.settings.checkpoints.firstOrNull { !it.free && it.localDate == date }
     // A checkpoint ahead is the whole story of that day; a checkpoint behind is a second line under the day's result.

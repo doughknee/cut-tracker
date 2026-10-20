@@ -1,5 +1,7 @@
 package com.relentnet.cuttracker.ui.onboarding
 
+import com.relentnet.cuttracker.ui.components.int
+import com.relentnet.cuttracker.ui.components.num
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.background
@@ -67,6 +69,8 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     val s = st.settings
     val context = LocalContext.current
     var step by rememberSaveable { mutableIntStateOf(0) }
+    // Back walks the steps backwards before it leaves.
+    androidx.activity.compose.BackHandler(enabled = step > 0) { step-- }
     var sw by rememberSaveable { mutableStateOf("") }
     var tw by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(s.targetWeight)) }
     var start by rememberSaveable { mutableStateOf(com.relentnet.cuttracker.engine.ProgramEngine.programDay(java.time.LocalDateTime.now(), s.resetHour).toString()) }
@@ -81,26 +85,26 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
 
     fun next() {
         when (step) {
-            1 -> if (sw.toDoubleOrNull() == null) { swMissing = true; swFocus.requestFocus(); return }
+            1 -> if (sw.num() == null) { swMissing = true; swFocus.requestFocus(); return }
             2 -> {
                 // Prefill the targets once, from the weights: a common starting point, not a prescription.
-                val a = sw.toDoubleOrNull() ?: s.startWeight
-                val b = tw.toDoubleOrNull() ?: s.targetWeight
+                val a = sw.num() ?: s.startWeight
+                val b = tw.num() ?: s.targetWeight
                 if (cal.isBlank()) cal = ((a * 12 / 50).toInt() * 50).coerceIn(1200, 4000).toString()
                 if (pro.isBlank()) pro = ((b * 0.9 / 5).toInt() * 5).coerceIn(80, 300).toString()
             }
             4 -> {
                 val startWeight = sw.toDouble()
-                val targetWeight = tw.toDoubleOrNull() ?: s.targetWeight
+                val targetWeight = tw.num() ?: s.targetWeight
                 val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
-                val w = weeks.toIntOrNull()?.coerceIn(1, 52) ?: 12
+                val w = weeks.int()?.coerceIn(1, 52) ?: 12
                 vm.updateSettings(then = {
                     vm.repo.scope.launch { if (!startDate.isAfter(LocalDate.now())) vm.repo.logWeight(startWeight); vm.showToast("Day 1. Pick a day.") }
                     onDone()
                 }) { s -> s.copy(
                         onboarded = true, phase = 1, startWeight = startWeight, targetWeight = targetWeight,
                         startDate = startDate, lengthWeeks = w, weighInTime = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime),
-                        caloriesP1 = cal.toIntOrNull() ?: s.caloriesP1, protein = pro.toIntOrNull() ?: s.protein,
+                        caloriesP1 = cal.int() ?: s.caloriesP1, protein = pro.int() ?: s.protein,
                         checkpoints = ProgramSpec.defaultCheckpoints(startDate, startWeight, targetWeight, w),
                         welcomeBackSeen = null, lastOpenDate = null,
                     ) }
@@ -139,7 +143,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Where you want to land") {
                         Field(tw, { tw = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
-                    val a = sw.toDoubleOrNull(); val b = tw.toDoubleOrNull(); val w = weeks.toIntOrNull() ?: 12
+                    val a = sw.num(); val b = tw.num(); val w = weeks.int() ?: 12
                     Hint(if (a != null && b != null) "${ProgramEngine.fmt1(a - b)} lb over $w weeks is ${"%.2f".format(Locale.US, (a - b) / w)} lb a week." else "About 1 lb a week is the pace.")
                 }
                 2 -> {
@@ -151,7 +155,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Weeks") {
                         Field(weeks, { weeks = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
-                    val w = weeks.toIntOrNull() ?: 12
+                    val w = weeks.int() ?: 12
                     Hint("Ends ${d.plusDays(w * 7L).format(longDate)}. ${w * 7} holds on the route.")
                 }
                 3 -> {

@@ -181,7 +181,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
                             is CustomLook -> PaletteTile(
                                 t.palette(), dark, selected = !s.paletteByCalendar && t.id == s.palette, Modifier.weight(1f).then(place), pulse = if (tapped.first == t.id) tapped.second else 0,
                                 onEdit = { sheet = t.id },
-                                onDelete = { haptics.tick(); vm.updateSettings { s -> s.copy(customLooks = s.customLooks.filter { it.id != t.id }, palette = if (s.palette == t.id) "sandstone" else s.palette) } },
+                                onDelete = { haptics.tick(); vm.updateWithUndo("Look deleted") { s -> s.copy(customLooks = s.customLooks.filter { it.id != t.id }, palette = if (s.palette == t.id) "sandstone" else s.palette) } },
                             ) { pick(t.id) }
                             else -> NewLookTile(Modifier.weight(1f)) { sheet = "" }
                         }
@@ -200,7 +200,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
             ChalkSheet(
                 editing, dark, onDismiss = { sheet = null },
                 onSave = { add(it.copy(id = editing?.id ?: (CustomLook.PREFIX + System.currentTimeMillis().toString(36)))); sheet = null },
-                onDelete = if (editing != null) ({ vm.updateSettings { s -> s.copy(customLooks = s.customLooks.filter { it.id != editing.id }, palette = if (s.palette == editing.id) "sandstone" else s.palette) }; sheet = null }) else null,
+                onDelete = if (editing != null) ({ vm.updateWithUndo("Look deleted") { s -> s.copy(customLooks = s.customLooks.filter { it.id != editing.id }, palette = if (s.palette == editing.id) "sandstone" else s.palette) }; sheet = null }) else null,
             )
         }
 

@@ -181,7 +181,7 @@ fun App(vm: AppViewModel) {
             }
         }
         Splash(true)
-        vm.toast?.let { ToastPill(it, Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp).windowInsetsPadding(WindowInsets.navigationBars)) }
+        vm.toast?.let { t -> ToastPill(t.text, Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp).windowInsetsPadding(WindowInsets.navigationBars), t.action, onAction = { t.onAction?.invoke(); vm.dismissToast() }) }
         vm.takeover?.let { TakeoverOverlay(it, confettiOn = st.settings.haptics, onDismiss = { vm.dismissTakeover() }) }
     }
 }

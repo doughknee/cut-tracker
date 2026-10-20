@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.ui.components.num
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -58,7 +59,7 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
                 onSave = { ne -> vm.updateSettings { s -> s.copy(exercises = s.exercises.map { if (it.id == e.id) ne else it }) }; sheet = "" },
                 onDelete = {
                     haptics.tap()
-                    vm.updateSettings { s -> s.copy(exercises = s.exercises.filter { it.id != e.id }, plans = s.plans.mapValues { (_, p) -> p.copy(lifts = p.lifts - e.id) }) }
+                    vm.updateWithUndo("${e.name} deleted") { s -> s.copy(exercises = s.exercises.filter { it.id != e.id }, plans = s.plans.mapValues { (_, p) -> p.copy(lifts = p.lifts - e.id) }) }
                     sheet = ""
                 })
         } ?: run { sheet = "" }
@@ -79,7 +80,7 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
                 },
                 onRemove = {
                     haptics.tap()
-                    vm.updateSettings { s -> s.copy(liftKinds = s.liftKinds - k, exercises = s.exercises.map { if (it.kind == k) it.copy(kind = "") else it }) }
+                    vm.updateWithUndo("$k removed") { s -> s.copy(liftKinds = s.liftKinds - k, exercises = s.exercises.map { if (it.kind == k) it.copy(kind = "") else it }) }
                     sheet = ""
                 })
         } ?: run { sheet = "" }
@@ -108,7 +109,7 @@ private fun LiftSheet(e: Exercise?, kinds: List<LibKind>, kind0: String, onDismi
         SheetButtons(
             if (e == null) "Add it" else "Done", enabled = name.isNotBlank(),
             onPrimary = {
-                val stp = step.toDoubleOrNull() ?: 0.0
+                val stp = step.num() ?: 0.0
                 onSave(Exercise(
                     e?.id ?: "x${System.currentTimeMillis()}", name.trim(), e?.block ?: Block.OFF, sets, reps.trim(), stp,
                     unit = if (stp > 0) (e?.unit?.ifEmpty { "Lb" } ?: "Lb") else "", bwLabel = if (stp > 0) null else (e?.bwLabel ?: "Body"), kind = kind,

@@ -61,10 +61,10 @@ fun Screen(
             .fillMaxSize()
             .background(CutTheme.colors.ground)
             .windowInsetsPadding(WindowInsets.statusBars)
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 12.dp)
-            .then(if (bottomInset) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier)
-            .imePadding(),
+            .then(if (bottomInset) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         content = content,
     )

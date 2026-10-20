@@ -39,6 +39,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -193,24 +195,49 @@ fun Chip(label: String, on: Boolean, modifier: Modifier = Modifier, transparentW
     ) { Text(label, color = if (on) c.onAccent else if (dashed) c.text2 else c.text, style = cutStyle(12, 700, 1f)) }
 }
 
-/** A compact [−][value][+] with a unit after it. */
+/**
+ * A compact [−][value][+] with a unit after it. The buttons repeat while held; with [onType] the number itself opens
+ * the keyboard, so a far-off value is typed rather than tapped.
+ */
 @Composable
-fun MiniStepper(value: String, onMinus: () -> Unit, onPlus: () -> Unit, unit: String? = null, color: Color = CutTheme.colors.text) {
+fun MiniStepper(
+    value: String, onMinus: () -> Unit, onPlus: () -> Unit, unit: String? = null, color: Color = CutTheme.colors.text,
+    onType: ((Double) -> Unit)? = null,
+) {
     val c = CutTheme.colors
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        StepBtn("−", onMinus)
-        Box(Modifier.width(62.dp).height(36.dp).clip(RoundedCornerShape(8.dp)).background(c.ground).border(1.dp, c.mutedBorder, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+    var typing by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        StepBtn("−", "Less", onMinus)
+        if (typing && onType != null) {
+            var text by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(value.replace(",", "")) }
+            val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+            var had by remember { androidx.compose.runtime.mutableStateOf(false) }
+            androidx.compose.runtime.LaunchedEffect(Unit) { focus.requestFocus() }
+            fun commit() { if (typing) { text.num()?.let(onType); typing = false } }
+            Field(
+                text, { text = it },
+                Modifier.width(66.dp).onFocusChanged { f -> if (f.isFocused) had = true else if (had) commit() },
+                height = 36.dp, fontSize = 14, center = true, focusRequester = focus, onDone = ::commit, padding = 4.dp, radius = 8.dp, borderWidth = 1.dp,
+            )
+        } else Box(
+            Modifier.width(66.dp).height(36.dp).clip(RoundedCornerShape(8.dp)).background(c.ground).border(1.dp, c.mutedBorder, RoundedCornerShape(8.dp))
+                .then(if (onType != null) Modifier.clickable(role = Role.Button, onClickLabel = "Type a number") { typing = true } else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(value, color = color, style = cutStyle(14, 800, 1f, tabular = true))
         }
-        StepBtn("+", onPlus)
+        StepBtn("+", "More", onPlus)
         if (unit != null) Text(unit, color = c.text2, style = cutStyle(11, 700, 1f))
     }
 }
 
 @Composable
-private fun StepBtn(label: String, onClick: () -> Unit) {
+private fun StepBtn(label: String, description: String, onClick: () -> Unit) {
     val c = CutTheme.colors
-    Box(Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(c.hairline).clickable(onClick = onClick, role = Role.Button), contentAlignment = Alignment.Center) {
+    Box(
+        Modifier.size(44.dp).padding(4.dp).clip(RoundedCornerShape(8.dp)).background(c.hairline).repeatingPress(description, onClick),
+        contentAlignment = Alignment.Center,
+    ) {
         Text(label, color = c.text, style = cutStyle(18, 700, 1f))
     }
 }
@@ -258,7 +285,7 @@ fun Sheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope
         dragHandle = { Box(Modifier.padding(top = 10.dp).size(36.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.mutedBorder)) },
     ) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp, 6.dp, 20.dp, 28.dp).imePadding(),
+            Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(20.dp, 6.dp, 20.dp, 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(title, color = c.text, style = cutStyle(20, 800, 1f, -0.01f, display = true))

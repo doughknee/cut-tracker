@@ -28,6 +28,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -67,6 +69,10 @@ fun Field(
     val c = CutTheme.colors
     val shape = RoundedCornerShape(radius)
     var focused by remember { mutableStateOf(false) }
+    // A focused field scrolls itself above the keyboard once the keyboard has opened, wherever it sits on the page.
+    val bring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val imeBottom = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)
+    androidx.compose.runtime.LaunchedEffect(focused, imeBottom) { if (focused && imeBottom > 0) bring.bringIntoView() }
     val borderColor by animateColorAsState(if (focused) c.accent else border, tween(140), label = "fieldBorder")
     BasicTextField(
         value = value,
@@ -76,6 +82,7 @@ fun Field(
             .clip(shape)
             .background(background, shape)
             .border(borderWidth, borderColor, shape)
+            .bringIntoViewRequester(bring)
             .onFocusChanged { focused = it.isFocused }
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         textStyle = cutStyle(fontSize, weight, 1f, tabular = true).copy(color = c.text, textAlign = if (center) TextAlign.Center else TextAlign.Start),

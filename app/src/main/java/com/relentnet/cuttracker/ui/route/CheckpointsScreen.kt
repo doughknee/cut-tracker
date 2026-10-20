@@ -1,5 +1,7 @@
 package com.relentnet.cuttracker.ui.route
 
+import com.relentnet.cuttracker.ui.components.rememberPhoto
+import com.relentnet.cuttracker.ui.components.num
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -114,9 +116,9 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                     val right = sorted.firstOrNull { it.date == compare } ?: sorted.last()
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for ((p, label) in listOf(first to "Day 1", right to "Day ${ProgramEngine.dayNumber(right.date, s.startDate)}")) {
-                            val bmp = remember(p.path) { runCatching { BitmapFactory.decodeFile(p.path, BitmapFactory.Options().apply { inSampleSize = 4 }) }.getOrNull() }
+                            val bmp = rememberPhoto(p.path, 4)
                             Box(Modifier.weight(1f).aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp)).background(c.surface)) {
-                                if (bmp != null) Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
+                                if (bmp != null) Image(bmp, null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
                                 Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
                                     Text(label.uppercase(), color = c.text, style = cutStyle(11, 800, 1f, 0.08f))
                                     Text(p.date.format(cpFmt), color = c.text2, style = cutStyle(11, 600, 1f))
@@ -130,14 +132,12 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                 for (row in st.photos.sortedByDescending { it.date }.chunked(4)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         for (p in row) {
-                            val bmp = remember(p.path) {
-                                runCatching { BitmapFactory.decodeFile(p.path, BitmapFactory.Options().apply { inSampleSize = 8 }) }.getOrNull()
-                            }
+                            val bmp = rememberPhoto(p.path, 8)
                             Box(
                                 Modifier.weight(1f).aspectRatio(3f / 4f).clip(RoundedCornerShape(8.dp)).background(c.surface)
                                     .combinedClickable(onClick = { compare = p.date }, onLongClick = { haptics.tap(); confirmDelete = p.date }),
                             ) {
-                                if (bmp != null) Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
+                                if (bmp != null) Image(bmp, null, Modifier.fillMaxWidth().aspectRatio(3f / 4f), contentScale = ContentScale.Crop)
                                 Text(p.date.format(cpFmt), Modifier.align(Alignment.BottomStart).padding(6.dp), color = c.text, style = cutStyle(10, 700, 1f))
                             }
                         }
@@ -199,8 +199,12 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
         if (cp == null) editing = null
         else CheckpointSheet(
             cp, onDismiss = { editing = null },
-            onSave = { ncp -> vm.updateSettings { s -> s.copy(checkpoints = s.checkpoints.map { if (it.date == cp.date) ncp else it }.sortedBy { it.date }) }; editing = null },
-            onRemove = { haptics2.tap(); vm.updateSettings { s -> s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date }) }; editing = null },
+            onSave = { ncp ->
+                // A date is a flag's identity: moving onto a day that has one is refused, not stacked.
+                if (ncp.date != cp.date && s.checkpoints.any { it.date == ncp.date }) vm.showToast("${ncp.localDate.format(cpFmt)} already has a flag")
+                else { vm.updateSettings { s -> s.copy(checkpoints = s.checkpoints.map { if (it.date == cp.date) ncp else it }.sortedBy { it.date }) }; editing = null }
+            },
+            onRemove = { haptics2.tap(); vm.updateWithUndo("Flag removed") { s -> s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date }) }; editing = null },
         )
     }
 }
@@ -233,6 +237,6 @@ private fun CheckpointSheet(cp: Checkpoint, onDismiss: () -> Unit, onSave: (Chec
             SheetField("Target", target, { target = it }, Modifier.width(130.dp), unit = "lb")
         }
         SheetField("Note", note, { note = it }, text = true, last = true, placeholder = "Optional")
-        SheetButtons("Done", onPrimary = { onSave(cp.copy(date = date.toString(), target = target.toDoubleOrNull() ?: cp.target, note = note.trim())) }, secondary = "Remove", onSecondary = onRemove)
+        SheetButtons("Done", onPrimary = { onSave(cp.copy(date = date.toString(), target = target.num() ?: cp.target, note = note.trim())) }, secondary = "Remove", onSecondary = onRemove)
     }
 }

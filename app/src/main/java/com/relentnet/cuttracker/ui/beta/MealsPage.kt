@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.ui.components.int
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -94,7 +95,7 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
                 onSave = { nm -> vm.replaceLibraryMeal(m, nm); sheet = "" },
                 onDelete = {
                     haptics.tap()
-                    vm.replaceLibraryMeal(m, null)
+                    vm.deleteMeal(m)
                     sheet = ""
                 })
         } ?: run { sheet = "" }
@@ -107,7 +108,7 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
                 },
                 onRemove = {
                     haptics.tap()
-                    vm.updateSettings { s -> s.copy(
+                    vm.updateWithUndo("${slot.name} removed") { s -> s.copy(
                         meals = s.meals.filter { it.id != slot.id },
                         library = s.library.map { if (it.kind == slot.id) it.copy(kind = "") else it },
                         plans = s.plans.mapValues { (_, p) -> p.copy(slots = p.slots - slot.id) },
@@ -220,7 +221,7 @@ private fun MealSheet(
         SheetField("Recipe or note", recipe, { recipe = it }, text = true, last = true, placeholder = "Optional")
         SheetButtons(
             if (m == null) "Add it" else "Done", enabled = name.isNotBlank(),
-            onPrimary = { onSave(LibMeal(m?.id ?: "lib_${System.currentTimeMillis()}", name.trim(), pro.toIntOrNull() ?: 0, cal.toIntOrNull() ?: 0, recipe.trim(), kind, lines)) },
+            onPrimary = { onSave(LibMeal(m?.id ?: "lib_${System.currentTimeMillis()}", name.trim(), pro.int() ?: 0, cal.int() ?: 0, recipe.trim(), kind, lines)) },
             secondary = if (m == null) "Cancel" else "Delete", onSecondary = onDelete ?: onDismiss,
         )
     }

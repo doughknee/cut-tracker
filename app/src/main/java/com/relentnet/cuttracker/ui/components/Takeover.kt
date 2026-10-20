@@ -84,6 +84,7 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
         }
     }
 
+    androidx.activity.compose.BackHandler { onDismiss() }
     // Rises from the wall rather than cutting in.
     var up by remember(t) { mutableStateOf(false) }
     LaunchedEffect(t) { up = true }
@@ -159,11 +160,18 @@ fun Confetti(colors: List<Color>, durationFrames: Int = 70) {
     }
 }
 
-/** The prototype's toast pill: text-colored background, bottom of the screen. */
+/** The prototype's toast pill: text-colored background, bottom of the screen, with an optional [action] like Undo. */
 @Composable
-fun ToastPill(text: String, modifier: Modifier = Modifier) {
+fun ToastPill(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
     val c = CutTheme.colors
-    Box(modifier.clip(RoundedCornerShape(999.dp)).background(c.text).padding(horizontal = 16.dp, vertical = 10.dp)) {
-        Text(text, color = c.ground, style = cutStyle(13, 700, 1f), maxLines = 1)
+    androidx.compose.foundation.layout.Row(
+        modifier.padding(horizontal = 20.dp).clip(RoundedCornerShape(999.dp)).background(c.text).padding(start = 18.dp, end = if (action != null) 6.dp else 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, color = c.ground, style = cutStyle(13, 700, 1.2f), maxLines = 2, modifier = Modifier.padding(vertical = 10.dp).weight(1f, fill = false))
+        if (action != null) Text(
+            action.uppercase(), color = c.accent, style = cutStyle(12, 800, 1f, 0.08f),
+            modifier = Modifier.padding(start = 10.dp).clip(RoundedCornerShape(999.dp)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onAction).padding(horizontal = 12.dp, vertical = 14.dp),
+        )
     }
 }

@@ -1,5 +1,8 @@
 package com.relentnet.cuttracker.ui.today
 
+import com.relentnet.cuttracker.ui.components.ConfirmDialog
+import com.relentnet.cuttracker.ui.components.int
+import com.relentnet.cuttracker.ui.components.num
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.scaleIn
@@ -142,6 +145,11 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     }
     // The weigh-in reminder lands here with the row open.
     LaunchedEffect(vm.pendingWeigh) { if (vm.pendingWeigh) { vm.pendingWeigh = false; view(st.today); weighOpen = true } }
+    // Back closes an open panel first, then takes an earlier day back to today, and only then leaves.
+    androidx.activity.compose.BackHandler(enabled = past) { view(st.today) }
+    androidx.activity.compose.BackHandler(enabled = weighOpen || pickOpen != null || liftOpen) { closeInline() }
+    var confirmNext by remember { mutableStateOf(false) }
+    val dayReading = st.weighIns.firstOrNull { w -> w.date == date }
     val total = st.settings.protein
     val (stateLine, stateColor) = when {
         st.ended && !past -> "Route complete" to c.good
@@ -158,7 +166,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
         }
     }
 
-    Column(Modifier.fillMaxSize().background(c.ground).verticalScroll(scroll).imePadding()) {
+    // The keyboard shrinks the scroll viewport (padding outside the scroll), so a focused field scrolls above it.
+    Column(Modifier.fillMaxSize().background(c.ground).imePadding().verticalScroll(scroll)) {
         Wall(
             st, date, scroll,
             onPickDay = { haptics.tick(); view(it) },
@@ -207,7 +216,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
             },
             label = "modeSection",
         ) { stage -> when (stage) {
-            0 -> ToppedOut(st, onNext = { vm.updateSettings { s -> s.copy(onboarded = false) } })
+            0 -> ToppedOut(st, onNext = { confirmNext = true })
             1 -> LateCard(
                 at = st.settings.pickTime,
                 onRest = { vm.setMode(DayMode.REST) },
@@ -292,10 +301,20 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                     Box(Modifier.weight(1f).height(1.dp).background(c.hairline))
                 }
                 Unfold(doneOpen) { Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    for (it in finished) CheckRow(
-                        label = it.label, sub = null, time = null, xp = it.xp, done = true, compact = true,
-                        onClick = { vm.toggleItem(it.id, date = editDate) },
-                    )
+                    for (it in finished) {
+                        val reading = if (it.id == ProgramSpec.ITEM_WEIGH) dayReading else null
+                        CheckRow(
+                            label = if (reading != null) "${it.label} · ${ProgramEngine.fmt1(reading.lb)} lb" else it.label,
+                            sub = null, time = null, xp = it.xp, done = true, compact = true,
+                            onClick = {
+                                if (reading != null) { weighOpen = !weighOpen; pickOpen = null; liftOpen = false }
+                                else vm.toggleItem(it.id, date = editDate)
+                            },
+                        )
+                        if (reading != null) Unfold(weighOpen) {
+                            WeighInline(prefill = reading.lb, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) })
+                        }
+                    }
                 } }
             }
         }
@@ -304,6 +323,11 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
         }
     }
     if (infoOpen) WallInfoSheet(onDismiss = { infoOpen = false })
+    if (confirmNext) ConfirmDialog(
+        "Start the next route?",
+        "Your logs, badges and XP stay. You set a new start, a new target and a new length, and the wall starts again at day 1.",
+        "Start it", onConfirm = { vm.updateSettings { s -> s.copy(onboarded = false) } }, onDismiss = { confirmNext = false },
+    )
 }
 
 /** 7-day average and the pace sentence Weight uses. Tapping opens Weight. */
@@ -490,8 +514,8 @@ private fun WeighInline(prefill: Double, onLog: (Double) -> Unit) {
     val focus = remember { FocusRequester() }
     val haptics = LocalHaptics.current
     LaunchedEffect(Unit) { focus.requestFocus() }
-    fun adjust(d: Double) { text = ProgramEngine.fmt1((text.toDoubleOrNull() ?: prefill) + d); haptics.tick() }
-    fun go() { text.toDoubleOrNull()?.takeIf { it > 0 }?.let(onLog) }
+    fun adjust(d: Double) { text = ProgramEngine.fmt1((text.num() ?: prefill) + d); haptics.tick() }
+    fun go() { text.num()?.takeIf { it in 40.0..1000.0 }?.let(onLog) }
     Row(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Chip("-.2") { adjust(-0.2) }
         Field(text, { text = it }, Modifier.weight(1f), onDone = ::go, focusRequester = focus)
@@ -623,7 +647,7 @@ private fun CustomMealForm(toLibrary: Boolean, onLog: (String, Int, Int, Boolean
                     Switch(save, "Save to the library") { save = !save }
                     Sub("Save to library", size = 12)
                 }
-                BigButton("Log it", onClick = { onLog(name, pro.toIntOrNull() ?: 0, cal.toIntOrNull() ?: 0, save) }, modifier = Modifier.width(110.dp), height = 40.dp, fontSize = 12, enabled = pro.toIntOrNull() != null || cal.toIntOrNull() != null)
+                BigButton("Log it", onClick = { onLog(name, pro.int() ?: 0, cal.int() ?: 0, save) }, modifier = Modifier.width(110.dp), height = 40.dp, fontSize = 12, enabled = pro.int() != null || cal.int() != null)
             }
         }
     }

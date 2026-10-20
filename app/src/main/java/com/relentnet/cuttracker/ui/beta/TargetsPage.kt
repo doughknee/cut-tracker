@@ -63,16 +63,16 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
         BackHeader("Beta", "Targets", onBack)
         Sub("What a day has to hit, and where the route ends.", size = 12)
         KindCard("Every day", "") {
-            PlainRow("Protein", "the one that keeps the chain") { MiniStepper("${s.protein}", { set { it.copy(protein = (it.protein - 5).coerceAtLeast(0)) } }, { set { it.copy(protein = it.protein + 5) } }, "g") }
-            PlainRow("Calories", "stay under") { MiniStepper("%,d".format(Locale.US, s.calories), { set { it.copy(caloriesP1 = (it.caloriesP1 - 50).coerceAtLeast(0)) } }, { set { it.copy(caloriesP1 = it.caloriesP1 + 50) } }, "cal") }
+            PlainRow("Protein", "the one that keeps the chain") { MiniStepper("${s.protein}", { set { it.copy(protein = (it.protein - 5).coerceAtLeast(0)) } }, { set { it.copy(protein = it.protein + 5) } }, "g", onType = { v -> set { it.copy(protein = v.toInt().coerceIn(0, 500)) } }) }
+            PlainRow("Calories", "stay under") { MiniStepper("%,d".format(Locale.US, s.calories), { set { it.copy(caloriesP1 = (it.caloriesP1 - 50).coerceAtLeast(0)) } }, { set { it.copy(caloriesP1 = it.caloriesP1 + 50) } }, "cal", onType = { v -> set { it.copy(caloriesP1 = v.toInt().coerceIn(0, 10000)) } }) }
         }
         KindCard("Every week", "") {
-            PlainRow("Workouts", "blocks on Climb and Off days") { MiniStepper("${s.workoutsPerWeek}", { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek - 1).coerceAtLeast(0)) } }, { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek + 1).coerceAtMost(7)) } }, "a week") }
+            PlainRow("Workouts", "blocks on Climb and Off days") { MiniStepper("${s.workoutsPerWeek}", { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek - 1).coerceAtLeast(0)) } }, { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek + 1).coerceAtMost(7)) } }, "a week", onType = { v -> set { it.copy(workoutsPerWeek = v.toInt().coerceIn(0, 7)) } }) }
         }
         KindCard("The route", "") {
-            PlainRow("Start", "weighed on ${s.startDate.format(shortDate)}") { MiniStepper(ProgramEngine.fmt1(s.startWeight), { set { it.copy(startWeight = it.startWeight - 0.5) } }, { set { it.copy(startWeight = it.startWeight + 0.5) } }, "lb") }
-            PlainRow("Goal", "where the route ends") { MiniStepper(ProgramEngine.fmt1(s.targetWeight), { set { it.copy(targetWeight = it.targetWeight - 0.5) } }, { set { it.copy(targetWeight = it.targetWeight + 0.5) } }, "lb") }
-            PlainRow("Weeks", "${s.startDate.format(shortDate)} to ${s.endDate.format(shortDate)}") { MiniStepper("${s.lengthWeeks}", { set { it.copy(lengthWeeks = (it.lengthWeeks - 1).coerceAtLeast(1)) } }, { set { it.copy(lengthWeeks = (it.lengthWeeks + 1).coerceAtMost(52)) } }, "wk") }
+            PlainRow("Start", "weighed on ${s.startDate.format(shortDate)}") { MiniStepper(ProgramEngine.fmt1(s.startWeight), { set { it.copy(startWeight = it.startWeight - 0.5) } }, { set { it.copy(startWeight = it.startWeight + 0.5) } }, "lb", onType = { v -> set { it.copy(startWeight = v.coerceIn(50.0, 1000.0)) } }) }
+            PlainRow("Goal", "where the route ends") { MiniStepper(ProgramEngine.fmt1(s.targetWeight), { set { it.copy(targetWeight = it.targetWeight - 0.5) } }, { set { it.copy(targetWeight = it.targetWeight + 0.5) } }, "lb", onType = { v -> set { it.copy(targetWeight = v.coerceIn(50.0, 1000.0)) } }) }
+            PlainRow("Weeks", "${s.startDate.format(shortDate)} to ${s.endDate.format(shortDate)}") { MiniStepper("${s.lengthWeeks}", { set { it.copy(lengthWeeks = (it.lengthWeeks - 1).coerceAtLeast(1)) } }, { set { it.copy(lengthWeeks = (it.lengthWeeks + 1).coerceAtMost(52)) } }, "wk", onType = { v -> set { it.copy(lengthWeeks = v.toInt().coerceIn(1, 52)) } }) }
             PlainRow("Starts", "day 1 of the route; what you logged is kept") {
                 val context = LocalContext.current
                 val shape = RoundedCornerShape(8.dp)
