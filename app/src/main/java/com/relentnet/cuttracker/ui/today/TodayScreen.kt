@@ -140,6 +140,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
         vm.viewDate = t.takeIf { it != st.today }
         closeInline()
     }
+    // The weigh-in reminder lands here with the row open.
+    LaunchedEffect(vm.pendingWeigh) { if (vm.pendingWeigh) { vm.pendingWeigh = false; view(st.today); weighOpen = true } }
     val total = st.settings.protein
     val (stateLine, stateColor) = when {
         st.ended && !past -> "Route complete" to c.good

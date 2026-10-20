@@ -147,7 +147,7 @@ fun App(vm: AppViewModel) {
                     composable(Routes.TODAY) {
                         TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) }, onRoute = { nav.goTab(Routes.ROUTE) })
                     }
-                    composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }) }
+                    composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }) }
                     composable(Routes.BETA) {
                         BetaScreen(
                             vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onDay = { nav.navigate(Routes.betaDay(it)) },

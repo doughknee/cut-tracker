@@ -28,6 +28,8 @@ object Reminders {
     const val KIND_WEIGH = "weigh"
     const val KIND_PICK = "pick"
     const val EXTRA_TAB = "tab"
+    /** The weigh-in reminder lands on Today with the weigh-in row open; the row is the one place to type it. */
+    const val EXTRA_WEIGH = "weigh"
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -63,9 +65,8 @@ object Reminders {
 
     fun post(context: Context, kind: String) {
         ensureChannel(context)
-        val tab = if (kind == KIND_WEIGH) "weight" else "today"
         val open = PendingIntent.getActivity(
-            context, 10, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, tab).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            context, 10, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, "today").putExtra(EXTRA_WEIGH, kind == KIND_WEIGH).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(context, CHANNEL)

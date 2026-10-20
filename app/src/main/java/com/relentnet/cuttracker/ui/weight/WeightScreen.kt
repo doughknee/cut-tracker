@@ -22,7 +22,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,11 +46,8 @@ import com.relentnet.cuttracker.data.WeighIn
 import com.relentnet.cuttracker.ui.route.currentCheckpointDate
 import com.relentnet.cuttracker.engine.ProgramEngine
 import com.relentnet.cuttracker.ui.AppViewModel
-import com.relentnet.cuttracker.ui.LocalHaptics
-import com.relentnet.cuttracker.ui.components.BigButton
 import com.relentnet.cuttracker.ui.components.Card
 import com.relentnet.cuttracker.ui.components.Eyebrow
-import com.relentnet.cuttracker.ui.components.Field
 import com.relentnet.cuttracker.ui.components.BackHeader
 import com.relentnet.cuttracker.ui.components.Screen
 import com.relentnet.cuttracker.ui.components.Sub
@@ -74,18 +70,13 @@ fun paceWords(gap: Double): String = when {
 }
 
 @Composable
-fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
+fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
-    val haptics = LocalHaptics.current
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     val shownAvg = tickedFloat((avg ?: s.startWeight).toFloat())
     val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
-    val prefill = st.lastWeighIn?.lb ?: s.startWeight
-    var text by rememberSaveable(prefill) { mutableStateOf(ProgramEngine.fmt1(prefill)) }
-    fun log() { text.toDoubleOrNull()?.takeIf { it > 0 }?.let { haptics.tap(); vm.logWeight(it) } }
-
     val pace = ProgramEngine.paceWeight(st.dayN, s, anchor)
     val gap = avg?.let { it - pace }
     val rate = ProgramEngine.rate(st.weighIns, st.today)
@@ -97,22 +88,25 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Today", title = "Weight", onBack = onBack)
         Card(Modifier.fillMaxWidth(), padding = PaddingValues(16.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    TileLabel("7-day average")
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(if (avg == null) "--" else ProgramEngine.fmt1(shownAvg.toDouble()), color = c.text, style = cutStyle(46, 800, 1f, -0.02f, tabular = true))
-                        Text(" lb", color = c.text2, style = cutStyle(14, 600, 1f), modifier = Modifier.padding(bottom = 6.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // The verdict is the glance; the numbers it comes from sit under it.
+                if (gap != null) Text(paceWords(gap), color = if (gap <= ProgramSpec.PACE_TOLERANCE_LB) c.good else c.accent, style = cutStyle(24, 800, 1f, -0.02f, display = true, tabular = true))
+                else Text("No average yet", color = c.text2, style = cutStyle(24, 800, 1f, -0.02f, display = true))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        TileLabel("7-day average")
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(if (avg == null) "--" else ProgramEngine.fmt1(shownAvg.toDouble()), color = c.text, style = cutStyle(40, 800, 1f, -0.02f, tabular = true))
+                            Text(" lb", color = c.text2, style = cutStyle(14, 600, 1f), modifier = Modifier.padding(bottom = 5.dp))
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        TileLabel(if (anchor != s.startWeight) "Pace today · from week 1" else "Pace today")
+                        Text(ProgramEngine.fmt1(pace), color = c.text2, style = cutStyle(22, 800, 1f, tabular = true))
                     }
                 }
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    TileLabel(if (anchor != s.startWeight) "Pace today · from week 1" else "Pace today")
-                    Text(ProgramEngine.fmt1(pace), color = c.text2, style = cutStyle(22, 800, 1f, tabular = true))
-                }
+                if (avg == null) Sub("Log a weigh-in on Today to start the average.", size = 12)
             }
-            if (gap != null) {
-                Text(paceWords(gap), color = if (gap <= ProgramSpec.PACE_TOLERANCE_LB) c.good else c.accent, style = cutStyle(13, 700, 1.2f, tabular = true), modifier = Modifier.padding(top = 8.dp))
-            } else Sub("Log a weigh-in to start the average.", Modifier.padding(top = 8.dp), size = 12)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Card(Modifier.weight(1f), padding = PaddingValues(14.dp, 12.dp)) {
@@ -134,16 +128,19 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
         if (cp != null && cp.target != null) {
             val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, cp.localDate).toInt()
             val toLose = ((avg ?: s.startWeight) - cp.target).coerceAtLeast(0.0)
-            Card(Modifier.fillMaxWidth(), border = c.hairline, padding = PaddingValues(14.dp, 12.dp)) {
+            Card(Modifier.fillMaxWidth().clickable(onClick = onCheckpoints, role = Role.Button), border = c.hairline, padding = PaddingValues(14.dp, 12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         TileLabel("Next checkpoint · ${cp.localDate.format(shortDate)}")
                         Text(
                             if (toLose == 0.0) "Already under ${ProgramEngine.fmt1(cp.target)}" else "${ProgramEngine.fmt1(toLose)} lb to ${ProgramEngine.fmt1(cp.target)}",
                             color = c.text, style = cutStyle(15, 700, 1.1f, tabular = true),
                         )
                     }
-                    Text(when (days) { 0 -> "today"; 1 -> "tomorrow"; else -> "$days days" }, color = c.text2, style = cutStyle(12, 700, 1f, tabular = true))
+                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(when (days) { 0 -> "today"; 1 -> "tomorrow"; else -> "$days days" }, color = c.text2, style = cutStyle(12, 700, 1f, tabular = true))
+                        Text("CHECKPOINTS ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+                    }
                 }
             }
         }
@@ -158,22 +155,19 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
                     Box(Modifier.width(14.dp).height(2.dp).dashed(c.mutedBorder))
                     Text("PACE", color = c.text2, style = cutStyle(11, 600, 1f, 0.06f))
                 }
+                if (projected != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Box(Modifier.width(14.dp).height(2.dp).dashed(c.accent.copy(alpha = 0.5f)))
+                    Text("RATE", color = c.text2, style = cutStyle(11, 600, 1f, 0.06f))
+                }
             }
         }
         Card(Modifier.fillMaxWidth(), padding = PaddingValues(12.dp, 14.dp, 12.dp, 10.dp)) { WeightChart(st) }
-        Eyebrow("Today, before food")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Field(text, { text = it }, Modifier.weight(1f), height = 64.dp, fontSize = 32, onDone = ::log, placeholder = ProgramEngine.fmt1(prefill), radius = 12.dp, padding = 18.dp)
-            BigButton("Log", onClick = ::log, modifier = Modifier.width(110.dp), confirm = true)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (q in listOf(-1.0, -0.2, 0.2, 1.0)) {
-                Box(
-                    Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(9.dp)).background(c.surface).border(1.dp, c.mutedBorder, RoundedCornerShape(9.dp))
-                        .clickable(role = Role.Button) { text = ProgramEngine.fmt1((text.toDoubleOrNull() ?: prefill) + q); haptics.tick() },
-                    contentAlignment = Alignment.Center,
-                ) { Text((if (q > 0) "+" else "") + ProgramEngine.fmt1(q), color = c.text, style = cutStyle(13, 700, 1f, tabular = true)) }
-            }
+        Row(
+            Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onBack, role = Role.Button).padding(vertical = 4.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Sub("Readings are logged on Today's weigh-in row.", size = 12)
+            Text("TODAY ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
         }
         Sub("Daily readings stay hidden. The average, the pace line and the rate are what matter; one reading is noise.", size = 12)
     }
@@ -197,8 +191,8 @@ fun WeightChart(st: AppState) {
         sorted.mapIndexed { i, w -> w to (ProgramEngine.sevenDayAverage(sorted.subList(0, i + 1), w.date) ?: w.lb) }
     }
     val readings = sorted.map { it.lb }
-    val top = ceil(maxOf(s.startWeight, readings.maxOrNull() ?: s.startWeight))
-    val bot = floor(minOf(s.targetWeight, readings.minOrNull() ?: s.targetWeight))
+    val projected = ProgramEngine.projectedAt(sorted, st.today, s.endDate)
+    val (top, bot) = chartRange(s.startWeight, s.targetWeight, readings, projected)
     val total = s.totalDays.toFloat()
 
     Canvas(
@@ -241,6 +235,11 @@ fun WeightChart(st: AppState) {
             drawPath(path, c.accent, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             val (lw, la) = avgs.last()
             val end = Offset(xOf(ProgramEngine.dayNumber(lw.date, s.startDate)), yOf(la))
+            // Where the current rate lands: the glance the page is for.
+            if (projected != null) drawLine(
+                c.accent.copy(alpha = 0.5f), end, Offset(xOf(s.totalDays), yOf(projected)), 2.dp.toPx(), StrokeCap.Round,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 5.dp.toPx())),
+            )
             drawCircle(c.surface, 7.dp.toPx(), end)
             drawCircle(c.accent, 5.dp.toPx(), end)
         }
@@ -248,6 +247,17 @@ fun WeightChart(st: AppState) {
         val endLabel = measurer.measure(s.endDate.format(shortDate), axisStyle)
         drawText(endLabel, topLeft = Offset(right - endLabel.size.width, yBot - 4.dp.toPx() - 9.sp.toPx()))
     }
+}
+
+/**
+ * The chart's y range (top, bottom): start to goal, stretched to the readings and to the projection, the projection no
+ * further than 5 lb past either end so a wild early rate cannot flatten the route.
+ */
+fun chartRange(start: Double, target: Double, readings: List<Double>, projected: Double?): Pair<Double, Double> {
+    val p = projected?.coerceIn(target - 5, start + 5)
+    val top = ceil(listOfNotNull(start, readings.maxOrNull(), p).max())
+    val bot = floor(listOfNotNull(target, readings.minOrNull(), p).min())
+    return top to bot
 }
 
 private val Int.sp get() = androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Sp)
