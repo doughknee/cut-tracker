@@ -63,7 +63,8 @@ class MainActivity : ComponentActivity() {
             return
         }
         intent?.getStringExtra(Reminders.EXTRA_TAB)?.let { vm.requestTab(it) }
-        if (intent?.getBooleanExtra(Reminders.EXTRA_WEIGH, false) == true) vm.pendingWeigh = true
+        // The weigh-in field lives on Today, so the flag lands there from any page (the widget sends no tab).
+        if (intent?.getBooleanExtra(Reminders.EXTRA_WEIGH, false) == true) { vm.pendingWeigh = true; vm.requestTab(com.relentnet.cuttracker.ui.Routes.TODAY) }
         intent?.getStringExtra(EXTRA_DATE)?.let { d ->
             runCatching { java.time.LocalDate.parse(d) }.getOrNull()?.let { vm.viewDate = it; vm.requestTab(com.relentnet.cuttracker.ui.Routes.TODAY) }
         }

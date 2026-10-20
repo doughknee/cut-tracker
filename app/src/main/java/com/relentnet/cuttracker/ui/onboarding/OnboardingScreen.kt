@@ -178,7 +178,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                         Field(tw, { tw = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
                     val a = sw.num(); val b = tw.num(); val w = (weeks.int() ?: 12).coerceIn(1, 52)
-                    Hint(if (a != null && b != null) "${ProgramEngine.fmt1(a - b)} lb over $w weeks is ${"%.2f".format(Locale.US, (a - b) / w)} lb a week." else "About 1 lb a week is the pace.")
+                    Hint(if (swMissing) "Type this morning's weight to go on. A guess is fine; fix it tomorrow." else if (a != null && b != null) "${ProgramEngine.fmt1(a - b)} lb over $w weeks is ${"%.2f".format(Locale.US, (a - b) / w)} lb a week." else "About 1 lb a week is the pace.", alert = swMissing)
                 }
                 2 -> {
                     Big("When it runs.")
@@ -237,7 +237,7 @@ private fun Big(text: String) = Text(text, color = CutTheme.colors.text, style =
 private fun Body(text: String) = Text(text, color = CutTheme.colors.text2, style = cutStyle(15, 500, 1.45f), modifier = Modifier.widthIn(max = 340.dp))
 
 @Composable
-private fun Hint(text: String) = Text(text, color = CutTheme.colors.text2, style = cutStyle(12, 500, 1.3f, tabular = true))
+private fun Hint(text: String, alert: Boolean = false) = Text(text, color = if (alert) CutTheme.colors.accent else CutTheme.colors.text2, style = cutStyle(12, 500, 1.3f, tabular = true))
 
 @Composable
 private fun Fld(label: String, content: @Composable () -> Unit) {
