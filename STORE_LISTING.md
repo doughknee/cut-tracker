@@ -39,7 +39,7 @@ Scoreboard, not a lecture
 XP for every item, grades from V0 to V10, a workout target you set yourself. No ads, no account, no feed.
 
 Yours
-Everything stays on your phone. No analytics, no sign-in. Two features use the network and both are off until you switch them on: paste a recipe link and the app fills in the meal, or scan a barcode and it looks the product up. Save a backup to a file whenever you like, and restore it on a new phone from the first screen.
+Everything stays on your phone. No analytics, no sign-in. Two features use the network and both are off until you switch them on: paste a recipe link and the app fills in the meal, or scan a barcode and it looks the product up. Back up every week to a folder you pick, or save a copy whenever you like, and restore it on a new phone from the first screen.
 
 Sendline is a logbook and a scoreboard, not medical advice. Set your own targets and check with a doctor before a diet if you have a condition.
 
