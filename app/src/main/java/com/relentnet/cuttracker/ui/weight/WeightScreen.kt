@@ -108,11 +108,13 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit
                 if (avg == null) Sub("Log a weigh-in on Today to start the average.", size = 12)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val wk = if (avg != null && weekAgo != null) avg - weekAgo else null
+        // Week one has neither number yet: one line says when they come, instead of two tiles of dashes.
+        if (wk == null && projected == null) Sub("A week of readings unlocks the rate; two weeks, the change against last week.", size = 12)
+        else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Card(Modifier.weight(1f), padding = PaddingValues(14.dp, 12.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     TileLabel("This week")
-                    val wk = if (avg != null && weekAgo != null) avg - weekAgo else null
                     Text(if (wk == null) "--" else (if (wk > 0) "+" else "") + ProgramEngine.fmt1(wk), color = if (wk != null && wk < 0) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
                     Sub(if (wk == null) "needs two weeks" else "lb vs last week", size = 11)
                 }
@@ -187,6 +189,7 @@ fun WeightChart(st: AppState) {
     val labelStyle = cutStyle(10, 500, 1f, tabular = true).copy(color = c.text2)
     val axisStyle = cutStyle(9, 500, 1f).copy(color = c.dim)
     val sorted = remember(st.weighIns) { st.weighIns.sortedBy { it.date } }
+    val current = currentCheckpointDate(st)
     val avgs: List<Pair<WeighIn, Double>> = remember(sorted) {
         sorted.mapIndexed { i, w -> w to (ProgramEngine.sevenDayAverage(sorted.subList(0, i + 1), w.date) ?: w.lb) }
     }
@@ -223,7 +226,9 @@ fun WeightChart(st: AppState) {
             val t = cp.target ?: continue
             if (t < bot || t > top) continue
             val x = xOf(ProgramEngine.dayNumber(cp.localDate, s.startDate))
-            drawCircle(if (!cp.localDate.isAfter(st.today)) c.text2 else c.mutedBorder, 3.dp.toPx(), Offset(x, yOf(t)))
+            // The current flag wears the accent ring it wears on Route; passed ones are text2, later ones muted.
+            if (cp.localDate == current) drawCircle(c.accent, 4.dp.toPx(), Offset(x, yOf(t)), style = Stroke(2.dp.toPx()))
+            else drawCircle(if (!cp.localDate.isAfter(st.today)) c.text2 else c.mutedBorder, 3.dp.toPx(), Offset(x, yOf(t)))
         }
         if (showDots) for (w in sorted) drawCircle(c.dim, 2.5.dp.toPx(), Offset(xOf(ProgramEngine.dayNumber(w.date, s.startDate)), yOf(w.lb)))
         if (avgs.isNotEmpty()) {
