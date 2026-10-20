@@ -277,17 +277,29 @@ fun SheetButtons(primary: String, onPrimary: () -> Unit, secondary: String? = nu
 /** The bottom sheet every editor lives in. [content] scrolls when tall; the keyboard pushes it up. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(title: String, onDismiss: () -> Unit, dirty: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     val c = CutTheme.colors
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val dirtyNow by androidx.compose.runtime.rememberUpdatedState(dirty)
+    var asking by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val state = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { v -> if (v == androidx.compose.material3.SheetValue.Hidden && dirtyNow) { asking = true; false } else true },
+    )
+    if (asking) ConfirmDialog(
+        "Discard what you typed?", "This sheet has changes that are not saved yet.", "Discard",
+        onConfirm = onDismiss, onDismiss = { asking = false },
+    )
     ModalBottomSheet(
         onDismissRequest = onDismiss, sheetState = state, containerColor = c.surface,
+        // With edits, back asks instead of closing (the handler inside the content takes it).
+        properties = androidx.compose.material3.ModalBottomSheetProperties(shouldDismissOnBackPress = !dirty),
         dragHandle = { Box(Modifier.padding(top = 10.dp).size(36.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.mutedBorder)) },
     ) {
         Column(
             Modifier.fillMaxWidth().imePadding().verticalScroll(rememberScrollState()).padding(20.dp, 6.dp, 20.dp, 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            androidx.activity.compose.BackHandler(enabled = dirty) { asking = true }
             Text(title, color = c.text, style = cutStyle(20, 800, 1f, -0.01f, display = true))
             content()
         }

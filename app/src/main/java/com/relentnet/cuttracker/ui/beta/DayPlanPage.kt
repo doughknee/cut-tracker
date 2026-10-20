@@ -1,5 +1,7 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.ui.components.Field
+import com.relentnet.cuttracker.ui.components.matchesQuery
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -72,7 +74,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
     val lifts = ProgramEngine.exercisesFor(mode, s)
 
     Box(Modifier.fillMaxSize()) {
-        Screen(bottomInset = true) {
+        Screen(bottomInset = true, fab = true) {
             BackHeader("Beta", dayTitle(mode), onBack)
             Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -166,10 +168,18 @@ private fun LiftPicker(kinds: List<String>, all: List<com.relentnet.cuttracker.d
     val c = CutTheme.colors
     var chosen by remember { mutableStateOf(chosen0) }
     var filter by remember { mutableStateOf("") }
-    Sheet("Add to the block", onDismiss) {
-        ChipRow(listOf("" to "All") + kinds.map { it to it }, filter, onSelect = { filter = it })
-        Card(Modifier.fillMaxWidth(), radius = 14.dp, background = c.ground, border = c.hairline) {
-            for (e in all.filter { filter.isEmpty() || it.kind == filter }) {
+    var query by remember { mutableStateOf("") }
+    val other = "\u0000other"
+    val hasOther = all.any { it.kind.isBlank() || it.kind !in kinds }
+    Sheet("Add to the block", onDismiss, dirty = chosen != chosen0) {
+        if (all.size > 6) Field(query, { query = it }, Modifier.fillMaxWidth(), height = 46.dp, fontSize = 15, weight = 600, keyboard = androidx.compose.ui.text.input.KeyboardType.Text, placeholder = "Search lifts")
+        ChipRow(listOf("" to "All") + kinds.map { it to it } + (if (hasOther) listOf(other to "Other") else emptyList()), filter, onSelect = { filter = it })
+        val shown = all.filter { e ->
+            (filter.isEmpty() || (filter == other && (e.kind.isBlank() || e.kind !in kinds)) || e.kind == filter) && matchesQuery(query, e.name, e.kind)
+        }
+        if (shown.isEmpty()) SheetNote("No lift matches. Add it from Lifts on Beta.")
+        else Card(Modifier.fillMaxWidth(), radius = 14.dp, background = c.ground, border = c.hairline) {
+            for (e in shown) {
                 val on = e.id in chosen
                 NumRow("${e.sets}×", e.name, sub = e.kind.ifBlank { "Other" }, right = if (on) "in the block" else "add", rightColor = if (on) c.good else c.text2, chevron = false,
                     onClick = { chosen = if (on) chosen - e.id else chosen + e.id })

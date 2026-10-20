@@ -190,7 +190,9 @@ private fun MealSheet(
         val next = if (missing.isNotEmpty()) "No ${missing.joinToString(" or ")} found, type it." else if (name.isBlank()) "Name it and add it." else "Check the numbers."
         note = ("Read " + f.lines.joinToString(", ") { "“$it”" } + ". " + next) to true
     })
-    Sheet(if (m == null) "New meal" else "Edit meal", onDismiss) {
+    val dirty = name != (m?.name ?: sharedName) || pro != (m?.protein?.toString() ?: "") || cal != (m?.calories?.toString() ?: "") ||
+        recipe != (m?.recipe ?: "") || lines != (m?.ingredients ?: emptyList<com.relentnet.cuttracker.data.Ingredient>()) || kind != kind0
+    Sheet(if (m == null) "New meal" else "Edit meal", onDismiss, dirty = dirty) {
         if (m == null) {
             SheetField("Recipe link", link, { link = it; note = null }, text = true, placeholder = "Paste one, or share a page here")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -90,7 +90,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
     var editing by remember { mutableStateOf<String?>(null) }
     val haptics2 = LocalHaptics.current
     Box(Modifier.fillMaxSize()) {
-    Screen(bottomInset = true) {
+    Screen(bottomInset = true, fab = true) {
         BackHeader(backLabel = "Back", title = "Checkpoints", onBack = onBack)
         Sub("Where the route checks in.", size = 12)
         if (due) {

@@ -51,6 +51,16 @@ fun String.num(): Double? {
 
 fun String.int(): Int? = num()?.roundToInt()
 
+private fun String.fold() = java.text.Normalizer.normalize(lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+
+/** True when every word of [query] appears somewhere in [fields], in any order, ignoring case and accents. */
+fun matchesQuery(query: String, vararg fields: String): Boolean {
+    val words = query.fold().split(' ', ',').filter { it.isNotBlank() }
+    if (words.isEmpty()) return true
+    val hay = fields.joinToString(" ") { it.fold() }
+    return words.all { it in hay }
+}
+
 /**
  * Click that repeats while held: once on press, again after 400ms, then faster and faster. For steppers, so a goal
  * 10 lb away is one hold rather than 20 taps.

@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.ui.components.matchesQuery
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
@@ -74,7 +75,7 @@ fun LibraryScreen(
     var kindForm by rememberSaveable { mutableStateOf(false) }
     var newKind by rememberSaveable { mutableStateOf("") }
     val q = query.trim().lowercase()
-    val shown = rows.filter { (filter.isEmpty() || it.kind == filter) && (q.isEmpty() || it.title.lowercase().contains(q)) }
+    val shown = rows.filter { (filter.isEmpty() || it.kind == filter) && matchesQuery(q, it.title, it.sub) }
     val other = LibKind("", "Other")
     val cards = (kinds + other).filter { k -> filter.isEmpty() || k.key == filter }.map { k -> k to shown.filter { it.kind == k.key } }
         .filter { (k, r) -> r.isNotEmpty() || (q.isEmpty() && k.key.isNotEmpty() && (filter.isEmpty() || filter == k.key)) }

@@ -94,7 +94,8 @@ private fun LiftSheet(e: Exercise?, kinds: List<LibKind>, kind0: String, onDismi
     var sets by remember(e) { mutableStateOf(e?.sets ?: 3) }
     var reps by remember(e) { mutableStateOf(e?.repTarget ?: "8 to 12") }
     var step by remember(e) { mutableStateOf(e?.let { fmtStep(it.step) } ?: "5") }
-    Sheet(if (e == null) "New lift" else "Edit lift", onDismiss) {
+    val dirty = name != (e?.name ?: "") || kind != kind0 || sets != (e?.sets ?: 3) || reps != (e?.repTarget ?: "8 to 12") || step != (e?.let { fmtStep(it.step) } ?: "5")
+    Sheet(if (e == null) "New lift" else "Edit lift", onDismiss, dirty = dirty) {
         SheetField("Name", name, { name = it }, text = true, big = true, placeholder = "What is it")
         SheetLabel("Kind")
         KindPicker(kinds, kind) { kind = it }

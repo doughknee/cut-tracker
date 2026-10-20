@@ -54,6 +54,8 @@ import com.relentnet.cuttracker.ui.theme.cutStyle
 fun Screen(
     modifier: Modifier = Modifier,
     bottomInset: Boolean = false,
+    /** Leaves room under the last row for a floating add button. */
+    fab: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -64,7 +66,8 @@ fun Screen(
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 12.dp)
-            .then(if (bottomInset) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier),
+            .then(if (bottomInset) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier)
+            .padding(bottom = if (fab) 76.dp else 0.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         content = content,
     )

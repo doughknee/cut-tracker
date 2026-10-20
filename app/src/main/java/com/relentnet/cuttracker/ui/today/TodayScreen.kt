@@ -557,6 +557,8 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
     val selected = current ?: def.ref
     var recipeOpen by remember { mutableStateOf<String?>(null) }
     var form by remember { mutableStateOf<Boolean?>(null) }  // null closed, false = one-off, true = new library meal
+    // A long library gets a search box; the top five and yesterday stay above it.
+    var query by remember { mutableStateOf("") }
     Column(Modifier.padding(start = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (ref in top) {
             val n = month[ref] ?: 0
@@ -566,9 +568,13 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
             Chip("SAME AS YESTERDAY") { onPick(yesterday) }
             Text(ProgramEngine.resolveChoice(slot, yesterday, s).name, color = c.text2, style = cutStyle(12, 600, 1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        for (m in sorted) {
+        if (s.library.size > 8) Field(
+            query, { query = it }, Modifier.fillMaxWidth(), height = 44.dp, fontSize = 14, weight = 600,
+            keyboard = androidx.compose.ui.text.input.KeyboardType.Text, placeholder = "Search ${s.library.size} meals",
+        )
+        for (m in sorted.filter { com.relentnet.cuttracker.ui.components.matchesQuery(query, it.name, it.recipe) }) {
             val ref = "lib:" + m.id
-            if (ref in top) continue
+            if (ref in top && query.isBlank()) continue
             val shape = RoundedCornerShape(9.dp)
             Column(Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, if (selected == ref) c.accent else c.hairline, shape)) {
                 Row(
