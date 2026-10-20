@@ -119,7 +119,7 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
     val haptics = LocalHaptics.current
     var weighOpen by rememberSaveable { mutableStateOf(false) }
     var pickOpen by rememberSaveable { mutableStateOf<String?>(null) }
-    var doneOpen by rememberSaveable { mutableStateOf(st.settings.prefs.doneOpen) }
+    var doneOpen by rememberSaveable(st.settings.prefs.doneOpen) { mutableStateOf(st.settings.prefs.doneOpen) }
     var liftOpen by rememberSaveable { mutableStateOf(false) }
     var infoOpen by rememberSaveable { mutableStateOf(false) }
     val scroll = rememberScrollState()

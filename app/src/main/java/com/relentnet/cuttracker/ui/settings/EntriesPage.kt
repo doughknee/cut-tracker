@@ -47,7 +47,7 @@ fun EntriesPage(vm: AppViewModel, onBack: () -> Unit) {
         // A new lift as the sheet will open it.
         Card(Modifier.fillMaxWidth(), radius = 16.dp, background = c.ground, border = c.hairline, padding = PaddingValues(14.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("NEW LIFT", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
+                Text("A NEW LIFT AND MEAL START WITH", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
                 Row(horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.Bottom) {
                     for ((label, value) in listOf("Sets" to "${p.liftSets}", "Reps" to p.liftReps.ifBlank { "any" }, "${s.unit} per tap" to liftStepWords(s))) {
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {

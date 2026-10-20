@@ -254,7 +254,7 @@ fun Hold(
     Box(
         modifier.size(size).drawBehind {
             drawHold(shape, fill, stroke, strokeWidth.toPx()); if (decor != Decor.NONE) drawDecor(decor, shape, fill, c)
-            if (marked) drawMark(mark!!, c, (size * 0.42f).coerceIn(10.dp, 18.dp).toPx())
+            if (marked) drawMark(mark!!, c, (size * 0.38f).coerceIn(10.dp, 18.dp).toPx())
         },
         contentAlignment = Alignment.Center,
     ) { content() }
@@ -268,7 +268,8 @@ fun hasMark(r: DayResult) = r in setOf(DayResult.SEND, DayResult.MIN, DayResult.
  * look's own surface and text colors.
  */
 fun DrawScope.drawMark(r: DayResult, c: CutColors, d: Float) {
-    val center = Offset(size.width - d / 2, size.height - d / 2)
+    // Hangs off the bottom right corner, clear of the day number in the middle.
+    val center = Offset(size.width - d * 0.3f, size.height - d * 0.3f)
     drawCircle(c.surface, d / 2, center)
     drawCircle(c.text, d / 2, center, style = Stroke(d * 0.09f))
     val u = d / 10f

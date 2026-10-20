@@ -85,6 +85,7 @@ object Reminders {
 
     fun post(context: Context, kind: String, day: java.time.LocalDate? = null) {
         ensureChannel(context)
+        val s = runBlocking { App.of(context).settings.current() }
         val open = PendingIntent.getActivity(
             context, if (kind == KIND_WEIGH) 11 else 12, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, "today").putExtra(EXTRA_WEIGH, kind == KIND_WEIGH).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -93,18 +94,12 @@ object Reminders {
             .setSmallIcon(R.drawable.ic_notification)
             .apply {
                 // On a checkpoint morning the weigh-in reminder asks for the photo too.
-                val s = runBlocking { App.of(context).settings.current() }
                 val today = day ?: runBlocking { App.of(context).repo.today() }
                 val cp = kind == KIND_WEIGH && s.prefs.checkpointNote && s.checkpoints.any { !it.free && it.localDate == today }
                 setContentTitle(if (cp) "Checkpoint day" else title(kind))
                 setContentText(if (cp) "Weigh in before food, then take the progress photo." else text(kind, s.prefs))
                 // Hide from the lock screen (Nudges): nothing of it shows until the phone is unlocked.
                 if (s.prefs.lockScreenHide) setVisibility(NotificationCompat.VISIBILITY_SECRET)
-                if (s.prefs.snoozeMinutes > 0) addAction(0, "Snooze ${s.prefs.snoozeMinutes} min", PendingIntent.getBroadcast(
-                    context, if (kind == KIND_WEIGH) 31 else 32,
-                    Intent(context, SnoozeReceiver::class.java).putExtra(KIND, kind).putExtra(SnoozeReceiver.MINUTES, s.prefs.snoozeMinutes),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ))
             }
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
@@ -112,10 +107,17 @@ object Reminders {
             .apply {
                 // The same two answers as Today's evening card, right from the shade.
                 if (kind == KIND_PICK) {
-                    val v = runBlocking { App.of(context).settings.current() }.vocab
+                    val v = s.vocab
                     addAction(0, "Yep, Rest day", pickIntent(context, "REST", day))
                     addAction(0, v.trained, pickIntent(context, "CLIMB", day))
                 }
+                // Snooze (Nudges) comes after the answers, the way the Nudges preview draws it.
+                val p = s.prefs
+                if (p.snoozeMinutes > 0) addAction(0, "Snooze ${p.snoozeMinutes} min", PendingIntent.getBroadcast(
+                    context, if (kind == KIND_WEIGH) 31 else 32,
+                    Intent(context, SnoozeReceiver::class.java).putExtra(KIND, kind).putExtra(SnoozeReceiver.MINUTES, p.snoozeMinutes),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ))
             }
             .build()
         runCatching { context.getSystemService(NotificationManager::class.java).notify(if (kind == KIND_WEIGH) 1 else 2, n) }

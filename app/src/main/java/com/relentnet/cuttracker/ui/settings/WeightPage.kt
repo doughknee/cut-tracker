@@ -58,10 +58,11 @@ fun WeightPage(vm: AppViewModel, onBack: () -> Unit) {
 
         KindCard("The big number", "", sub = "On Weight and on Today's weight tile. The pace sentence always comes from the 7-day average.") {
             ChoiceRow("Shows", null, listOf("average" to "7-day average", "latest" to "Latest reading"), p.weightHero) { k -> vm.updatePrefs { it.copy(weightHero = k) } }
-            val sample = s.shown(avg ?: latest?.lb ?: s.startWeight)
+            // The chips read the big number as it stands, one way and the other.
+            val sample = s.shown((if (p.weightHero == "latest") latest?.lb else null) ?: avg ?: latest?.lb ?: s.startWeight).toFloat()
             ChoiceRow(
-                "Decimals", "on the average, the pace and the rate. Readings keep theirs",
-                listOf("1" to ProgramEngine.fmt1(sample), "0" to Math.round(sample).toString()), p.weightDecimals.toString(),
+                "Decimals", "on the big number, the pace and the rate. The weigh-in row keeps its tenth",
+                listOf("1" to ProgramEngine.fmt1(sample.toDouble()), "0" to Math.round(sample).toString()), p.weightDecimals.toString(),
             ) { k -> vm.updatePrefs { it.copy(weightDecimals = k.toInt()) } }
         }
 

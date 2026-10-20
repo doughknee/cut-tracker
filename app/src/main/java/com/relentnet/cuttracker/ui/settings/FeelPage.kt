@@ -50,9 +50,10 @@ fun FeelPage(vm: AppViewModel, onBack: () -> Unit) {
                 Text("Quiet words read like this", color = c.dim, style = cutStyle(12, 600, 1.2f))
                 // Four days of the wall: the marks switch and the plain wall show here first.
                 Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    for ((r, shape) in listOf(DayResult.SEND to HoldShape.CRIMP, DayResult.MIN to HoldShape.JUG, DayResult.FREEZE to HoldShape.SLOPER, DayResult.MISSED to HoldShape.PINCH)) {
+                    for ((i, rs) in listOf(DayResult.SEND to HoldShape.CRIMP, DayResult.MIN to HoldShape.JUG, DayResult.FREEZE to HoldShape.SLOPER, DayResult.MISSED to HoldShape.PINCH).withIndex()) {
+                        val (r, shape) = rs
                         Hold(shape, holdFill(r, c), 40.dp, mark = r, modifier = Modifier.semantics { contentDescription = resultName(r, v) }) {
-                            Text("${17 + r.ordinal}", color = holdNumberColor(r, c), style = cutStyle(13, 900, 1f, tabular = true))
+                            Text("${16 + i}", color = holdNumberColor(r, c), style = cutStyle(13, 900, 1f, tabular = true))
                         }
                     }
                 }
