@@ -2,6 +2,47 @@
 
 What changed in Sendline, from the user's side. Newest first.
 
+## 1.3.0 (versionCode 4), 2026-10-20
+
+### History stays put
+
+- A past day keeps the result it was logged with. Raising protein, changing what a kind of day asks for or editing a meal no longer turns old Sends into Min days or uses up freezes.
+- Editing or deleting a library meal leaves the days that logged it as they were.
+- Two quick edits never undo each other: steppers can be tapped fast, switches flipped back to back.
+- "Change" on a day keeps its ticks, so picking the same kind again loses nothing.
+- A lift block done on a Rest day counts as a workout.
+
+### Fewer taps, nothing lost
+
+- Back closes what is open first: the weigh-in, a meal picker, the lifts, the Route day popover, a takeover, a sheet. On an earlier day it goes back to today. In onboarding it goes back a step.
+- A done weigh-in shows its reading; tap it to fix a typo.
+- Every stepper repeats while held, and its number can be tapped to type it: all of Targets, and weight and reps on Today's lifts.
+- Lift numbers typed on Today survive closing the panel.
+- Numbers read the way you type them: 181,4 and 2,250 work, and a decimal no longer saves as 0.
+- A focused field always scrolls above the keyboard.
+- Deleting a meal, a lift, a kind, a checkpoint or a custom look shows Undo for six seconds.
+- A sheet with unsaved edits asks before a swipe or a tap outside throws them away.
+- Search matches every word in any order and ignores accents. The lift picker and, past eight meals, Today's meal picker get a search box.
+
+### Reminders
+
+- Each reminder has its own switch, and the times follow your phone's 12 or 24-hour clock.
+- The weigh-in reminder stays quiet once you weighed in.
+- The pick-a-day reminder has the evening card's two answers, Yep, Rest day and I climbed, right in the notification.
+- Reminders come back after a time zone or clock change.
+
+### Data
+
+- Import and Reset ask first and offer Export first. A failed export says so.
+- Restoring a backup is all or nothing: a file the app cannot read leaves your data as it was.
+- Data shows when you last exported, because the phone holds the only copy until you do.
+
+### Easier to read and reach
+
+- Large text on a small screen wraps instead of squeezing: Today's totals, Route's header and the Beta grid, which scrolls when it no longer fits.
+- Small buttons have 48dp targets; TalkBack hears switch and tick states, tab selection, every Route day and the weight chart.
+- Row descriptions wrap to two lines instead of cutting off.
+
 ## 1.2.0 (versionCode 3), 2026-10-20
 
 ### Beta

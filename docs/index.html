@@ -138,6 +138,10 @@
   .log li { margin: 0 0 10px; }
   .log li::marker { color: var(--accent); }
   .older { margin-top: 18px; }
+  .earlier { margin: 44px 0 0; font-size: 15px; font-weight: 700; color: var(--text2); }
+  .earlier + .log { margin-top: 10px; }
+  .log h4 { margin: 14px 0 6px; font-size: 15px; font-weight: 800; color: var(--text); }
+  .log summary.ver { font-size: 18px; }
 
   footer { margin-top: 104px; padding: 36px 0 56px; border-top: 1px solid var(--hairline); color: var(--text2); font-size: 15px; }
   footer .wrap { display: grid; gap: 18px; }
@@ -176,7 +180,9 @@
   <section class="wrap" id="new">
     <div class="new-head"><h2 id="new-title">What's new</h2><span id="new-date"></span></div>
     <div class="log" id="log"></div>
-    <p class="older"><a class="quiet" href="https://github.com/doughknee/cut-tracker/blob/main/CHANGELOG.md">Every release</a></p>
+    <h3 class="earlier" id="earlier-head" hidden>Earlier releases</h3>
+    <div class="log" id="earlier"></div>
+    <p class="older"><a class="quiet" href="https://github.com/doughknee/cut-tracker/blob/main/CHANGELOG.md">The changelog on GitHub</a></p>
   </section>
 </main>
 
@@ -184,6 +190,7 @@
   <div class="wrap">
     <p id="disclaimer"></p>
     <div class="links"><a href="privacy.html">Privacy policy</a><a href="https://github.com/doughknee/cut-tracker">Source on GitHub</a><span id="contact"></span></div>
+    <p id="updated"></p>
   </div>
 </footer>
 
@@ -283,8 +290,20 @@
     if (mail) $('contact').innerHTML = `<a href="mailto:${mail}">${mail}</a>`;
   }).catch(() => { fail($('features'), 'STORE_LISTING.md'); });
 
+  // "- item" lines, with wrapped lines folded into the item above.
+  const bullets = body => {
+    const items = [];
+    for (const line of body.split('\n')) {
+      if (/^\s*- /.test(line)) items.push(line.replace(/^\s*- /, ''));
+      else if (line.trim() && items.length) items[items.length - 1] += ' ' + line.trim();
+      else if (line.trim()) items.push(line.trim());
+    }
+    return items;
+  };
+
   get('CHANGELOG.md').then(md => {
-    const latest = sections(md, '## ')[0];
+    const releases = sections(md, '## ');
+    const latest = releases[0];
     if (!latest) throw new Error('no release');
     const version = (latest.title.match(/^\d[\w.]*/) || [latest.title])[0];
     const date = (latest.title.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
@@ -294,15 +313,40 @@
     const groups = sections(latest.body, '### ');
     if (!groups.length) groups.push({ title: version, body: latest.body });
     $('log').innerHTML = groups.map((g, i) => {
-      const items = [];
-      for (const line of g.body.split('\n')) {
-        if (/^\s*- /.test(line)) items.push(line.replace(/^\s*- /, ''));
-        else if (line.trim() && items.length) items[items.length - 1] += ' ' + line.trim();
-        else if (line.trim()) items.push(line.trim());
-      }
+      const items = bullets(g.body);
       return `<details${i === 0 ? ' open' : ''}><summary>${inline(g.title)}<small>${items.length} ${items.length === 1 ? 'change' : 'changes'}</small></summary><ul>${items.map(t => `<li>${inline(t)}</li>`).join('')}</ul></details>`;
     }).join('');
+
+    // Every older release, folded: its sections as small headings over their bullets.
+    const older = releases.slice(1);
+    if (older.length) {
+      $('earlier-head').hidden = false;
+      $('earlier').innerHTML = older.map(r => {
+        const v = (r.title.match(/^\d[\w.]*/) || [r.title])[0];
+        const d = (r.title.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
+        const parts = sections(r.body, '### ');
+        const inner = parts.length
+          ? parts.map(p => `<h4>${inline(p.title)}</h4><ul>${bullets(p.body).map(t => `<li>${inline(t)}</li>`).join('')}</ul>`).join('')
+          : `<ul>${bullets(r.body).map(t => `<li>${inline(t)}</li>`).join('')}</ul>`;
+        return `<details><summary class="ver">${esc(v)}<small>${d ? longDate(d) : ''}</small></summary>${inner}</details>`;
+      }).join('');
+    }
+
+    // Structured data for search engines, with the version the changelog names.
+    const ld = document.createElement('script');
+    ld.type = 'application/ld+json';
+    ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Sendline',
+      operatingSystem: 'Android', applicationCategory: 'HealthApplication', softwareVersion: version,
+      description: document.querySelector('meta[name=description]').content,
+    });
+    document.head.appendChild(ld);
   }).catch(() => fail($('log'), 'CHANGELOG.md'));
+
+  // When the repo last changed, from GitHub's API; quietly absent if the API says no.
+  fetch(`https://api.github.com/repos/${REPO}/commits?per_page=1`).then(r => r.ok ? r.json() : Promise.reject())
+    .then(list => { const iso = list[0].commit.committer.date.slice(0, 10); $('updated').textContent = `Updated ${longDate(iso)}.`; })
+    .catch(() => {});
 })();
 </script>
 </body>
