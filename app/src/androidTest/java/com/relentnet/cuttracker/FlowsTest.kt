@@ -107,4 +107,17 @@ class FlowsTest {
         assertEquals(xpBefore, db.xp().total())
         org.junit.Assert.assertTrue(repo.settings.current().ledgerKept)
     }
+
+    @Test fun anUpdateShowsWhatIsNewOnce() {
+        runBlocking { app.repo.settings.update { it.copy(seenVersion = null) } }
+        launch()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("New in", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText("GOT IT")[0].performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("New in", substring = true).fetchSemanticsNodes().isEmpty() }
+        scenario?.close()
+        launch()
+        compose.waitForIdle()
+        Thread.sleep(1000)
+        org.junit.Assert.assertTrue(compose.onAllNodesWithText("New in", substring = true).fetchSemanticsNodes().isEmpty())
+    }
 }

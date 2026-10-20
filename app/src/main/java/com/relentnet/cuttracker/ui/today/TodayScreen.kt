@@ -126,6 +126,16 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     LaunchedEffect(st.today) { if (vm.viewDate != null && !vm.viewDate!!.isBefore(st.today)) vm.viewDate = null }
     // First Today after onboarding: open the rules sheet once, then never again on its own.
     LaunchedEffect(st.settings.tourSeen) { if (!st.settings.tourSeen) { infoOpen = true; vm.updateSettings { s -> s.copy(tourSeen = true) } } }
+    // After an update, a few lines on what changed, once. Fresh installs and versions without a note are marked quietly.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
+    var newsOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(st.settings.seenVersion, version) {
+        if (version.isNotBlank() && st.settings.seenVersion != version) {
+            if (st.settings.tourSeen && st.logs.isNotEmpty() && whatsNew[version] != null) newsOpen = true
+            else vm.updateSettings { s -> s.copy(seenVersion = version) }
+        }
+    }
     val dv = st.day(date)
     val items = dv.items
     val done = dv.log.doneItemIds
@@ -325,6 +335,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
         }
     }
     if (infoOpen) WallInfoSheet(onDismiss = { infoOpen = false })
+    if (newsOpen && !infoOpen) WhatsNewSheet(version, whatsNew[version].orEmpty()) { newsOpen = false; vm.updateSettings { s -> s.copy(seenVersion = version) } }
     if (confirmNext) ConfirmDialog(
         "Start the next route?",
         "Your logs, badges and xp stay. You set a new start, a new goal and a new length, and the wall starts again at day 1.",

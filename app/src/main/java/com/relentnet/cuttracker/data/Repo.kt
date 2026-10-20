@@ -117,6 +117,8 @@ object BadgeIds {
  * [afterWrite] which awards badges, level-ups and project progress. Reads are one combined [state] flow.
  */
 class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
+    /** This build's version name, so a seeded sample week does not open the "New in" note. */
+    private val versionName: String? = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Mutex()
     val events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 16)
@@ -175,7 +177,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     // Writes
 
-    suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: LocalDate? = null) = write(date, rescore = true) { s, d ->
+    suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: LocalDate? = null) = write(date, rescore = { true }) { s, d ->
         val log = db.dayLogs().get(d) ?: DayLog(d)
         // "Change" (null) keeps every tick so picking the same kind again loses nothing; a kind keeps what its script has.
         val keep = if (mode == null) log.doneItemIds else {
@@ -186,10 +188,15 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     }
 
     /** Checks or unchecks an item. A meal checked this way logs the slot's current pick, or its default. */
-    suspend fun toggleItem(id: String, date: LocalDate? = null) = write(date, rescore = isTicked(id, date)) { _, d ->
-        val log = db.dayLogs().get(d) ?: DayLog(d)
-        val done = if (id in log.doneItemIds) log.doneItemIds - id else log.doneItemIds + id
-        db.dayLogs().upsert(log.copy(doneItemIds = done))
+    suspend fun toggleItem(id: String, date: LocalDate? = null) {
+        // Decided inside the lock from the row as it is now: only an untick may lower a past day.
+        var unticked = false
+        write(date, rescore = { unticked }) { _, d ->
+            val log = db.dayLogs().get(d) ?: DayLog(d)
+            unticked = id in log.doneItemIds
+            val done = if (unticked) log.doneItemIds - id else log.doneItemIds + id
+            db.dayLogs().upsert(log.copy(doneItemIds = done))
+        }
     }
 
     /** Logs [ref] ("lib:<id>" or "custom:...", null = the default) for a meal slot and checks it. */
@@ -324,7 +331,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val start = today.minusDays(6)
         val d = Settings()
         settings.save(d.copy(
-            onboarded = true, tourSeen = true, startDate = start, startWeight = 182.4, targetWeight = 170.0,
+            onboarded = true, tourSeen = true, seenVersion = versionName, startDate = start, startWeight = 182.4, targetWeight = 170.0,
             checkpoints = ProgramSpec.defaultCheckpoints(start, 182.4, 170.0, d.lengthWeeks),
         ))
         refreshToday()
@@ -358,22 +365,18 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     // Internals
 
     /** Runs [block] for [date] (today when null, never a future day), then reconciles that day's XP. */
-    /** Whether [id] is ticked on [date] (today when null): unticking is the one edit that may lower a past day. */
-    private suspend fun isTicked(id: String, date: LocalDate?): Boolean =
-        id in (db.dayLogs().get(date?.takeIf { it.isBefore(today()) } ?: today())?.doneItemIds ?: emptySet())
-
     /**
      * [rescore] lets a past day's Send or Min be taken away by this write (an untick, a new kind). Without it a past
      * day can only move up, so fixing a weigh-in typo or ticking a forgotten snack never re-judges it by today's targets.
      */
-    private suspend fun write(date: LocalDate? = null, rescore: Boolean = false, block: suspend (Settings, LocalDate) -> Unit) = lock.withLock {
+    private suspend fun write(date: LocalDate? = null, rescore: () -> Boolean = { false }, block: suspend (Settings, LocalDate) -> Unit) = lock.withLock {
         val s = settings.current()
         val today = ProgramEngine.programDay(LocalDateTime.now(), s.resetHour)
         todayFlow.value = today
         val d = date?.takeIf { it.isBefore(today) } ?: today
         val xpBefore = db.xp().total()
         block(s, d)
-        syncDay(d, keepScore = !rescore && d.isBefore(today))
+        syncDay(d, keepScore = !rescore() && d.isBefore(today))
         afterWrite(xpBefore)
     }
 
