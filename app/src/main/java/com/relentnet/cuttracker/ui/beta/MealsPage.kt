@@ -244,7 +244,8 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
     var q by remember { mutableStateOf("") }
     var hits by remember { mutableStateOf<List<Food>>(emptyList()) }
     LaunchedEffect(q) { hits = if (q.isBlank()) emptyList() else search(q) }
-    SheetLabel("Ingredients")
+    // With no lines yet the search field's own label is the section label; two eyebrows in a row read as a mistake.
+    if (lines.isNotEmpty()) SheetLabel("Ingredients")
     lines.forEachIndexed { i, ing ->
         key(i, ing.name) {
             var g by remember { mutableStateOf(fmtGrams(ing.grams)) }
@@ -260,7 +261,7 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
             }
         }
     }
-    SheetField(if (lines.isEmpty()) "Add an ingredient" else "Add another", q, { q = it }, text = true, placeholder = "Search foods, like chicken breast")
+    SheetField(if (lines.isEmpty()) "Ingredients" else "Add another", q, { q = it }, text = true, placeholder = "Search foods, like chicken breast")
     hits.forEach { f ->
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.ground).clickable(role = Role.Button) { onLines(lines + Ingredient(f.name, f.defaultGrams, f.protein100, f.kcal100)); q = "" }.padding(10.dp, 8.dp),
