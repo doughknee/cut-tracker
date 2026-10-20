@@ -167,6 +167,20 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
         }
     }
 
+    val saveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    val text = backupJson.encodeToString(Backup.serializer(), vm.repo.buildBackup())
+                    context.contentResolver.openOutputStream(uri)!!.use { it.write(text.toByteArray()) }
+                }.isSuccess
+            }
+            vm.showToast(if (ok) "Backup saved" else "Could not save the file. Nothing changed.")
+            if (ok) vm.updateSettings { s -> s.copy(lastExport = LocalDate.now()) }
+        }
+    }
+
     fun export(withPhotos: Boolean) = scope.launch {
         val file = runCatching { withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "export").apply { mkdirs() }
@@ -237,7 +251,8 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
             SettingsSections.DATA -> {
                 Sub("Everything lives on this phone. Export is how it moves to another one.", size = 12)
                 KindCard("Backup", exportAge(s.lastExport), sub = "The only copy of your logs is on this phone until you export one. Save it somewhere that is not this phone.") {
-                    PlainRow("Export", "a JSON file of everything but photos") { LinkText("Share") { export(false) } }
+                    PlainRow("Save a copy", "a JSON file of everything but photos, wherever you pick") { LinkText("Save") { saveLauncher.launch("sendline-${LocalDate.now()}.json") } }
+                    PlainRow("Export", "the same file, through the share menu") { LinkText("Share") { export(false) } }
                     PlainRow("Export with photos", "a zip, bigger") { LinkText("Share") { export(true) } }
                     PlainRow("Import", "replaces what is on this phone") { LinkText("Pick a file") { confirm = "import" } }
                 }

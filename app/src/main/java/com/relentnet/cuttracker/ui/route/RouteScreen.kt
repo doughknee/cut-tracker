@@ -376,7 +376,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
         DayResult.FUTURE -> if (skipped) "Planned skip. Chain kept, no freeze spent." else "Not here yet. Plan a skip if you know you will be off."
         DayResult.BEFORE -> "Before the start."
         else -> buildList {
-            when (log?.mode) { DayMode.CLIMB -> add("Climb day."); DayMode.OFF -> add("Off day."); DayMode.REST -> add("Rest day."); null -> add("Free day.") }
+            when (log?.mode) { DayMode.CLIMB -> add("Climb day."); DayMode.OFF -> add("Off day."); DayMode.REST -> add("Rest day."); null -> add("No day picked.") }
             if (items.isNotEmpty()) add("$done of ${items.size} items.")
             if (weight != null) add("${ProgramEngine.fmt1(weight)} lb.")
             st.liftSets.filter { it.date == date }.groupBy { it.exerciseId }.forEach { (id, sets) ->

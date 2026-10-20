@@ -3,6 +3,7 @@ package com.relentnet.cuttracker.ui.today
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,7 +34,7 @@ fun WallInfoSheet(onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = c.surface, dragHandle = {
         Box(Modifier.padding(top = 12.dp).size(36.dp, 4.dp).clip(RoundedCornerShape(2.dp)).background(c.mutedBorder))
     }) {
-        Column(Modifier.padding(20.dp, 10.dp, 20.dp, 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(20.dp, 10.dp, 20.dp, 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Reading the wall", color = c.text, style = cutStyle(20, 800, 1f, -0.02f, display = true))
             Sub("Every hold is one day. The shape is the kind of day you picked, the color is how it went. The rope is your chain. Tap any hold to open that day; late checks still count.")
             Text("SHAPE · KIND OF DAY", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))

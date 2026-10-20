@@ -3,6 +3,7 @@ package com.relentnet.cuttracker.ui.today
 import com.relentnet.cuttracker.ui.components.ConfirmDialog
 import com.relentnet.cuttracker.ui.components.int
 import com.relentnet.cuttracker.ui.components.num
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.scaleIn
@@ -287,13 +288,13 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 Text(
                     if (liftOpen) "CLOSE LIFTS" else "LIFT ANYWAY",
                     color = c.text2, style = cutStyle(11, 800, 1f, 0.1f),
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).pressable { liftOpen = !liftOpen }.padding(horizontal = 4.dp, vertical = 6.dp),
+                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).pressable { liftOpen = !liftOpen }.padding(horizontal = 6.dp, vertical = 14.dp),
                 )
                 if (liftOpen) LiftInline(vm, mode = DayMode.OFF, onSaved = { liftOpen = false })
             }
             if (finished.isNotEmpty()) {
                 Row(
-                    Modifier.fillMaxWidth().clickable(role = Role.Button) { doneOpen = !doneOpen }.padding(top = 6.dp),
+                    Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button, onClickLabel = if (doneOpen) "Hide done items" else "Show done items") { doneOpen = !doneOpen },
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Icon(CutIcons.Forward, null, Modifier.size(12.dp).rotate(if (doneOpen) 90f else 0f), tint = c.text2)
@@ -362,7 +363,7 @@ private fun NavPill(label: String, onClick: () -> Unit, accent: Boolean = false)
     val c = CutTheme.colors
     val shape = RoundedCornerShape(999.dp)
     Box(
-        Modifier.height(32.dp).clip(shape).background(if (accent) c.accent else c.surface).border(1.dp, if (accent) c.accent else c.hairline, shape)
+        Modifier.minimumInteractiveComponentSize().height(32.dp).clip(shape).background(if (accent) c.accent else c.surface).border(1.dp, if (accent) c.accent else c.hairline, shape)
             .clickable(onClick = onClick, role = Role.Button).padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) { Text(label.uppercase(), color = if (accent) c.onAccent else c.text, style = cutStyle(11, 800, 1f, 0.06f)) }
@@ -595,7 +596,7 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
                     }
                     if (m.recipe.isNotBlank()) Text(
                         "RECIPE", color = c.accent, style = cutStyle(10, 800, 1f, 0.08f),
-                        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { recipeOpen = if (recipeOpen == m.id) null else m.id }.padding(6.dp),
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) { recipeOpen = if (recipeOpen == m.id) null else m.id }.padding(horizontal = 8.dp, vertical = 12.dp),
                     )
                     Text("${m.protein}g · ${m.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
                 }

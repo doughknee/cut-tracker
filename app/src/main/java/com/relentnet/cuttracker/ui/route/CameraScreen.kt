@@ -64,6 +64,11 @@ fun CameraScreen(vm: AppViewModel, onDone: () -> Unit) {
     var denied by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it; denied = !it }
     LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
+    // Coming back from system settings with the camera allowed opens the viewfinder without another tap.
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        if (!granted && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) { granted = true; denied = false }
+        onPauseOrDispose { }
+    }
     val capture = remember { ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build() }
     var busy by remember { mutableStateOf(false) }
 
@@ -89,6 +94,9 @@ fun CameraScreen(vm: AppViewModel, onDone: () -> Unit) {
                 Eyebrow("Progress photo")
                 Text("Camera access needed.", color = c.text, style = cutStyle(28, 800, 1f, -0.02f, display = true))
                 Sub(if (denied) "Allow the camera in system settings, then come back. Photos never leave the phone." else "Asking for the camera.")
+                if (denied) BigButton("Open settings", onClick = {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null)))
+                }, modifier = Modifier.fillMaxWidth())
                 BigButton("Back", onClick = onDone, modifier = Modifier.fillMaxWidth(), secondary = true)
             }
         }
