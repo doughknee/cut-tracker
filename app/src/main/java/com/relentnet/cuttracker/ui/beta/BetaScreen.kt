@@ -140,7 +140,13 @@ private fun EditorTile(modifier: Modifier, icon: ImageVector, title: String, row
 private fun DayTile(modifier: Modifier, mode: DayMode, st: AppState, onClick: () -> Unit) {
     val c = CutTheme.colors
     val items = ProgramEngine.script(mode, st.settings)
-    val line = when (mode) { DayMode.CLIMB -> "Session + push"; DayMode.OFF -> "Core at home"; DayMode.REST -> "Weigh in + eat" }
+    // The short form of dayWhere: it follows the plan too, so a Rest day with a lift does not say "weigh in + eat".
+    val block = ProgramEngine.exercisesFor(mode, st.settings).isNotEmpty()
+    val line = when (mode) {
+        DayMode.CLIMB -> if (block) "Session + push" else "Session only"
+        DayMode.OFF -> if (block) "Core at home" else "No block"
+        DayMode.REST -> if (block) "Weigh in + block" else "Weigh in + eat"
+    }
     TileFrame(modifier, onClick = onClick) {
         TileTop(shape = holdShape(mode))
         Text(dayTitle(mode), color = c.text, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
@@ -152,6 +158,16 @@ private fun DayTile(modifier: Modifier, mode: DayMode, st: AppState, onClick: ()
 }
 
 fun dayTitle(mode: DayMode) = when (mode) { DayMode.CLIMB -> "Climb day"; DayMode.OFF -> "Off day"; DayMode.REST -> "Rest day" }
+
+/** What a kind of day asks, in one sentence that follows the plan: the day page and Today's cards both say it. */
+fun dayWhere(mode: DayMode, s: com.relentnet.cuttracker.data.Settings): String {
+    val block = ProgramEngine.exercisesFor(mode, s).isNotEmpty()
+    return when (mode) {
+        DayMode.CLIMB -> if (block) "Session, then the push block at the gym." else "Session at the gym. No block."
+        DayMode.OFF -> if (block) "No climbing. A short core block at home." else "No climbing. Weigh in and eat the script."
+        DayMode.REST -> if (block) "Weigh in and eat the script. A short block at home." else "Weigh in and eat the script. Nothing else is asked."
+    }
+}
 
 @Composable
 private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit) {

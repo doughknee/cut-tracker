@@ -84,6 +84,8 @@ fun CheckRow(
     onClick: () -> Unit,
     onSwipeCheck: (() -> Unit)? = null,
     tag: String? = null,
+    /** When set, the box ticks the row on its own while the row body still calls [onClick] (a picker, an inline panel). */
+    onCheck: (() -> Unit)? = null,
 ) {
     val c = CutTheme.colors
     val density = LocalDensity.current
@@ -132,11 +134,17 @@ fun CheckRow(
                 )
                 .clickable(onClick = onClick, role = Role.Checkbox)
                 .heightIn(min = if (compact) 40.dp else 56.dp)
-                .padding(horizontal = if (compact) 12.dp else 14.dp, vertical = if (compact) 6.dp else 10.dp),
+                .padding(start = if (compact) 12.dp else 7.dp, end = if (compact) 12.dp else 14.dp, top = if (compact) 6.dp else 8.dp, bottom = if (compact) 6.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
         ) {
-            if (compact) CheckBox(done, size = 20, iconSize = 11) else CheckBox(done)
+            if (compact) CheckBox(done, size = 20, iconSize = 11)
+            else Box(
+                // A 40dp hit area around the 26dp box, so the box is a target of its own when the row opens something.
+                Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
+                    .then(if (onCheck != null && !done) Modifier.clickable(onClick = onCheck, role = Role.Checkbox) else Modifier),
+                contentAlignment = Alignment.Center,
+            ) { CheckBox(done) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (next && !done) Text("UP NEXT", color = c.accent, style = cutStyle(10, 800, 1f, 0.1f))
                 Text(

@@ -66,11 +66,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
     fun save(p: DayPlan) = vm.saveSettings(s.copy(plans = s.plans + (mode to p)))
     var sheet by rememberSaveable { mutableStateOf("") }   // "", "pick", "new", "lift:<id>", "item:<id>"
     val items = ProgramEngine.script(mode, s)
-    val where = when (mode) {
-        DayMode.CLIMB -> "Session, then the push block at the gym."
-        DayMode.OFF -> "No climbing. A short core block at home."
-        DayMode.REST -> "Weigh in and eat the script. Nothing else is asked."
-    }
+    val where = dayWhere(mode, s)
     val blockName = if (mode == DayMode.CLIMB) "Push block" else "Core block"
     val blockWhere = if (mode == DayMode.CLIMB) "at the gym, after the session" else "at home, 15 minutes"
     val lifts = ProgramEngine.exercisesFor(mode, s)

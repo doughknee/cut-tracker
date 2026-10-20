@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         intent?.getStringExtra(Reminders.EXTRA_TAB)?.let { vm.requestTab(it) }
+        if (intent?.getBooleanExtra(Reminders.EXTRA_WEIGH, false) == true) vm.pendingWeigh = true
         intent?.getStringExtra(EXTRA_DATE)?.let { d ->
             runCatching { java.time.LocalDate.parse(d) }.getOrNull()?.let { vm.viewDate = it; vm.requestTab(com.relentnet.cuttracker.ui.Routes.TODAY) }
         }

@@ -45,6 +45,8 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     fun requestTab(tab: String) { pendingTab = tab }
     /** Text shared into the app from another app; the New meal sheet consumes it. */
     var pendingShare by mutableStateOf<String?>(null)
+    /** The weigh-in reminder asked for Today with the weigh-in row open. */
+    var pendingWeigh by mutableStateOf(false)
     private var toastJob: kotlinx.coroutines.Job? = null
     private val pendingLevelUps = ArrayDeque<Int>()
 

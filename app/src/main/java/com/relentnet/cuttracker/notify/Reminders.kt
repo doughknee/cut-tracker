@@ -28,12 +28,14 @@ object Reminders {
     const val KIND_WEIGH = "weigh"
     const val KIND_PICK = "pick"
     const val EXTRA_TAB = "tab"
+    /** The weigh-in reminder lands on Today with the weigh-in row open; the row is the one place to type it. */
+    const val EXTRA_WEIGH = "weigh"
 
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(NotificationChannel(CHANNEL, "Reminders", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Weigh-in and the 7pm day pick"
+                description = "Weigh-in and the day pick"
             })
         }
     }
@@ -63,15 +65,14 @@ object Reminders {
 
     fun post(context: Context, kind: String) {
         ensureChannel(context)
-        val tab = if (kind == KIND_WEIGH) "weight" else "today"
         val open = PendingIntent.getActivity(
-            context, 10, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, tab).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            context, 10, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, "today").putExtra(EXTRA_WEIGH, kind == KIND_WEIGH).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(if (kind == KIND_WEIGH) "Weigh in" else "Pick a day")
-            .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "It's 7pm and no day is picked. Guessing Rest day. Weigh in and hit protein and the chain is safe.")
+            .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "No day picked yet. Guessing Rest day. Weigh in and hit protein and the chain is safe.")
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
             .setAutoCancel(true)

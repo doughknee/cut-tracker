@@ -30,3 +30,6 @@ Where a job lives, so the next pass does not move it back.
 - 2026-10-19: The route's numbers (start, goal, weeks, start date, protein, calories, workouts) are edited on Beta > Targets only. Settings keeps the app's chrome: Nudges, Appearance, Data, About.
 - 2026-10-19: A checkpoint's date is its identity. Adding on an occupied date opens that flag; the store dedupes by date on load.
 - 2026-10-19: Looks change stone and result colors only; type and layout never change with a look. Holiday decor sits on the top edge of holds and on the wall, never over the day number.
+- 2026-10-19: A weigh-in is typed on Today's weigh-in row (or the widget) and nowhere else; Weight shows the average, the pace, the rate and the chart, and its footer points back to Today. The weigh-in reminder opens Today with that row open.
+- 2026-10-19: On a script row that opens something (a meal picker, the lifts), the box ticks the row on its own and the row body opens it; the widget's rows tick the same way.
+- 2026-10-19: What a kind of day asks is said in one sentence, `dayWhere` in BetaScreen.kt, used by Beta's day pages, Beta's day tiles (short form) and Today's day cards; the pace sentence is `paceWords` in WeightScreen.kt, used by Weight's hero and Today's weight tile.
