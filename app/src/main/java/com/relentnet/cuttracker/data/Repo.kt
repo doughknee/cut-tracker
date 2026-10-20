@@ -125,7 +125,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     val photosDir = context.filesDir.resolve("photos").apply { mkdirs() }
 
     init {
-        scope.launch { refreshToday() }
+        scope.launch { refreshToday(); keepOldScoresOnce() }
         scope.launch {
             while (true) {
                 val s = settings.current()
@@ -271,6 +271,31 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     }
 
     suspend fun dismissWelcomeBack() = write { _, today -> settings.update { it.copy(welcomeBackSeen = today) } }
+
+    /**
+     * Once, on the first start of 1.3.0 (and after restoring an older backup): 1.2.0 judged every past day by the
+     * settings of the moment, 1.3.0 by what the day recorded. So that no day reads lower than it did before the
+     * upgrade, any past day the old way scored higher gets a send or min row worth 0 xp: the result is kept, the xp
+     * total and the level do not move.
+     */
+    suspend fun keepOldScoresOnce() = lock.withLock {
+        val s = settings.current()
+        if (s.ledgerKept || !s.onboarded) return@withLock
+        val today = ProgramEngine.programDay(LocalDateTime.now(), s.resetHour)
+        val weighed = db.weighIns().all().map { it.date }.toSet()
+        val scored = ProgramEngine.scoredDays(db.xp().all())
+        val now = Instant.now()
+        val add = db.dayLogs().all().filter { it.date.isBefore(today) }.mapNotNull { log ->
+            val had = scored[log.date]
+            when (ProgramEngine.liveResult(log, log.date in weighed, s)) {
+                DayResult.SEND -> if (had != DayResult.SEND) XpEvent(date = log.date, at = now, kind = XpKind.SEND, amount = 0) else null
+                DayResult.MIN -> if (had == null) XpEvent(date = log.date, at = now, kind = XpKind.MIN, amount = 0) else null
+                else -> null
+            }
+        }
+        if (add.isNotEmpty()) db.xp().insertAll(add)
+        settings.update { it.copy(ledgerKept = true) }
+    }
 
     /** Runs [block] under the write lock in one transaction: a restore either lands whole or leaves the data as it was. */
     suspend fun replaceAll(block: suspend () -> Unit) = lock.withLock { db.withTransaction { block() } }

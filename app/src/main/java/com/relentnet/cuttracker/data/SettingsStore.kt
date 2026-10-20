@@ -52,6 +52,8 @@ data class Settings(
     val pickReminder: Boolean = true,
     /** When a backup was last exported; null for never. */
     val lastExport: LocalDate? = null,
+    /** Set once the 1.3.0 upgrade has made sure no past day reads lower than 1.2.0 showed it. */
+    val ledgerKept: Boolean = false,
     /** What each kind of day asks for. */
     val plans: Map<DayMode, DayPlan> = ProgramSpec.defaultPlans(),
     /** Kinds a lift can belong to, in display order. */
@@ -110,6 +112,7 @@ class SettingsStore(context: Context) {
         val theme = stringPreferencesKey("theme")
         val lastOpenDate = stringPreferencesKey("lastOpenDate")
         val lastExport = stringPreferencesKey("lastExport")
+        val ledgerKept = booleanPreferencesKey("ledgerKept")
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
         val plans = stringPreferencesKey("plans")
         val liftKinds = stringPreferencesKey("liftKinds")
@@ -170,6 +173,7 @@ class SettingsStore(context: Context) {
             theme = p[K.theme] ?: d.theme,
             lastOpenDate = p[K.lastOpenDate]?.let(LocalDate::parse),
             lastExport = p[K.lastExport]?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+            ledgerKept = p[K.ledgerKept] ?: d.ledgerKept,
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
         )
     }
@@ -212,6 +216,7 @@ class SettingsStore(context: Context) {
         p[K.theme] = s.theme
         if (s.lastOpenDate != null) p[K.lastOpenDate] = s.lastOpenDate.toString() else p.remove(K.lastOpenDate)
         if (s.lastExport != null) p[K.lastExport] = s.lastExport.toString() else p.remove(K.lastExport)
+        p[K.ledgerKept] = s.ledgerKept
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)
     }
 

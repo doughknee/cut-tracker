@@ -216,6 +216,9 @@ object ProgramEngine {
 
     // Chain, freezes, results
 
+    /** The result judged by [s] as it is now: Send, Min or Missed. 1.2.0 scored all history this way. */
+    fun liveResult(log: DayLog?, weighed: Boolean, s: Settings): DayResult = resultOf(log, weighed, s)
+
     private fun resultOf(log: DayLog?, weighed: Boolean, s: Settings): DayResult {
         if (log?.mode == null) return if (weighed) MISSED_UNLESS_MIN else DayResult.MISSED
         val items = script(log.mode, s, log.picks)

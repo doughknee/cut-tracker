@@ -89,6 +89,22 @@ class FlowsTest {
         val before = repo.buildBackup()
         repo.restoreBackup(before)
         val after = repo.buildBackup()
-        assertEquals(before.copy(exportedAt = ""), after.copy(exportedAt = ""))
+        // A restore marks history as kept (the one-time 1.3.0 step); everything else comes back as it was.
+        assertEquals(before.copy(exportedAt = "", settings = before.settings.copy(ledgerKept = true)), after.copy(exportedAt = ""))
+    }
+
+    @Test fun theUpgradeKeepsWhatAnOlderBuildShowedWithoutChangingXp() = runBlocking {
+        val repo = app.repo
+        val db = repo.db
+        // A past Send whose ledger row is missing, the way a 1.2.0 history can look after a settings change.
+        val send = db.xp().all().first { it.kind == com.relentnet.cuttracker.data.XpKind.SEND && it.date.isBefore(repo.today()) }
+        db.xp().delete(send.date, com.relentnet.cuttracker.data.XpKind.SEND, null)
+        repo.settings.update { it.copy(ledgerKept = false) }
+        val xpBefore = db.xp().total()
+        repo.keepOldScoresOnce()
+        val scored = com.relentnet.cuttracker.engine.ProgramEngine.scoredDays(db.xp().all())
+        assertEquals(com.relentnet.cuttracker.engine.DayResult.SEND, scored[send.date])
+        assertEquals(xpBefore, db.xp().total())
+        org.junit.Assert.assertTrue(repo.settings.current().ledgerKept)
     }
 }

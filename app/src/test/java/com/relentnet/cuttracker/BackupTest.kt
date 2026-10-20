@@ -31,7 +31,7 @@ class BackupTest {
         lastOpenDate = LocalDate.of(2026, 10, 25), welcomeBackSeen = LocalDate.of(2026, 10, 24),
         library = listOf(LibMeal("lib_x", "Eggs + toast", 30, 400, "Three eggs, two slices.")),
         customLooks = listOf(CustomLook("custom_a", "Mine", 200, 2)), palette = "custom_a",
-        tourSeen = true, weighReminder = false, pickReminder = false, lastExport = LocalDate.of(2026, 10, 24),
+        tourSeen = true, weighReminder = false, pickReminder = false, lastExport = LocalDate.of(2026, 10, 24), ledgerKept = true,
     )
 
     private val backup = Backup(
