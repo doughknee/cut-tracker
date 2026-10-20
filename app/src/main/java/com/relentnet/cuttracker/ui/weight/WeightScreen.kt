@@ -1,5 +1,12 @@
 package com.relentnet.cuttracker.ui.weight
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
+import com.relentnet.cuttracker.data.liftW
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.Canvas
@@ -65,10 +72,10 @@ import kotlin.math.floor
 private val shortDate: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
 /** The one sentence about the pace, from the average's gap to the pace line. Weight's hero and Today's tile both say it. */
-fun paceWords(gap: Double): String = when {
-    gap <= -ProgramSpec.PACE_TOLERANCE_LB -> "${ProgramEngine.fmt1(-gap)} lb ahead of pace"
+fun paceWords(gap: Double, s: com.relentnet.cuttracker.data.Settings): String = when {
+    gap <= -ProgramSpec.PACE_TOLERANCE_LB -> "${s.wu(-gap)} ahead of pace"
     gap <= ProgramSpec.PACE_TOLERANCE_LB -> "On pace"
-    else -> "${ProgramEngine.fmt1(gap)} lb behind pace"
+    else -> "${s.wu(gap)} behind pace"
 }
 
 @Composable
@@ -77,7 +84,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
-    val shownAvg = tickedFloat((avg ?: s.startWeight).toFloat())
+    val shownAvg = tickedFloat(s.shown(avg ?: s.startWeight).toFloat())
     val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
     val pace = ProgramEngine.paceWeight(st.dayN.coerceIn(1, s.totalDays), s, anchor)
     val gap = avg?.let { it - pace }
@@ -92,19 +99,19 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit
         Card(Modifier.fillMaxWidth(), padding = PaddingValues(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // The verdict is the glance; the numbers it comes from sit under it.
-                if (gap != null) Text(paceWords(gap), color = if (gap <= ProgramSpec.PACE_TOLERANCE_LB) c.good else c.accent, style = cutStyle(24, 800, 1f, -0.02f, display = true, tabular = true))
+                if (gap != null) Text(paceWords(gap, s), color = if (gap <= ProgramSpec.PACE_TOLERANCE_LB) c.good else c.accent, style = cutStyle(24, 800, 1f, -0.02f, display = true, tabular = true))
                 else Text("No average yet", color = c.text2, style = cutStyle(24, 800, 1f, -0.02f, display = true))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         TileLabel("7-day average")
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(if (avg == null) "--" else ProgramEngine.fmt1(shownAvg.toDouble()), color = c.text, style = cutStyle(40, 800, 1f, -0.02f, tabular = true))
-                            Text(" lb", color = c.text2, style = cutStyle(14, 600, 1f), modifier = Modifier.padding(bottom = 5.dp))
+                            Text(" ${s.unit}", color = c.text2, style = cutStyle(14, 600, 1f), modifier = Modifier.padding(bottom = 5.dp))
                         }
                     }
                     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         TileLabel(if (anchor != s.startWeight) "Pace today · from week 1" else "Pace today")
-                        Text(ProgramEngine.fmt1(pace), color = c.text2, style = cutStyle(22, 800, 1f, tabular = true))
+                        Text(s.w(pace), color = c.text2, style = cutStyle(22, 800, 1f, tabular = true))
                     }
                 }
                 if (avg == null) Sub("Log a weigh-in on Today to start the average.", size = 12)
@@ -117,15 +124,15 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit
             Card(Modifier.weight(1f), padding = PaddingValues(14.dp, 12.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     TileLabel("This week")
-                    Text(if (wk == null) "--" else (if (wk > 0) "+" else "") + ProgramEngine.fmt1(wk), color = if (wk != null && wk < 0) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
-                    Sub(if (wk == null) "needs two weeks" else "lb vs last week", size = 11)
+                    Text(if (wk == null) "--" else (if (wk > 0) "+" else "") + s.w(wk), color = if (wk != null && wk < 0) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
+                    Sub(if (wk == null) "needs two weeks" else "${s.unit} vs last week", size = 11)
                 }
             }
             Card(Modifier.weight(1f), padding = PaddingValues(14.dp, 12.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     TileLabel("At this rate")
-                    Text(if (projected == null) "--" else ProgramEngine.fmt1(projected), color = if (projected != null && projected <= s.targetWeight + ProgramSpec.PACE_TOLERANCE_LB) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
-                    Sub(if (projected == null) "needs a week of readings" else "on ${s.endDate.format(shortDate)} · goal ${ProgramEngine.fmt1(s.targetWeight)}", size = 11)
+                    Text(if (projected == null) "--" else s.w(projected), color = if (projected != null && projected <= s.targetWeight + ProgramSpec.PACE_TOLERANCE_LB) c.good else c.text, style = cutStyle(22, 800, 1f, tabular = true))
+                    Sub(if (projected == null) "needs a week of readings" else "on ${s.endDate.format(shortDate)} · goal ${s.w(s.targetWeight)}", size = 11)
                 }
             }
         }
@@ -137,7 +144,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         TileLabel("Next checkpoint · ${cp.localDate.format(shortDate)}")
                         Text(
-                            if (toLose == 0.0) "Already under ${ProgramEngine.fmt1(cp.target)}" else "${ProgramEngine.fmt1(toLose)} lb to ${ProgramEngine.fmt1(cp.target)}",
+                            if (toLose == 0.0) "Already under ${s.w(cp.target)}" else "${s.wu(toLose)} to ${s.w(cp.target)}",
                             color = c.text, style = cutStyle(15, 700, 1.1f, tabular = true),
                         )
                     }
@@ -204,8 +211,8 @@ fun WeightChart(st: AppState) {
     val (top, bot) = chartRange(s.startWeight, s.targetWeight, readings, projected)
     val total = s.totalDays.toFloat()
 
-    val said = "Weight chart. ${readings.size} readings" + (readings.lastOrNull()?.let { ", the last ${ProgramEngine.fmt1(it)} lb" } ?: "") +
-        ", the goal ${ProgramEngine.fmt1(s.targetWeight)} lb" + (projected?.let { ", on this pace ${ProgramEngine.fmt1(it)} lb at the end" } ?: "") + "."
+    val said = "Weight chart. ${readings.size} readings" + (readings.lastOrNull()?.let { ", the last ${s.wu(it)}" } ?: "") +
+        ", the goal ${s.wu(s.targetWeight)}" + (projected?.let { ", on this pace ${s.wu(it)} at the end" } ?: "") + "."
     Canvas(
         Modifier.fillMaxWidth().aspectRatio(326f / 190f).semantics { contentDescription = said }.pointerInput(Unit) {
             detectTapGestures(onPress = { showDots = true; tryAwaitRelease(); showDots = false })
@@ -220,7 +227,7 @@ fun WeightChart(st: AppState) {
         val mid = (top + bot) / 2
         for (v in listOf(top, mid, bot)) {
             drawLine(c.hairline, Offset(left, yOf(v)), Offset(right, yOf(v)), 1.dp.toPx())
-            drawText(measurer, ProgramEngine.fmt1(v).removeSuffix(".0"), Offset(0f, yOf(v) - 6.dp.toPx()), labelStyle)
+            drawText(measurer, s.liftW(v), Offset(0f, yOf(v) - 6.dp.toPx()), labelStyle)
         }
         val anchor = ProgramEngine.paceAnchor(sorted, s)
         drawLine(

@@ -1,5 +1,11 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -70,8 +76,8 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
             PlainRow("Workouts", "lift blocks done, any kind of day") { MiniStepper("${s.workoutsPerWeek}", { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek - 1).coerceAtLeast(0)) } }, { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek + 1).coerceAtMost(7)) } }, "a week", onType = { v -> set { it.copy(workoutsPerWeek = v.toInt().coerceIn(0, 7)) } }) }
         }
         KindCard("The route", "") {
-            PlainRow("Start", "weighed on ${s.startDate.format(shortDate)}") { MiniStepper(ProgramEngine.fmt1(s.startWeight), { set { it.copy(startWeight = it.startWeight - 0.5) } }, { set { it.copy(startWeight = it.startWeight + 0.5) } }, "lb", onType = { v -> set { it.copy(startWeight = v.coerceIn(50.0, 1000.0)) } }) }
-            PlainRow("Goal", "where the route ends") { MiniStepper(ProgramEngine.fmt1(s.targetWeight), { set { it.copy(targetWeight = it.targetWeight - 0.5) } }, { set { it.copy(targetWeight = it.targetWeight + 0.5) } }, "lb", onType = { v -> set { it.copy(targetWeight = v.coerceIn(50.0, 1000.0)) } }) }
+            PlainRow("Start", "weighed on ${s.startDate.format(shortDate)}") { MiniStepper(s.w(s.startWeight), { set { it.copy(startWeight = it.stepped(it.startWeight, -1)) } }, { set { it.copy(startWeight = it.stepped(it.startWeight, 1)) } }, s.unit, onType = { v -> set { it.copy(startWeight = it.toLb(v).coerceIn(50.0, 1000.0)) } }) }
+            PlainRow("Goal", "where the route ends") { MiniStepper(s.w(s.targetWeight), { set { it.copy(targetWeight = it.stepped(it.targetWeight, -1)) } }, { set { it.copy(targetWeight = it.stepped(it.targetWeight, 1)) } }, s.unit, onType = { v -> set { it.copy(targetWeight = it.toLb(v).coerceIn(50.0, 1000.0)) } }) }
             PlainRow("Weeks", "${s.startDate.format(shortDate)} to ${s.endDate.format(shortDate)}") { MiniStepper("${s.lengthWeeks}", { set { it.copy(lengthWeeks = (it.lengthWeeks - 1).coerceAtLeast(1)) } }, { set { it.copy(lengthWeeks = (it.lengthWeeks + 1).coerceAtMost(52)) } }, "wk", onType = { v -> set { it.copy(lengthWeeks = v.toInt().coerceIn(1, 52)) } }) }
             PlainRow("Starts", "day 1 of the route; what you logged is kept") {
                 val context = LocalContext.current
@@ -86,10 +92,10 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Big(ProgramEngine.fmt1(total), "lb to lose")
+                Big(s.w(total), "${s.unit} to lose")
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(ProgramEngine.fmt1(rate), color = c.text, style = cutStyle(24, 800, 1f, -0.02f, display = true, tabular = true))
-                    Text("lb a week, ${"%.2f".format(Locale.US, pct)}% of bodyweight", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), modifier = Modifier.padding(bottom = 2.dp))
+                    Text(s.w(rate), color = c.text, style = cutStyle(24, 800, 1f, -0.02f, display = true, tabular = true))
+                    Text("${s.unit} a week, ${"%.2f".format(Locale.US, pct)}% of bodyweight", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), modifier = Modifier.padding(bottom = 2.dp))
                 }
                 Text(note, color = if (warn) c.accent else c.text2, style = cutStyle(12, 500, 1.4f))
             }

@@ -1,6 +1,5 @@
 package com.relentnet.cuttracker.ui.today
 
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,6 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +63,8 @@ import com.relentnet.cuttracker.ui.components.holdNumberColor
 import com.relentnet.cuttracker.ui.components.holdShape
 import com.relentnet.cuttracker.ui.components.drawWallDecor
 import com.relentnet.cuttracker.ui.components.pressable
+import com.relentnet.cuttracker.ui.components.ChromeButton
+import com.relentnet.cuttracker.ui.components.SettingsGear
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -116,7 +120,17 @@ fun Wall(
     // Short screens get a shorter wall so the date headline still lands above the fold.
     val ys = (LocalConfiguration.current.screenHeightDp / 860f).coerceIn(0.72f, 1f)
     val decor = com.relentnet.cuttracker.ui.theme.LocalDecor.current
-    BoxWithConstraints(Modifier.fillMaxWidth().height(WALL_HEIGHT * ys + statusTop).background(c.wall)) {
+    // A sideways swipe on the wall is the week pill's arrows: left for the later week, right for the earlier one.
+    val week by rememberUpdatedState(onWeek)
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(WALL_HEIGHT * ys + statusTop).background(c.wall).pointerInput(canEarlier, canLater) {
+            var dx = 0f
+            detectHorizontalDragGestures(onDragStart = { dx = 0f }, onDragEnd = {
+                val far = 56.dp.toPx()
+                if (dx < -far && canLater) week(1) else if (dx > far && canEarlier) week(-1)
+            }) { _, d -> dx += d }
+        },
+    ) {
         val xs = maxWidth / MOCK_WIDTH.dp
         fun ax(i: Int): Dp = ANCHORS[i].first.dp * xs
         fun ay(i: Int): Dp = ANCHORS[i].second.dp * ys + statusTop
@@ -210,19 +224,14 @@ fun Wall(
         Box(
             Modifier.offset((-6).dp, 186.dp * ys + statusTop).rotate(-8f).background(c.accent).padding(16.dp, 5.dp, 12.dp, 5.dp),
         ) { Text("${v.level(st.level).uppercase()} · WEEK ${ProgramEngine.weekOf(selected, st.settings.startDate).coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true)) }
+        // Settings sits top right on every tab. The week lives at the foot of the wall, by the tag that names it.
+        SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).padding(top = 12.dp + statusTop, end = 20.dp))
         Row(
-            Modifier.fillMaxWidth().padding(top = 16.dp + statusTop).padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+            Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 74.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChromeButton(CutIcons.Back, "Earlier week", enabled = canEarlier) { onWeek(-1) }
-                Text(weekLabel(weekStart), color = c.text, style = cutStyle(12, 800, 1f, 0.08f, tabular = true))
-                ChromeButton(CutIcons.Forward, "Later week", enabled = canLater) { onWeek(1) }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChromeButton(CutIcons.Info, "How to read the wall", onClick = onInfo)
-                ChromeButton(CutIcons.Gear, "Open settings", tint = c.accent, onClick = onSettings)
-            }
+            WeekPill(weekLabel(weekStart), canEarlier, canLater, onWeek)
+            ChromeButton(CutIcons.Info, "How to read the wall", onClick = onInfo)
         }
     }
 }
@@ -235,13 +244,25 @@ private fun weekLabel(monday: LocalDate): String {
     return "${monday.format(weekFmt)} TO $end".uppercase()
 }
 
+/** "‹ OCT 13 TO 19 ›": the week on the wall, and the two steps to the one before and after. */
 @Composable
-private fun ChromeButton(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean = true, tint: Color? = null, onClick: () -> Unit) {
+private fun WeekPill(label: String, canEarlier: Boolean, canLater: Boolean, onWeek: (Int) -> Unit) {
     val c = CutTheme.colors
-    val shape = RoundedCornerShape(9.dp)
-    Box(
-        Modifier.minimumInteractiveComponentSize().size(32.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape)
-            .pressable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, contentDescription = label, Modifier.size(15.dp), tint = if (!enabled) c.dim else tint ?: c.text2) }
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        Modifier.height(36.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WeekStep(CutIcons.Back, "Earlier week", canEarlier) { onWeek(-1) }
+        Text(label, color = c.text, style = cutStyle(11, 800, 1f, 0.08f, tabular = true))
+        WeekStep(CutIcons.Forward, "Later week", canLater) { onWeek(1) }
+    }
+}
+
+@Composable
+private fun WeekStep(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    Box(Modifier.size(40.dp, 36.dp).pressable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = label, Modifier.size(12.dp), tint = if (enabled) c.text2 else c.dim)
+    }
 }

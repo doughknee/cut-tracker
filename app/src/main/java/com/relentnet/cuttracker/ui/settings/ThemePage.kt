@@ -86,10 +86,10 @@ import com.relentnet.cuttracker.ui.theme.cutStyle
 import java.time.LocalDate
 import java.time.Month
 
-/** The look: dark or light and when, which palette, or let the calendar choose. Everything applies as you tap. */
+/** The look: dark or light and when, which palette, or let the calendar choose. Everything applies as you tap. How the app talks and behaves is on [AppPage]. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
+fun ThemePage(vm: AppViewModel, onBack: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
@@ -99,7 +99,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
     val current = Palettes.of(s, today)
     val dark = c.isDark
     Screen(bottomInset = true) {
-        BackHeader("Settings", "Appearance", onBack)
+        BackHeader("Settings", "Theme", onBack)
         val v = CutTheme.vocab
         Sub(v.looksSub, size = 12)
         Preview(current, dark, if (s.paletteByCalendar) "$calReason, by the calendar" else v.lookLine(current.id, current.line))
@@ -109,24 +109,6 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
                 ChipRow(listOf("system" to "System", "dark" to "Dark", "light" to "Light", "schedule" to "Dark at night"), s.theme, onSelect = { haptics.tick(); vm.updateSettings { s -> s.copy(theme = it) } })
             }
             if (s.theme == "schedule") Sub("Dark from 19:00 to 07:00, light the rest of the day.", Modifier.padding(14.dp, 0.dp, 14.dp, 12.dp), size = 12)
-        }
-
-        KindCard("Words", if (s.training == null) "climbing" else "plain", sub = "Climbing says Send, hold, V grades and Beta. Something else keeps the wall and says Full day, Level and Plan.") {
-            Box(Modifier.padding(14.dp, 6.dp, 14.dp, 12.dp)) {
-                ChipRow(listOf("climb" to "Climbing", "plain" to "Something else"), if (s.training == null) "climb" else "plain", onSelect = { k ->
-                    haptics.tick(); vm.updateSettings { s -> s.copy(training = if (k == "climb") null else s.training ?: "") }
-                })
-            }
-            if (s.training != null) {
-                var name by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(s.training ?: "") }
-                Column(Modifier.padding(14.dp, 0.dp, 14.dp, 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("WHAT YOU CALL YOUR TRAINING", color = c.text2, style = cutStyle(10, 800, 1f, 0.1f))
-                    com.relentnet.cuttracker.ui.components.Field(
-                        name, { name = it; vm.updateSettings { s -> s.copy(training = it.trim()) } }, Modifier.fillMaxWidth(),
-                        keyboard = androidx.compose.ui.text.input.KeyboardType.Text, fontSize = 16, placeholder = "Run, Gym, Practice", background = c.surface,
-                    )
-                }
-            }
         }
 
         KindCard("Calendar", if (s.paletteByCalendar) "on" else "off", sub = "The look follows the month, and a holiday takes the wall for its days. A long route gets to change its clothes.") {
@@ -227,12 +209,6 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
             )
         }
 
-        KindCard("Today", "") {
-            PlainRow("Hide completed", "ticked items fold into a Done list under the script") { Switch(s.hideDone, "Hide completed") { vm.updateSettings { s -> s.copy(hideDone = !s.hideDone) } } }
-        }
-        KindCard("Feel", "") {
-            PlainRow("Haptics and confetti", "a buzz on every tick, a burst on a ${v.send}") { Switch(s.haptics, "Haptics and confetti") { vm.updateSettings { s -> s.copy(haptics = !s.haptics) } } }
-        }
         Sub("Applies at once. The widget keeps its own colors.", size = 12)
     }
 }

@@ -1,5 +1,11 @@
 package com.relentnet.cuttracker.ui.route
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
 import com.relentnet.cuttracker.ui.components.rememberPhoto
 import com.relentnet.cuttracker.ui.components.num
 import android.graphics.BitmapFactory
@@ -163,13 +169,13 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                 val dateLabel = if (cp.days > 1) "${cp.localDate.format(cpFmt)} to ${cp.lastDate.dayOfMonth}" else cp.localDate.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US))
                 val (right, rc) = when {
                     cp.free -> (if (cp.days > 1) "planned skips" else "planned skip") to c.text2
-                    state == CpState.HIT -> "hit at ${ProgramEngine.fmt1(avg!!)}" to c.good
-                    state == CpState.PASSED -> (if (avg != null) "was ${ProgramEngine.fmt1(avg)}" else "passed") to c.text2
+                    state == CpState.HIT -> "hit at ${s.w(avg!!)}" to c.good
+                    state == CpState.PASSED -> (if (avg != null) "was ${s.w(avg)}" else "passed") to c.text2
                     isCurrent -> when (val n = ChronoUnit.DAYS.between(st.today, cp.localDate)) { 0L -> "today"; 1L -> "tomorrow"; else -> "in $n days" } to c.accent
                     else -> "week $week" to c.text2
                 }
                 NumRow(
-                    if (cp.free) "–" else ProgramEngine.fmt1(cp.target ?: 0.0), dateLabel, unit = if (cp.free) null else "lb",
+                    if (cp.free) "–" else s.w(cp.target ?: 0.0), dateLabel, unit = if (cp.free) null else s.unit,
                     sub = CutTheme.vocab.note(cp.note).ifBlank { null }, right = right, rightColor = rc,
                     onClick = { editing = cp.date },
                 )
@@ -199,7 +205,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
         val cp = s.checkpoints.firstOrNull { it.date == id }
         if (cp == null) editing = null
         else CheckpointSheet(
-            cp, onDismiss = { editing = null },
+            s, cp, onDismiss = { editing = null },
             onSave = { ncp ->
                 // A date is a flag's identity: moving onto a day that has one is refused, not stacked.
                 if (ncp.date != cp.date && s.checkpoints.any { it.date == ncp.date }) vm.showToast("${ncp.localDate.format(cpFmt)} already has a checkpoint")
@@ -212,13 +218,15 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
 
 /** Date, target, note. A skip only offers Unskip. */
 @Composable
-private fun CheckpointSheet(cp: Checkpoint, onDismiss: () -> Unit, onSave: (Checkpoint) -> Unit, onRemove: () -> Unit) {
+private fun CheckpointSheet(s: com.relentnet.cuttracker.data.Settings, cp: Checkpoint, onDismiss: () -> Unit, onSave: (Checkpoint) -> Unit, onRemove: () -> Unit) {
     val c = CutTheme.colors
     val context = LocalContext.current
     var date by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(cp.localDate) }
-    var target by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(cp.target?.let { ProgramEngine.fmt1(it) } ?: "") }
+    // Typed in the user's unit. An untouched field keeps the stored lb exactly, so opening and closing never drifts it.
+    val target0 = cp.target?.let { s.w(it) } ?: ""
+    var target by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(target0) }
     var note by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(cp.note) }
-    Sheet(if (cp.free) "Planned skip" else "Edit checkpoint", onDismiss, dirty = date != cp.localDate || target != (cp.target?.let { ProgramEngine.fmt1(it) } ?: "") || note != cp.note) {
+    Sheet(if (cp.free) "Planned skip" else "Edit checkpoint", onDismiss, dirty = date != cp.localDate || target != target0 || note != cp.note) {
         if (cp.free) {
             Sub("A planned skip. Chain kept, no freeze spent, not a ${CutTheme.vocab.send}.", size = 12)
             SheetButtons("Unskip", onPrimary = onRemove, secondary = "Keep", onSecondary = onDismiss)
@@ -235,9 +243,9 @@ private fun CheckpointSheet(cp: Checkpoint, onDismiss: () -> Unit, onSave: (Chec
                     contentAlignment = Alignment.CenterStart,
                 ) { Text(date.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)), color = c.text, style = cutStyle(16, 700, 1f, tabular = true)) }
             }
-            SheetField("Target", target, { target = it }, Modifier.width(130.dp), unit = "lb")
+            SheetField("Target", target, { target = it }, Modifier.width(130.dp), unit = s.unit)
         }
         SheetField("Note", note, { note = it }, text = true, last = true, placeholder = "Optional")
-        SheetButtons("Done", onPrimary = { onSave(cp.copy(date = date.toString(), target = target.num() ?: cp.target, note = note.trim())) }, secondary = "Delete", onSecondary = onRemove)
+        SheetButtons("Done", onPrimary = { onSave(cp.copy(date = date.toString(), target = if (target == target0) cp.target else target.num()?.let(s::toLb) ?: cp.target, note = note.trim())) }, secondary = "Delete", onSecondary = onRemove)
     }
 }

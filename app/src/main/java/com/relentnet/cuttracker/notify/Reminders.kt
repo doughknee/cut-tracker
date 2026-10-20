@@ -32,6 +32,10 @@ object Reminders {
     /** The weigh-in reminder lands on Today with the weigh-in row open; the row is the one place to type it. */
     const val EXTRA_WEIGH = "weigh"
 
+    /** What each reminder says; Settings > Nudges shows the same words. */
+    fun title(kind: String) = if (kind == KIND_WEIGH) "Weigh in" else "Pick a day"
+    fun text(kind: String) = if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "No day picked yet. Tap Yep, Rest day, then weigh in and hit protein to keep the chain."
+
     fun ensureChannel(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL) == null) {
@@ -74,8 +78,8 @@ object Reminders {
         )
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(if (kind == KIND_WEIGH) "Weigh in" else "Pick a day")
-            .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "No day picked yet. Tap Yep, Rest day, then weigh in and hit protein to keep the chain.")
+            .setContentTitle(title(kind))
+            .setContentText(text(kind))
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
             .setAutoCancel(true)
@@ -130,7 +134,9 @@ class AlarmReceiver : BroadcastReceiver() {
         Thread {
             runBlocking {
                 val s = app.settings.current()
-                when (kind) {
+                // A quiet day for this reminder: no post, the alarm is still set for tomorrow below.
+                val quiet = app.repo.today().dayOfWeek in (if (kind == Reminders.KIND_WEIGH) s.weighQuiet else s.pickQuiet)
+                if (!quiet) when (kind) {
                     // Weighed in already, on the widget or early in the app: nothing to nudge.
                     Reminders.KIND_WEIGH -> if (s.weighReminder && app.db.weighIns().all().none { it.date == app.repo.today() }) Reminders.post(context, kind)
                     Reminders.KIND_PICK -> {

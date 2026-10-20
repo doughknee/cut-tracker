@@ -80,24 +80,25 @@ import java.util.Locale
 
 private val timeFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 
-/** Settings is the app's chrome: nudges, looks, data, about. The plan itself lives on Beta. */
+/** Settings is the app's chrome: nudges, the look, how the app behaves, data, about. The plan itself lives on Beta. */
 object SettingsSections {
     const val NUDGES = "nudges"
-    const val APPEARANCE = "appearance"
+    const val THEME = "theme"
+    const val APP = "app"
     const val DATA = "data"
     const val ABOUT = "about"
     const val DEVELOPER = "developer"
 }
 
 @Composable
-fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> Unit) {
+fun SettingsScreen(vm: AppViewModel, backLabel: String, onBack: () -> Unit, onSection: (String) -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val context = LocalContext.current
     val notifOn = remember { NotificationManagerCompat.from(context).areNotificationsEnabled() }
     Screen(bottomInset = true) {
-        BackHeader(backLabel = "Today", title = "Settings", onBack = onBack)
+        BackHeader(backLabel = backLabel, title = "Settings", onBack = onBack)
         // The privacy line comes first, because it is the one thing every settings page promises.
         Card(Modifier.fillMaxWidth().pressable { onSection(SettingsSections.DATA + "/online") }, radius = 14.dp, background = c.ground, border = c.hairline, padding = PaddingValues(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -118,7 +119,8 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
                     if (s.pickReminder) "pick a day ${clockText(context, s.pickTime)}" else null,
                 ).joinToString(", ").replaceFirstChar { it.uppercase() }
             }) { onSection(SettingsSections.NUDGES) }
-            CategoryRow(CutIcons.Layers, "Appearance", appearanceLine(s)) { onSection(SettingsSections.APPEARANCE) }
+            CategoryRow(CutIcons.Layers, "Theme", themeLine(s)) { onSection(SettingsSections.THEME) }
+            CategoryRow(CutIcons.Zap, "App", appLine(s)) { onSection(SettingsSections.APP) }
             CategoryRow(CutIcons.Data, "Data", "Export, import, online features, wipe. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = !s.devOptions) { onSection(SettingsSections.ABOUT) }
             if (s.devOptions) CategoryRow(CutIcons.Gear, "Developer options", "Preview onboarding as a new user", last = true) { onSection(SettingsSections.DEVELOPER) }
@@ -148,7 +150,10 @@ private fun CategoryRow(icon: ImageVector, title: String, sub: String, last: Boo
 /** One category page. Every control applies at once, the way the Beta pages do. [section] may carry "/<focus>". */
 @Composable
 fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit, onPreviewOnboarding: () -> Unit = {}) {
-    if (section.substringBefore('/') == SettingsSections.APPEARANCE) { AppearancePage(vm, onBack); return }
+    when (section.substringBefore('/')) {
+        SettingsSections.THEME -> { ThemePage(vm, onBack); return }
+        SettingsSections.APP -> { AppPage(vm, onBack); return }
+    }
     val focus = section.substringAfter('/', "")
     val section = section.substringBefore('/')
     val c = CutTheme.colors
@@ -229,7 +234,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
             onDismiss = { confirm = null }, extra = "Export first" to { export(false) },
         )
     }
-    val title = when (section) { SettingsSections.NUDGES -> "Nudges"; SettingsSections.APPEARANCE -> "Appearance"; SettingsSections.DATA -> "Data"; SettingsSections.DEVELOPER -> "Developer options"; else -> "About" }
+    val title = when (section) { SettingsSections.NUDGES -> "Nudges"; SettingsSections.DATA -> "Data"; SettingsSections.DEVELOPER -> "Developer options"; else -> "About" }
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Settings", title = title, onBack = onBack)
         when (section) {
@@ -240,6 +245,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                 LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose { } }
                 val notifOn = remember(tick) { NotificationManagerCompat.from(context).areNotificationsEnabled() }
                 val exactOn = remember(tick) { Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms() }
+                Shade(s, notifOn)
                 KindCard("Reminders", if (notifOn) "on" else "off") {
                     PlainRow("Allowed by the phone", when { !notifOn -> "Off. Tap to allow notifications."; !exactOn -> "On, timing may drift. Tap to allow exact alarms."; else -> "On, exact" }) {
                         val fix = when {
@@ -249,18 +255,20 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                         }
                         if (fix != null) LinkText("Allow", onClick = fix) else Icon(CutIcons.Check, null, Modifier.size(16.dp), tint = c.good)
                     }
-                    PlainRow("Weigh-in", if (s.weighReminder) "before food, quiet once you have weighed in" else "off") {
+                    PlainRow("Weigh-in", if (s.weighReminder) "before food, quiet once you have weighed in" + quietWords(s.weighQuiet) else "off") {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (s.weighReminder) TimePick(s.weighInTime) { vm.updateSettings { s -> s.copy(weighInTime = it) } }
                             Switch(s.weighReminder, "Weigh-in reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(weighReminder = !s.weighReminder) } }
                         }
                     }
-                    PlainRow("Pick a day", if (s.pickReminder) "only if no day is picked" else "off") {
+                    if (s.weighReminder) QuietDays(s.weighQuiet, "weigh-in") { d -> haptics.tick(); vm.updateSettings { s -> s.copy(weighQuiet = if (d in s.weighQuiet) s.weighQuiet - d else s.weighQuiet + d) } }
+                    PlainRow("Pick a day", if (s.pickReminder) "only if no day is picked" + quietWords(s.pickQuiet) else "off") {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (s.pickReminder) TimePick(s.pickTime) { vm.updateSettings { s -> s.copy(pickTime = it) } }
                             Switch(s.pickReminder, "Pick-a-day reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(pickReminder = !s.pickReminder) } }
                         }
                     }
+                    if (s.pickReminder) QuietDays(s.pickQuiet, "pick-a-day") { d -> haptics.tick(); vm.updateSettings { s -> s.copy(pickQuiet = if (d in s.pickQuiet) s.pickQuiet - d else s.pickQuiet + d) } }
                 }
                 val widgets = context.getSystemService(android.appwidget.AppWidgetManager::class.java)
                 if (widgets?.isRequestPinAppWidgetSupported == true) KindCard("On the home screen", "") {
@@ -268,12 +276,10 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                         LinkText("Add") { widgets.requestPinAppWidget(android.content.ComponentName(context, com.relentnet.cuttracker.widget.CutWidgetReceiver::class.java), null, null) }
                     }
                 }
-                KindCard("The day", "") {
-                    PlainRow("Rolls over at", "a late night still counts as today until then") { TimePick(LocalTime.of(s.resetHour, 0)) { vm.updateSettings { s -> s.copy(resetHour = it.hour) } } }
-                }
             }
             SettingsSections.DATA -> {
                 Sub("Everything lives on this phone. Export is how it moves to another one.", size = 12)
+                OnThisPhone(st)
                 KindCard("Backup", exportAge(s.lastExport), sub = "The only copy of your logs is on this phone until you export one. Save it somewhere that is not this phone.") {
                     PlainRow(
                         "Back up every week",
@@ -333,7 +339,8 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                         taps >= 3 -> vm.showToast("${7 - taps} more ${if (7 - taps == 1) "tap" else "taps"} to developer options.", replace = true)
                     }
                 }
-                KindCard("Sendline", version) {
+                AboutHero(version)
+                KindCard("Privacy and code", "") {
                     PlainRow("Privacy policy", "what the app keeps and what it never does") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://doughknee.github.io/cut-tracker/privacy.html"))) } }
                     PlainRow("Everything stays on this phone", if (s.onlineFeatures) "no account, online only when you ask" else "no account, no network") { Icon(CutIcons.Shield, null, Modifier.size(16.dp), tint = c.good) }
                     PlainRow("The code", "public, on GitHub") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker"))) } }
@@ -364,7 +371,7 @@ fun Modifier.pulseWhen(on: Boolean): Modifier = composed {
 
 /** A small accent action at the right of a row. */
 @Composable
-private fun LinkText(label: String, color: Color = CutTheme.colors.accent, onClick: () -> Unit) {
+internal fun LinkText(label: String, color: Color = CutTheme.colors.accent, onClick: () -> Unit) {
     Text(
         label.uppercase(), color = color, style = cutStyle(11, 800, 1f, 0.08f),
         modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onClick, role = Role.Button).padding(horizontal = 8.dp, vertical = 16.dp),
@@ -372,18 +379,18 @@ private fun LinkText(label: String, color: Color = CutTheme.colors.accent, onCli
 }
 
 /** "last export today", "last export 12 days ago", "never exported". */
-private fun exportAge(d: LocalDate?): String {
+internal fun exportAge(d: LocalDate?): String {
     if (d == null) return "never exported"
     val n = java.time.temporal.ChronoUnit.DAYS.between(d, LocalDate.now())
     return when { n <= 0 -> "exported today"; n == 1L -> "exported yesterday"; else -> "exported $n days ago" }
 }
 
 /** A time the way the phone shows times: 19:00 or 7:00 PM. */
-private fun clockText(context: android.content.Context, t: LocalTime): String =
+internal fun clockText(context: android.content.Context, t: LocalTime): String =
     t.format(if (android.text.format.DateFormat.is24HourFormat(context)) timeFmt else DateTimeFormatter.ofPattern("h:mm a", Locale.US))
 
 @Composable
-private fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
+internal fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
     val c = CutTheme.colors
     val context = LocalContext.current
     val shape = RoundedCornerShape(8.dp)
@@ -395,9 +402,24 @@ private fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
     ) { Text(value.format(if (android.text.format.DateFormat.is24HourFormat(context)) timeFmt else DateTimeFormatter.ofPattern("h:mm a", Locale.US)), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
 }
 
-/** What the Appearance row says: the mode, and the look the app wears right now. */
-private fun appearanceLine(s: com.relentnet.cuttracker.data.Settings): String {
+/** What the Theme row says: the mode, and the look the app wears right now. */
+private fun themeLine(s: com.relentnet.cuttracker.data.Settings): String {
     val mode = when (s.theme) { "dark" -> "Dark"; "light" -> "Light"; "schedule" -> "Dark at night"; else -> "Follows the system" }
     val look = Palettes.of(s, LocalDate.now()).name + if (s.paletteByCalendar) " by the calendar" else ""
-    return "$mode, $look" + (if (s.haptics) "" else ", haptics off")
+    return "$mode, $look"
+}
+
+/** What the App row says: the words, the unit, and whatever is off its default. */
+private fun appLine(s: com.relentnet.cuttracker.data.Settings): String = listOfNotNull(
+    if (s.training == null) "Climbing words" else "Plain words",
+    if (s.kg) "kg" else "lb",
+    if (s.hideDone) "hide completed" else null,
+    if (s.haptics) null else "haptics off",
+).joinToString(", ")
+
+/** ", not on Sat and Sun" after a reminder's sub; nothing when it rings every day. */
+private fun quietWords(days: Set<java.time.DayOfWeek>): String = when {
+    days.isEmpty() -> ""
+    days.size == 7 -> ", quiet every day"
+    else -> ", not on " + days.sorted().map { it.getDisplayName(java.time.format.TextStyle.SHORT, Locale.US) }.let { if (it.size == 1) it[0] else it.dropLast(1).joinToString(", ") + " and " + it.last() }
 }

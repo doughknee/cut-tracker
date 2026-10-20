@@ -1,5 +1,12 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
+import com.relentnet.cuttracker.data.liftW
 import com.relentnet.cuttracker.ui.components.num
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -40,7 +47,7 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
         val days = DayMode.entries.filter { e.id in ProgramEngine.plan(it, s).lifts }
         val sub = listOfNotNull(
             e.repTarget.takeIf { it.isNotBlank() }?.let { "$it reps" },
-            best?.let { (w, r) -> "best " + (if (e.step <= 0.0) "×$r" else "${fmtStep(w)}×$r") },
+            best?.let { (w, r) -> "best " + (if (e.step <= 0.0) "×$r" else "${s.liftW(w)}×$r") },
             days.takeIf { it.isNotEmpty() }?.joinToString(", ") { v.day(it).lowercase() + "s" },
         ).joinToString(", ")
         LibRow(e.id, if (e.kind in s.liftKinds) e.kind else "", "${e.sets}×", null, e.name, sub)
@@ -53,10 +60,10 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
         empty = "No lifts yet. Tap + to add one.",
     )
     when {
-        sheet == "new" -> LiftSheet(null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = "" },
+        sheet == "new" -> LiftSheet(s, null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = "" },
             onSave = { e -> vm.updateSettings { s -> s.copy(exercises = s.exercises + e) }; sheet = "" }, onDelete = null)
         sheet.startsWith("lift:") -> s.exercises.firstOrNull { it.id == sheet.removePrefix("lift:") }?.let { e ->
-            LiftSheet(e, kinds, e.kind, onDismiss = { sheet = "" },
+            LiftSheet(s, e, kinds, e.kind, onDismiss = { sheet = "" },
                 onSave = { ne -> vm.updateSettings { s -> s.copy(exercises = s.exercises.map { if (it.id == e.id) ne else it }) }; sheet = "" },
                 onDelete = {
                     haptics.tap()
@@ -89,13 +96,15 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun LiftSheet(e: Exercise?, kinds: List<LibKind>, kind0: String, onDismiss: () -> Unit, onSave: (Exercise) -> Unit, onDelete: (() -> Unit)?) {
+private fun LiftSheet(s: com.relentnet.cuttracker.data.Settings, e: Exercise?, kinds: List<LibKind>, kind0: String, onDismiss: () -> Unit, onSave: (Exercise) -> Unit, onDelete: (() -> Unit)?) {
     var name by remember(e) { mutableStateOf(e?.name ?: "") }
     var kind by remember(e) { mutableStateOf(kind0) }
     var sets by remember(e) { mutableStateOf(e?.sets ?: 3) }
     var reps by remember(e) { mutableStateOf(e?.repTarget ?: "8 to 12") }
-    var step by remember(e) { mutableStateOf(e?.let { fmtStep(it.step) } ?: "5") }
-    val dirty = name != (e?.name ?: "") || kind != kind0 || sets != (e?.sets ?: 3) || reps != (e?.repTarget ?: "8 to 12") || step != (e?.let { fmtStep(it.step) } ?: "5")
+    // The step is typed in the user's unit; an untouched field keeps the stored lb exactly.
+    val step0 = e?.let { s.liftW(it.step) } ?: if (s.kg) "2.5" else "5"
+    var step by remember(e) { mutableStateOf(step0) }
+    val dirty = name != (e?.name ?: "") || kind != kind0 || sets != (e?.sets ?: 3) || reps != (e?.repTarget ?: "8 to 12") || step != step0
     Sheet(if (e == null) "New lift" else "Edit lift", onDismiss, dirty = dirty) {
         SheetField("Name", name, { name = it }, text = true, big = true, placeholder = "What is it")
         SheetLabel("Kind")
@@ -107,11 +116,11 @@ private fun LiftSheet(e: Exercise?, kinds: List<LibKind>, kind0: String, onDismi
             }
             SheetField("Reps", reps, { reps = it }, Modifier.weight(1f), text = true, placeholder = "8 to 12")
         }
-        SheetField("Lb per tap", step, { step = it }, unit = "0 for bodyweight", last = true)
+        SheetField("${s.unit.replaceFirstChar { it.uppercase() }} per tap", step, { step = it }, unit = "0 for bodyweight", last = true)
         SheetButtons(
             if (e == null) "Add it" else "Done", enabled = name.isNotBlank(),
             onPrimary = {
-                val stp = step.num() ?: 0.0
+                val stp = if (e != null && step == step0) e.step else step.num()?.let(s::toLb) ?: 0.0
                 onSave(Exercise(
                     e?.id ?: "x${System.currentTimeMillis()}", name.trim(), e?.block ?: Block.OFF, sets, reps.trim(), stp,
                     unit = if (stp > 0) (e?.unit?.ifEmpty { "Lb" } ?: "Lb") else "", bwLabel = if (stp > 0) null else (e?.bwLabel ?: "Body"), kind = kind,
@@ -122,4 +131,3 @@ private fun LiftSheet(e: Exercise?, kinds: List<LibKind>, kind0: String, onDismi
     }
 }
 
-internal fun fmtStep(v: Double) = if (v % 1.0 == 0.0) v.toInt().toString() else ProgramEngine.fmt1(v)

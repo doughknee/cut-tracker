@@ -1,5 +1,12 @@
 package com.relentnet.cuttracker.ui.route
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
+import com.relentnet.cuttracker.data.liftW
 import com.relentnet.cuttracker.ui.today.resultName
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -107,7 +114,7 @@ fun currentCheckpointDate(st: AppState): LocalDate? =
     st.settings.checkpoints.filter { !it.free }.map { it.localDate }.sorted().firstOrNull { !st.today.isAfter(it) }
 
 @Composable
-fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDate) -> Unit) {
+fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDate) -> Unit, onSettings: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val haptics = LocalHaptics.current
@@ -117,21 +124,24 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
 
     Box(Modifier.fillMaxSize()) {
         Screen {
-            androidx.compose.foundation.layout.FlowRow(
-                Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(8.dp),
-                itemVerticalAlignment = Alignment.Bottom,
-            ) {
-                Column {
-                    Eyebrow("The Route · ${s.lengthWeeks} weeks")
-                    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
-                        Text("Day ${st.dayN.coerceIn(0, s.totalDays)}", color = c.text, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
-                        Text(" / ${s.totalDays}", color = c.dim, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
+            Box(Modifier.fillMaxWidth()) {
+                androidx.compose.foundation.layout.FlowRow(
+                    Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(8.dp),
+                    itemVerticalAlignment = Alignment.Bottom,
+                ) {
+                    Column {
+                        Eyebrow("The Route · ${s.lengthWeeks} weeks")
+                        Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
+                            Text("Day ${st.dayN.coerceIn(0, s.totalDays)}", color = c.text, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
+                            Text(" / ${s.totalDays}", color = c.dim, style = cutStyle(42, 800, 1f, -0.03f, display = true, tabular = true))
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Stat("${st.sends}", CutTheme.vocab.sends, c.good)
+                        Stat("${st.chain.count}", "Chain", c.text, icon = true)
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Stat("${st.sends}", CutTheme.vocab.sends, c.good)
-                    Stat("${st.chain.count}", "Chain", c.text, icon = true)
-                }
+                com.relentnet.cuttracker.ui.components.SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).offset(y = (-16).dp))
             }
             HoldCalendar(st, current, onDay = { pop = it; haptics.tick() }, onCheckpoints = onCheckpoints)
             NextCheckpoint(st, current, onCheckpoints)
@@ -213,7 +223,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                         }
                         val said = day.format(java.time.format.DateTimeFormatter.ofPattern("EEEE MMMM d", java.util.Locale.US)) +
                             (if (r != null && r != DayResult.BEFORE) ", " + resultName(r, CutTheme.vocab) else "") +
-                            (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${ProgramEngine.fmt1(it)} lb" } ?: "") else if (cp?.free == true && r != DayResult.SKIP) ", planned skip" else "")
+                            (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${s.wu(it)}" } ?: "") else if (cp?.free == true && r != DayResult.SKIP) ", planned skip" else "")
                         Box(
                             Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier)
                                 .semantics(mergeDescendants = true) { contentDescription = said },
@@ -257,7 +267,7 @@ private fun NextCheckpoint(st: AppState, current: LocalDate?, onCheckpoints: () 
             Icon(CutIcons.Flag, null, Modifier.size(16.dp), tint = c.accent)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 TileLabel("Next checkpoint")
-                Text(cp.localDate.format(cpFmt) + (cp.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "") + " · $whenText", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
+                Text(cp.localDate.format(cpFmt) + (cp.target?.let { " · ${st.settings.wu(it)}" } ?: "") + " · $whenText", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
                 if (cp.note.isNotBlank()) Sub(CutTheme.vocab.note(cp.note), size = 11)
             }
         }
@@ -348,10 +358,10 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val cpColor = cp?.let { if (it.localDate == currentCheckpointDate(st)) c.accent else c.text2 } ?: c.text2
     val cpLine = cp?.takeIf { !cpAhead }?.let {
         val (state, avg) = checkpointState(st, it.localDate, it.target)
-        val target = it.target?.let { t -> "${ProgramEngine.fmt1(t)} lb target" } ?: "no target"
+        val target = it.target?.let { t -> "${st.settings.wu(t)} target" } ?: "no target"
         val how = when (state) {
-            CpState.HIT -> "hit at ${ProgramEngine.fmt1(avg!!)}"
-            CpState.PASSED -> if (avg != null) "was ${ProgramEngine.fmt1(avg)}" else "passed"
+            CpState.HIT -> "hit at ${st.settings.w(avg!!)}"
+            CpState.PASSED -> if (avg != null) "was ${st.settings.w(avg)}" else "passed"
             else -> "today"
         }
         "Checkpoint, $target, $how.$cpNote" to (if (state == CpState.HIT) c.good else cpColor)
@@ -363,7 +373,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val done = if (date.isBefore(st.today)) ticked else log?.doneItemIds?.count { id -> items.any { it.id == id } } ?: 0
     val weight = st.weighIns.firstOrNull { it.date == date }?.lb
     val skipped = st.settings.checkpoints.any { it.free && it.covers(date) }
-    val (title, color) = if (cpAhead) ("Checkpoint" + (cp!!.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "")) to cpColor else when (r) {
+    val (title, color) = if (cpAhead) ("Checkpoint" + (cp!!.target?.let { " · ${st.settings.wu(it)}" } ?: "")) to cpColor else when (r) {
         DayResult.SEND -> "${v.send} · +$xp xp" to c.good
         DayResult.MIN -> "Min day · +$xp xp" to c.good
         DayResult.FREEZE -> "Freeze · 0 xp" to c.text2
@@ -383,11 +393,11 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
         else -> buildList {
             add(log?.mode?.let { v.day(it) + "." } ?: "No day picked.")
             if (items.isNotEmpty()) add("$done of ${maxOf(done, items.size)} items.")
-            if (weight != null) add("${ProgramEngine.fmt1(weight)} lb.")
+            if (weight != null) add("${st.settings.wu(weight)}.")
             st.liftSets.filter { it.date == date }.groupBy { it.exerciseId }.forEach { (id, sets) ->
                 val e = st.settings.exercises.firstOrNull { it.id == id } ?: return@forEach
                 val w = sets.first().weightLb
-                add("${e.name} ${sets.size}×${sets.first().reps}" + (if (w > 0) " at ${w.toInt()}." else "."))
+                add("${e.name} ${sets.size}×${sets.first().reps}" + (if (w > 0) " at ${st.settings.liftW(w)}." else "."))
             }
         }.joinToString(" ")
     }

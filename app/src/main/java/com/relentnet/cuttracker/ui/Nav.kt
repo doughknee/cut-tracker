@@ -155,6 +155,7 @@ fun App(vm: AppViewModel) {
                         BetaScreen(
                             vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onDay = { nav.navigate(Routes.betaDay(it)) },
                             onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onTargets = { nav.navigate(Routes.BETA_TARGETS) }, onWeek = { nav.navigate(Routes.BETA_WEEK) },
+                            onSettings = { nav.navigate(Routes.SETTINGS) },
                         )
                     } }
                     composable(Routes.BETA_MEALS) { MealsPage(vm, onBack = { nav.popBackStack() }) }
@@ -175,11 +176,13 @@ fun App(vm: AppViewModel) {
                     composable(Routes.ONBOARDING_PREVIEW) {
                         OnboardingScreen(vm, preview = true, onDone = { nav.popBackStack() })
                     }
-                    composable(Routes.ROUTE) { TabRoom { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) } }
+                    composable(Routes.ROUTE) { TabRoom { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }, onSettings = { nav.navigate(Routes.SETTINGS) }) } }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }, onRoute = { nav.goTab(Routes.ROUTE) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS) {
-                        SettingsScreen(vm, onBack = { nav.popBackStack() }, onSection = { nav.navigate(Routes.settingsSection(it)) })
+                        // Back names the tab Settings was opened from.
+                        val from = when (nav.previousBackStackEntry?.destination?.route) { Routes.BETA -> CutTheme.vocab.beta; Routes.ROUTE -> "Route"; else -> "Today" }
+                        SettingsScreen(vm, backLabel = from, onBack = { nav.popBackStack() }, onSection = { nav.navigate(Routes.settingsSection(it)) })
                     }
                 }
             }

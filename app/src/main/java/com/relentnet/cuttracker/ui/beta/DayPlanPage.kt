@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.data.liftW
 import com.relentnet.cuttracker.ui.components.Field
 import com.relentnet.cuttracker.ui.components.matchesQuery
 import androidx.compose.foundation.background
@@ -102,7 +103,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
                 for (e in lifts) {
                     val best = ProgramEngine.sessions(st.liftSets, e.id, st.today.plusDays(1), n = 1).firstOrNull()
                     NumRow(
-                        "${e.sets}×", e.name, sub = best?.let { (w, r) -> "best " + (if (e.step <= 0.0) "×$r" else "${fmtStep(w)}×$r") } ?: "no best yet",
+                        "${e.sets}×", e.name, sub = best?.let { (w, r) -> "best " + (if (e.step <= 0.0) "×$r" else "${s.liftW(w)}×$r") } ?: "no best yet",
                         right = if (lifts.isNotEmpty()) "${if (mode == DayMode.CLIMB) ProgramSpec.XP_PUSH else ProgramSpec.XP_CORE} xp for the block" else null,
                         onClick = { sheet = "lift:" + e.id },
                     )

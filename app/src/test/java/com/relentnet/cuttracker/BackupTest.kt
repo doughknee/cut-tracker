@@ -32,7 +32,8 @@ class BackupTest {
         library = listOf(LibMeal("lib_x", "Eggs + toast", 30, 400, "Three eggs, two slices.")),
         customLooks = listOf(CustomLook("custom_a", "Mine", 200, 2)), palette = "custom_a",
         tourSeen = true, weighReminder = false, pickReminder = false, lastExport = LocalDate.of(2026, 10, 24), ledgerKept = true,
-        training = "Run",
+        training = "Run", kg = true,
+        weighQuiet = setOf(java.time.DayOfWeek.SUNDAY), pickQuiet = setOf(java.time.DayOfWeek.SATURDAY, java.time.DayOfWeek.SUNDAY),
     )
 
     private val backup = Backup(
@@ -57,6 +58,17 @@ class BackupTest {
         assertEquals(backup, back)
         assertEquals(settings, back.settings.toSettings())
         assertEquals("Run", back.settings.toSettings().training)
+        assertEquals(true, back.settings.toSettings().kg)
+        assertEquals(setOf(java.time.DayOfWeek.SATURDAY, java.time.DayOfWeek.SUNDAY), back.settings.toSettings().pickQuiet)
+    }
+
+    @Test fun anExportFromBeforeUnitsReadsAsPoundsEveryDay() {
+        val json = backupJson.encodeToString(Backup.serializer(), backup)
+            .replace(Regex("""\s*"kg": true,"""), "").replace(Regex("""\s*"(weighQuiet|pickQuiet)": \[[^\]]*\],"""), "")
+        assertTrue("\"kg\"" !in json && "Quiet" !in json)
+        val back = backupJson.decodeFromString(Backup.serializer(), json).settings.toSettings()
+        assertEquals(false, back.kg)
+        assertEquals(emptySet<java.time.DayOfWeek>(), back.weighQuiet)
     }
 
     @Test fun anExportFromBeforeNormalModeReadsAsClimbing() {

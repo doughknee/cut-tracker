@@ -1,5 +1,11 @@
 package com.relentnet.cuttracker.ui.onboarding
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
 import com.relentnet.cuttracker.ui.components.int
 import com.relentnet.cuttracker.ui.components.num
 import android.app.DatePickerDialog
@@ -76,8 +82,11 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
     var step by rememberSaveable { mutableIntStateOf(0) }
     // Back walks the steps backwards before it leaves.
     androidx.activity.compose.BackHandler(enabled = step > 0) { step-- }
-    var sw by rememberSaveable { mutableStateOf(if (preview) "" else st.weighIns.firstOrNull { it.date == st.today }?.lb?.let(ProgramEngine::fmt1) ?: "") }
-    var tw by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(s.targetWeight)) }
+    var sw by rememberSaveable { mutableStateOf(if (preview) "" else st.weighIns.firstOrNull { it.date == st.today }?.lb?.let { s.w(it) } ?: "") }
+    var tw by rememberSaveable { mutableStateOf(s.w(s.targetWeight)) }
+    // The two weights are typed in the unit picked beside them; everything is saved in lb.
+    var kg by rememberSaveable { mutableStateOf(s.kg) }
+    fun lb(v: Double?) = v?.let { if (kg) it / com.relentnet.cuttracker.data.Units.KG_PER_LB else it }
     var start by rememberSaveable { mutableStateOf(com.relentnet.cuttracker.engine.ProgramEngine.programDay(java.time.LocalDateTime.now(), s.resetHour).toString()) }
     var weeks by rememberSaveable { mutableStateOf(s.lengthWeeks.toString()) }
     var time by rememberSaveable { mutableStateOf(s.weighInTime.toString()) }
@@ -122,8 +131,8 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
             1 -> if (sw.num() == null) { swMissing = true; swFocus.requestFocus(); return }
             2 -> {
                 // Prefill the targets once, from the weights: a common starting point, not a prescription.
-                val a = sw.num() ?: s.startWeight
-                val b = tw.num() ?: s.targetWeight
+                val a = lb(sw.num()) ?: s.startWeight
+                val b = lb(tw.num()) ?: s.targetWeight
                 if (cal.isBlank()) cal = ((a * 12 / 50).toInt() * 50).coerceIn(1200, 4000).toString()
                 if (pro.isBlank()) pro = ((b * 0.9 / 5).toInt() * 5).coerceIn(80, 300).toString()
             }
@@ -131,8 +140,8 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
                 if (preview) { vm.showToast("Preview done. Nothing was saved."); onDone(); return }
                 if (starting) return   // a second tap while the first save runs does nothing
                 starting = true
-                val startWeight = sw.num() ?: s.startWeight
-                val targetWeight = tw.num() ?: s.targetWeight
+                val startWeight = lb(sw.num()) ?: s.startWeight
+                val targetWeight = lb(tw.num()) ?: s.targetWeight
                 val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
                 val w = weeks.int()?.coerceIn(1, 52) ?: 12
                 vm.updateSettings(then = {
@@ -143,7 +152,7 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
                         startDate = startDate, lengthWeeks = w, weighInTime = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime),
                         caloriesP1 = cal.int() ?: s.caloriesP1, protein = pro.int() ?: s.protein,
                         checkpoints = ProgramSpec.defaultCheckpoints(startDate, startWeight, targetWeight, w),
-                        welcomeBackSeen = null, lastOpenDate = null, training = if (climbs) null else trainName.trim(),
+                        welcomeBackSeen = null, lastOpenDate = null, training = if (climbs) null else trainName.trim(), kg = kg,
                     ) }
                 return
             }
@@ -194,14 +203,25 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
                 1 -> {
                     Big("Where you're starting.")
                     LaunchedEffect(Unit) { swFocus.requestFocus() }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Switching converts what is typed, so a number is never read in the wrong unit.
+                        fun to(k: Boolean) {
+                            if (k == kg) return
+                            val f = if (k) com.relentnet.cuttracker.data.Units.KG_PER_LB else 1 / com.relentnet.cuttracker.data.Units.KG_PER_LB
+                            sw.num()?.let { sw = ProgramEngine.fmt1(it * f) }; tw.num()?.let { tw = ProgramEngine.fmt1(it * f) }
+                            kg = k
+                        }
+                        Pill("Pounds", on = !kg, onClick = { to(false) })
+                        Pill("Kilograms", on = kg, onClick = { to(true) })
+                    }
                     Fld("This morning, before food") {
-                        Field(sw, { sw = it; swMissing = false }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, placeholder = "181.8", radius = 12.dp, padding = 18.dp, background = c.surface, border = if (swMissing) c.accent else c.mutedBorder, focusRequester = swFocus, imeAction = ImeAction.Next, onDone = { })
+                        Field(sw, { sw = it; swMissing = false }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, placeholder = if (kg) "82.5" else "181.8", radius = 12.dp, padding = 18.dp, background = c.surface, border = if (swMissing) c.accent else c.mutedBorder, focusRequester = swFocus, imeAction = ImeAction.Next, onDone = { })
                     }
                     Fld("Where you want to land") {
                         Field(tw, { tw = it }, Modifier.fillMaxWidth(), height = 64.dp, fontSize = 32, radius = 12.dp, padding = 18.dp, background = c.surface, onDone = ::next)
                     }
                     val a = sw.num(); val b = tw.num(); val w = (weeks.int() ?: 12).coerceIn(1, 52)
-                    Hint(if (swMissing) "Type this morning's weight to go on. A guess is fine; fix it tomorrow." else if (a != null && b != null) "${ProgramEngine.fmt1(a - b)} lb over $w weeks is ${"%.2f".format(Locale.US, (a - b) / w)} lb a week." else "About 1 lb a week is the pace.", alert = swMissing)
+                    Hint(if (swMissing) "Type this morning's weight to go on. A guess is fine; fix it tomorrow." else if (a != null && b != null) "${ProgramEngine.fmt1(a - b)} ${if (kg) "kg" else "lb"} over $w weeks is ${"%.2f".format(Locale.US, (a - b) / w)} ${if (kg) "kg" else "lb"} a week." else if (kg) "About half a kilo a week is the pace." else "About 1 lb a week is the pace.", alert = swMissing)
                 }
                 2 -> {
                     Big("When it runs.")

@@ -17,6 +17,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -81,6 +82,11 @@ data class Settings(
     val training: String? = null,
     /** Developer options, unlocked by tapping the version on About seven times. This phone only, not in backups. */
     val devOptions: Boolean = false,
+    /** Weights show and are typed in kg. Rows and settings stay in lb; see [Units]. */
+    val kg: Boolean = false,
+    /** Days of the week each reminder stays quiet on. */
+    val weighQuiet: Set<DayOfWeek> = emptySet(),
+    val pickQuiet: Set<DayOfWeek> = emptySet(),
 ) {
     val recipeImportOn: Boolean get() = onlineFeatures && recipeImport
     val barcodeLookupOn: Boolean get() = onlineFeatures && barcodeLookup
@@ -137,6 +143,9 @@ class SettingsStore(context: Context) {
         val barcodeLookup = booleanPreferencesKey("barcodeLookup")
         val training = stringPreferencesKey("training")
         val devOptions = booleanPreferencesKey("devOptions")
+        val kg = booleanPreferencesKey("kg")
+        val weighQuiet = stringPreferencesKey("weighQuiet")
+        val pickQuiet = stringPreferencesKey("pickQuiet")
     }
 
     val flow: Flow<Settings> = ds.data.map { p -> read(p) }
@@ -195,6 +204,9 @@ class SettingsStore(context: Context) {
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
             training = p[K.training],
             devOptions = p[K.devOptions] ?: false,
+            kg = p[K.kg] ?: false,
+            weighQuiet = days(p[K.weighQuiet]),
+            pickQuiet = days(p[K.pickQuiet]),
         )
     }
 
@@ -243,7 +255,13 @@ class SettingsStore(context: Context) {
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)
         if (s.training != null) p[K.training] = s.training else p.remove(K.training)
         p[K.devOptions] = s.devOptions
+        p[K.kg] = s.kg
+        p[K.weighQuiet] = s.weighQuiet.joinToString(",") { it.value.toString() }
+        p[K.pickQuiet] = s.pickQuiet.joinToString(",") { it.value.toString() }
     }
+
+    /** "1,7" is Monday and Sunday; anything unreadable is dropped. */
+    private fun days(v: String?): Set<DayOfWeek> = v.orEmpty().split(',').mapNotNull { it.trim().toIntOrNull()?.takeIf { n -> n in 1..7 }?.let(DayOfWeek::of) }.toSet()
 
     suspend fun clear() = ds.edit { it.clear() }
 }

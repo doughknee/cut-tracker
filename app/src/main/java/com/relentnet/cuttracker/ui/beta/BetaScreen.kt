@@ -1,11 +1,18 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
 import com.relentnet.cuttracker.data.vocab
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -57,14 +64,19 @@ private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Loca
 fun BetaScreen(
     vm: AppViewModel,
     onMeals: () -> Unit, onLifts: () -> Unit, onDay: (DayMode) -> Unit,
-    onCheckpoints: () -> Unit, onTargets: () -> Unit, onWeek: () -> Unit,
+    onCheckpoints: () -> Unit, onTargets: () -> Unit, onWeek: () -> Unit, onSettings: () -> Unit,
 ) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     Column(Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.statusBars).padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 14.dp)) {
-        Eyebrow("The plan for the route")
-        Text(CutTheme.vocab.beta, color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+        Box(Modifier.fillMaxWidth()) {
+            Column {
+                Eyebrow("The plan for the route")
+                Text(CutTheme.vocab.beta, color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+            }
+            com.relentnet.cuttracker.ui.components.SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).offset(y = (-16).dp))
+        }
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f)) {
         val scrolls = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f || maxHeight < 560.dp
         Column(
@@ -199,8 +211,8 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
         Column(Modifier.weight(1f).padding(top = 6.dp), verticalArrangement = Arrangement.Center) {
             if (next?.target != null) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(ProgramEngine.fmt1(next.target), color = c.text, style = cutStyle(32, 800, 1f, -0.03f, display = true, tabular = true))
-                    Text("lb on ${next.localDate.format(cpFmt)}, ${com.relentnet.cuttracker.ui.components.inDays(ChronoUnit.DAYS.between(st.today, next.localDate))}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(s.w(next.target), color = c.text, style = cutStyle(32, 800, 1f, -0.03f, display = true, tabular = true))
+                    Text("${s.unit} on ${next.localDate.format(cpFmt)}, ${com.relentnet.cuttracker.ui.components.inDays(ChronoUnit.DAYS.between(st.today, next.localDate))}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (i in cps.indices) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < idx) c.good else if (i == idx) c.accent else c.hairline))
@@ -210,7 +222,7 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
         if (next?.target != null) {
             val toGo = avg - next.target
             Text(
-                "${idx + 1} of ${cps.size}, ${ProgramEngine.fmt1(kotlin.math.abs(toGo))} ${if (toGo >= 0) "to go" else "under"}, ${if (behind) "behind pace" else "on pace"}",
+                "${idx + 1} of ${cps.size}, ${s.w(kotlin.math.abs(toGo))} ${if (toGo >= 0) "to go" else "under"}, ${if (behind) "behind pace" else "on pace"}",
                 color = if (behind) c.accent else c.good, style = cutStyle(11, 600, 1.2f, tabular = true), maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }

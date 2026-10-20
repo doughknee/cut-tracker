@@ -4,10 +4,22 @@ What changed in Sendline, from the user's side. Newest first.
 
 ## Unreleased
 
+### Settings from every tab
+
+- The gear sits at the top right of Today, Beta and Route, in the same spot. Back from Settings names the tab you came from.
+- The week on Today's wall moved to a pill at the foot of the wall, beside the wall guide. Swipe the wall sideways for the week before or after.
+
+### Settings, sorted
+
+- Appearance is now two pages. Theme is the look: dark or light, the calendar, the looks grid. App is how Sendline behaves: the words, Hide completed, when the day rolls over (moved from Nudges), units, haptics.
+- Kilograms. Settings, App, Units switches every weight you read or type: the weigh-in, the widget, Weight and its chart, Targets, checkpoints and lifts. Weights are kept the same underneath, so switching back and forth loses nothing. Setup asks too, beside the first weigh-in.
+- Quiet days. Each reminder has a row of days; tap one and that reminder stays quiet on it.
+- Every Settings page opens on a picture of what it changes: Nudges shows the reminders as they land in the shade, App a corner of Today in your words and unit, Data what is on this phone (days, weigh-ins, lift sets, photos and their size, and how fresh the last backup is), About the app in one line.
+
 ### For people who do not climb
 
 - Setup asks "Do you climb?". Something else asks what you call your training (Run, Gym, Practice) and the app drops the climbing words: Climb day is Training day, the session takes your word, a Send is a Full day, V0 to V10 are Level 1 to 11, the Beta tab is Plan, and a hold is a day.
-- Switch any time under Settings, Appearance, Words. The wall, the shapes, the rope, the colors and every number stay the same.
+- Switch any time under Settings, App, Words. The wall, the shapes, the rope, the colors and every number stay the same.
 - The widget, the reminders, the takeover and the badges follow the same words.
 - A backup carries the choice, and an older backup restores as climbing.
 

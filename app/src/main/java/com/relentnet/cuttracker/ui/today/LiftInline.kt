@@ -1,5 +1,12 @@
 package com.relentnet.cuttracker.ui.today
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
+import com.relentnet.cuttracker.data.liftW
 import androidx.compose.ui.focus.onFocusChanged
 import com.relentnet.cuttracker.ui.components.Field
 import com.relentnet.cuttracker.ui.components.repeatingPress
@@ -77,7 +84,7 @@ fun LiftInline(vm: AppViewModel, mode: DayMode, tickBlock: Boolean = false, onSa
         for (e in exercises) {
             val v = draft[key(e.id)]?.let { Entry(it.first, it.second) } ?: Entry(last[e.id]?.first ?: 0.0, last[e.id]?.second ?: 10)
             ExerciseCard(
-                e, v, last[e.id], history[e.id] ?: emptyList(), sets = e.sets,
+                s, e, v, last[e.id], history[e.id] ?: emptyList(), sets = e.sets,
                 onChange = { draft[key(e.id)] = it.weight to it.reps; haptics.tick() },
             )
         }
@@ -95,7 +102,7 @@ fun LiftInline(vm: AppViewModel, mode: DayMode, tickBlock: Boolean = false, onSa
 }
 
 @Composable
-private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, history: List<Pair<Double, Int>>, sets: Int, onChange: (Entry) -> Unit) {
+private fun ExerciseCard(s: com.relentnet.cuttracker.data.Settings, e: Exercise, v: Entry, last: Pair<Double, Int>?, history: List<Pair<Double, Int>>, sets: Int, onChange: (Entry) -> Unit) {
     val c = CutTheme.colors
     val bw = e.step <= 0.0
     val upW = last != null && v.weight > last.first
@@ -108,7 +115,7 @@ private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, histor
                     when {
                         last == null -> "No session yet"
                         bw -> "Last: × ${last.second}"
-                        else -> "Last: ${fmtLb(last.first)} × ${last.second}"
+                        else -> "Last: ${s.liftW(last.first)} × ${last.second}"
                     },
                     color = c.text2, style = cutStyle(11, 600, 1f, tabular = true),
                 )
@@ -117,7 +124,7 @@ private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, histor
                 history.forEachIndexed { i, (w, r) ->
                     val beat = i > 0 && ProgramEngine.beat(w to r, history[i - 1])
                     Text(
-                        if (bw) "×$r" else "${fmtLb(w)}×$r",
+                        if (bw) "×$r" else "${s.liftW(w)}×$r",
                         color = if (beat) c.good else c.text2, style = cutStyle(11, 700, 1f, tabular = true),
                         modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(c.ground).padding(6.dp, 4.dp),
                     )
@@ -126,12 +133,12 @@ private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, histor
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(e.unit.uppercase(), color = c.text2, style = cutStyle(10, 600, 1f, 0.1f))
+                    Text((if (e.unit.equals("lb", ignoreCase = true)) s.unit else e.unit).uppercase(), color = c.text2, style = cutStyle(10, 600, 1f, 0.1f))
                     if (bw) Box(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(9.dp)).background(c.ground), contentAlignment = Alignment.Center) {
                         Text(e.bwLabel ?: "Body", color = c.text, style = cutStyle(22, 800, 1f))
                     } else Stepper(
-                        fmtLb(v.weight), upW, onMinus = { onChange(v.copy(weight = (v.weight - e.step).coerceAtLeast(0.0))) }, onPlus = { onChange(v.copy(weight = v.weight + e.step)) },
-                        onType = { onChange(v.copy(weight = it.coerceIn(0.0, 2000.0))) },
+                        s.liftW(v.weight), upW, onMinus = { onChange(v.copy(weight = (v.weight - e.step).coerceAtLeast(0.0))) }, onPlus = { onChange(v.copy(weight = v.weight + e.step)) },
+                        onType = { onChange(v.copy(weight = s.toLb(it).coerceIn(0.0, 2000.0))) },
                     )
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -146,7 +153,6 @@ private fun ExerciseCard(e: Exercise, v: Entry, last: Pair<Double, Int>?, histor
     }
 }
 
-private fun fmtLb(v: Double) = if (v % 1.0 == 0.0) v.toInt().toString() else ProgramEngine.fmt1(v)
 
 /** [−][value][+]: the buttons repeat while held, and a tap on the value opens the keyboard to type it. */
 @Composable

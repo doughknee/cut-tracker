@@ -1,5 +1,11 @@
 package com.relentnet.cuttracker.ui
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -134,7 +140,7 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     fun saveLibraryMeal(m: com.relentnet.cuttracker.data.LibMeal) = viewModelScope.launch { repo.saveLibraryMeal(m) }
     fun logWeight(lb: Double, date: java.time.LocalDate? = null) = viewModelScope.launch {
         repo.logWeight(lb, date)
-        showToast("Logged ${com.relentnet.cuttracker.engine.ProgramEngine.fmt1(lb)} · +${ProgramSpec.XP_WEIGH} xp")
+        showToast("Logged ${state.value.settings.wu(lb)} · +${ProgramSpec.XP_WEIGH} xp")
     }
     fun saveLiftSession(entries: List<Repo.LiftEntry>, tickBlock: String? = null) = viewModelScope.launch { repo.saveLiftSession(entries, tickBlock) }
     fun savePhoto(path: String) = viewModelScope.launch { repo.savePhoto(path) }

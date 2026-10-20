@@ -1,5 +1,11 @@
 package com.relentnet.cuttracker.ui.today
 
+import com.relentnet.cuttracker.data.w
+import com.relentnet.cuttracker.data.wu
+import com.relentnet.cuttracker.data.unit
+import com.relentnet.cuttracker.data.shown
+import com.relentnet.cuttracker.data.toLb
+import com.relentnet.cuttracker.data.stepped
 import com.relentnet.cuttracker.ui.components.ConfirmDialog
 import com.relentnet.cuttracker.ui.components.int
 import com.relentnet.cuttracker.ui.components.num
@@ -145,7 +151,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     var seen by remember(date) { mutableStateOf(done) }
     val fresh = done - seen
     LaunchedEffect(done) { if (fresh.isNotEmpty()) kotlinx.coroutines.delay(450); seen = done }
-    // Hide completed (Settings, Appearance) folds ticked rows into Done; off, they stay in place, ticked.
+    // Hide completed (Settings, App) folds ticked rows into Done; off, they stay in place, ticked.
     val hide = st.settings.hideDone
     val remaining = items.filter { !hide || it.id !in done || it.id in fresh }
     val finished = if (hide) items.filter { it.id in done && it.id !in fresh } else emptyList()
@@ -258,12 +264,12 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
             }
             if (items.isEmpty() && !past && ProgramSpec.ITEM_WEIGH !in done) {
                 CheckRow(
-                    label = "Weigh in", sub = prevWeigh?.let { "Last ${ProgramEngine.fmt1(it.lb)}. Tap to log." } ?: "Before food. Log it, ignore the number.",
+                    label = "Weigh in", sub = prevWeigh?.let { "Last ${st.settings.w(it.lb)}. Tap to log." } ?: "Before food. Log it, ignore the number.",
                     time = null, xp = ProgramSpec.XP_WEIGH, done = false, next = true,
                     onClick = { weighOpen = !weighOpen },
                 )
                 Unfold(weighOpen) {
-                    WeighInline(prefill = prevWeigh?.lb ?: st.settings.startWeight, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb) })
+                    WeighInline(st.settings, prefill = prevWeigh?.lb ?: st.settings.startWeight, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb) })
                 }
             }
             if (items.isEmpty() && !(st.ended && !past)) {
@@ -279,8 +285,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 val isDone = it.id in done
                 val reading = if (isDone && it.id == ProgramSpec.ITEM_WEIGH) dayReading else null
                 CheckRow(
-                    label = if (reading != null) "${it.label} · ${ProgramEngine.fmt1(reading.lb)} lb" else it.label,
-                    sub = if (reading != null) "Tap to fix it." else if (it.id == ProgramSpec.ITEM_WEIGH && prevWeigh != null) "Last ${ProgramEngine.fmt1(prevWeigh.lb)}. Tap to log." else it.sub,
+                    label = if (reading != null) "${it.label} · ${st.settings.wu(reading.lb)}" else it.label,
+                    sub = if (reading != null) "Tap to fix it." else if (it.id == ProgramSpec.ITEM_WEIGH && prevWeigh != null) "Last ${st.settings.w(prevWeigh.lb)}. Tap to log." else it.sub,
                     time = it.time, xp = it.xp, done = it.id in done, next = isNext,
                     tag = if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && ProgramEngine.weekWon(st.liftSets, st.today)) "Week won" else null,
                     onClick = {
@@ -297,7 +303,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 )
                 Unfold(it.id == ProgramSpec.ITEM_WEIGH && weighOpen) {
                     WeighInline(
-                        prefill = reading?.lb ?: prevWeigh?.lb ?: st.settings.startWeight,
+                        st.settings, prefill = reading?.lb ?: prevWeigh?.lb ?: st.settings.startWeight,
                         onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) },
                     )
                 }
@@ -337,7 +343,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                         val reading = if (it.id == ProgramSpec.ITEM_WEIGH) dayReading else null
                         val meal = if (it.pick) it.sub?.substringBefore(". ")?.takeIf { m -> m.isNotBlank() } else null
                         CheckRow(
-                            label = if (reading != null) "${it.label} · ${ProgramEngine.fmt1(reading.lb)} lb" else if (meal != null) "${it.label} · $meal" else it.label,
+                            label = if (reading != null) "${it.label} · ${st.settings.wu(reading.lb)}" else if (meal != null) "${it.label} · $meal" else it.label,
                             sub = null, time = null, xp = it.xp, done = true, compact = true,
                             onClick = {
                                 when {
@@ -357,7 +363,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                             )
                         }
                         if (reading != null) Unfold(weighOpen) {
-                            WeighInline(prefill = reading.lb, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) })
+                            WeighInline(st.settings, prefill = reading.lb, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) })
                         }
                     }
                 } }
@@ -382,7 +388,7 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
     val c = CutTheme.colors
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
-    val shown = tickedFloat((avg ?: s.startWeight).toFloat())
+    val shown = tickedFloat(s.shown(avg ?: s.startWeight).toFloat())
     val gap = avg?.let { it - ProgramEngine.paceWeight(st.dayN.coerceIn(1, s.totalDays), s, ProgramEngine.paceAnchor(st.weighIns, s)) }
     val onPace = gap != null && gap <= ProgramSpec.PACE_TOLERANCE_LB
     Card(Modifier.fillMaxWidth().clickable(onClick = onWeight, role = Role.Button), padding = PaddingValues(14.dp, 12.dp)) {
@@ -391,11 +397,11 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
                 TileLabel("7-day average")
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(if (avg == null) "--" else ProgramEngine.fmt1(shown.toDouble()), color = c.text, style = cutStyle(22, 800, 1f, tabular = true))
-                    Text(" lb", color = c.text2, style = cutStyle(13, 600, 1f))
+                    Text(" ${s.unit}", color = c.text2, style = cutStyle(13, 600, 1f))
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                if (gap != null) Text(paceWords(gap), color = if (onPace) c.good else c.accent, style = cutStyle(12, 700, 1f, tabular = true))
+                if (gap != null) Text(paceWords(gap, s), color = if (onPace) c.good else c.accent, style = cutStyle(12, 700, 1f, tabular = true))
                 else Text("No readings yet", color = c.text2, style = cutStyle(12, 600, 1f))
                 Text("WEIGHT ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
             }
@@ -447,7 +453,7 @@ private fun ToppedOut(st: AppState, onNext: () -> Unit) {
             Text(CutTheme.vocab.toppedOut, color = c.text, style = cutStyle(22, 800, 1.1f, -0.02f, display = true))
             Sub(
                 "${st.settings.totalDays} days, ${CutTheme.vocab.sendCount(st.sends)}, chain ${st.chain.count}" +
-                    (if (avg != null) ", ${ProgramEngine.fmt1(avg)} lb on the last average." else ".") +
+                    (if (avg != null) ", ${st.settings.wu(avg)} on the last average." else ".") +
                     " Everything you logged stays. Start the next route whenever you are ready.",
             )
             BigButton("Start the next route", onClick = onNext, modifier = Modifier.fillMaxWidth(), height = 48.dp, fontSize = 13)
@@ -561,16 +567,17 @@ private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int
 }
 
 @Composable
-private fun WeighInline(prefill: Double, onLog: (Double) -> Unit) {
+private fun WeighInline(s: com.relentnet.cuttracker.data.Settings, prefill: Double, onLog: (Double) -> Unit) {
     val c = CutTheme.colors
-    var text by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(prefill)) }
+    // Typed and stepped in the user's unit, logged in lb.
+    var text by rememberSaveable { mutableStateOf(s.w(prefill)) }
     var bad by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     val haptics = LocalHaptics.current
     LaunchedEffect(Unit) { focus.requestFocus() }
-    fun adjust(d: Double) { text = ProgramEngine.fmt1((text.num() ?: prefill) + d); haptics.tick() }
+    fun adjust(d: Double) { text = ProgramEngine.fmt1((text.num() ?: s.shown(prefill)) + d); haptics.tick() }
     fun go() {
-        val lb = text.num()?.takeIf { it in 40.0..1000.0 }
+        val lb = text.num()?.let(s::toLb)?.takeIf { it in 40.0..1000.0 }
         if (lb != null) onLog(lb) else { haptics.pattern(0, 40, 60, 40); bad = true }
     }
     Column(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -583,7 +590,7 @@ private fun WeighInline(prefill: Double, onLog: (Double) -> Unit) {
             contentAlignment = Alignment.Center,
         ) { Text("LOG", color = c.onAccent, style = cutStyle(12, 800, 1f, 0.06f)) }
     }
-    if (bad) Text("Type a weight like 181.4.", color = c.accent, style = cutStyle(12, 600, 1.2f))
+    if (bad) Text("Type a weight like ${if (s.kg) "82.3" else "181.4"}.", color = c.accent, style = cutStyle(12, 600, 1.2f))
     }
 }
 

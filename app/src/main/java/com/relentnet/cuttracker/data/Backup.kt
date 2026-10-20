@@ -37,6 +37,9 @@ data class SettingsDto(
     val ledgerKept: Boolean = false,
     val hideDone: Boolean = false,
     val training: String? = null,
+    val kg: Boolean = false,
+    /** ISO days of the week, Monday 1. */
+    val weighQuiet: List<Int> = emptyList(), val pickQuiet: List<Int> = emptyList(),
     // Last on purpose: a v1 export ends its settings with the library, and the test for that cuts the file there.
     val library: List<LibMeal> = ProgramSpec.library,
 )
@@ -55,7 +58,8 @@ fun Settings.toDto() = SettingsDto(
     onboarded, phase, startDate.toString(), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
     weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
     plans.mapKeys { it.key.name }, liftKinds, onlineFeatures, recipeImport, barcodeLookup, palette, paletteByCalendar, customLooks, tourSeen,
-    weighReminder, pickReminder, lastExport?.toString(), ledgerKept, hideDone, training, library,
+    weighReminder, pickReminder, lastExport?.toString(), ledgerKept, hideDone, training, kg,
+    weighQuiet.map { it.value }.sorted(), pickQuiet.map { it.value }.sorted(), library,
 )
 
 fun SettingsDto.toSettings() = Settings(
@@ -66,7 +70,8 @@ fun SettingsDto.toSettings() = Settings(
     onlineFeatures = onlineFeatures, recipeImport = recipeImport, barcodeLookup = barcodeLookup, palette = palette, paletteByCalendar = paletteByCalendar, customLooks = customLooks,
     tourSeen = tourSeen, weighReminder = weighReminder, pickReminder = pickReminder,
     lastExport = lastExport?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
-    ledgerKept = ledgerKept, hideDone = hideDone, training = training,
+    ledgerKept = ledgerKept, hideDone = hideDone, training = training, kg = kg,
+    weighQuiet = weighQuiet.filter { it in 1..7 }.map(java.time.DayOfWeek::of).toSet(), pickQuiet = pickQuiet.filter { it in 1..7 }.map(java.time.DayOfWeek::of).toSet(),
 )
 
 suspend fun Repo.buildBackup(): Backup = Backup(

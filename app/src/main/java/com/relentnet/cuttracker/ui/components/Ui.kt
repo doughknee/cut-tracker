@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.animateColorAsState
@@ -219,3 +220,19 @@ fun TileLabel(text: String, color: Color = CutTheme.colors.text2) {
 fun SmallIcon(icon: ImageVector, tint: Color, size: Dp = 14.dp) {
     Icon(icon, null, Modifier.size(size), tint = tint)
 }
+
+/** A small framed icon button, the wall's and every tab header's. */
+@Composable
+fun ChromeButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, tint: Color? = null, onClick: () -> Unit) {
+    val c = CutTheme.colors
+    val shape = RoundedCornerShape(9.dp)
+    Box(
+        modifier.minimumInteractiveComponentSize().size(32.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape)
+            .pressable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, contentDescription = label, Modifier.size(15.dp), tint = if (!enabled) c.dim else tint ?: c.text2) }
+}
+
+/** Settings, from the top right of every tab. */
+@Composable
+fun SettingsGear(onClick: () -> Unit, modifier: Modifier = Modifier) = ChromeButton(CutIcons.Gear, "Open settings", modifier, tint = CutTheme.colors.accent, onClick = onClick)
