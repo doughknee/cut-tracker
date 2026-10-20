@@ -33,7 +33,7 @@ object Reminders {
         val nm = context.getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL) == null) {
             nm.createNotificationChannel(NotificationChannel(CHANNEL, "Reminders", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Weigh-in and the 7pm day pick"
+                description = "Weigh-in and the day pick"
             })
         }
     }
@@ -71,7 +71,7 @@ object Reminders {
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(if (kind == KIND_WEIGH) "Weigh in" else "Pick a day")
-            .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "It's 7pm and no day is picked. Guessing Rest day. Weigh in and hit protein and the chain is safe.")
+            .setContentText(if (kind == KIND_WEIGH) "Before food. Log it, ignore the number." else "No day picked yet. Guessing Rest day. Weigh in and hit protein and the chain is safe.")
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
             .setAutoCancel(true)

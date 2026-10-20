@@ -66,6 +66,13 @@ import kotlin.math.floor
 
 private val shortDate: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 
+/** The one sentence about the pace, from the average's gap to the pace line. Weight's hero and Today's tile both say it. */
+fun paceWords(gap: Double): String = when {
+    gap <= -ProgramSpec.PACE_TOLERANCE_LB -> "${ProgramEngine.fmt1(-gap)} lb ahead of pace"
+    gap <= ProgramSpec.PACE_TOLERANCE_LB -> "On pace"
+    else -> "${ProgramEngine.fmt1(gap)} lb behind pace"
+}
+
 @Composable
 fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
     val c = CutTheme.colors
@@ -75,7 +82,6 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     val shownAvg = tickedFloat((avg ?: s.startWeight).toFloat())
     val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
-    val onPace = avg != null && ProgramEngine.onPace(avg, st.dayN, s, anchor)
     val prefill = st.lastWeighIn?.lb ?: s.startWeight
     var text by rememberSaveable(prefill) { mutableStateOf(ProgramEngine.fmt1(prefill)) }
     fun log() { text.toDoubleOrNull()?.takeIf { it > 0 }?.let { haptics.tap(); vm.logWeight(it) } }
@@ -105,15 +111,7 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit) {
                 }
             }
             if (gap != null) {
-                val ahead = gap <= ProgramSpec.PACE_TOLERANCE_LB
-                Text(
-                    when {
-                        gap <= -ProgramSpec.PACE_TOLERANCE_LB -> "${ProgramEngine.fmt1(-gap)} lb ahead of pace"
-                        ahead -> "On pace"
-                        else -> "${ProgramEngine.fmt1(gap)} lb behind pace"
-                    },
-                    color = if (ahead) c.good else c.accent, style = cutStyle(13, 700, 1.2f, tabular = true), modifier = Modifier.padding(top = 8.dp),
-                )
+                Text(paceWords(gap), color = if (gap <= ProgramSpec.PACE_TOLERANCE_LB) c.good else c.accent, style = cutStyle(13, 700, 1.2f, tabular = true), modifier = Modifier.padding(top = 8.dp))
             } else Sub("Log a weigh-in to start the average.", Modifier.padding(top = 8.dp), size = 12)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

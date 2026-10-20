@@ -90,6 +90,9 @@ import com.relentnet.cuttracker.ui.components.Sub
 import com.relentnet.cuttracker.ui.components.TileLabel
 import com.relentnet.cuttracker.ui.components.tickedFloat
 import com.relentnet.cuttracker.ui.components.tickedInt
+import com.relentnet.cuttracker.ui.beta.dayTitle
+import com.relentnet.cuttracker.ui.beta.dayWhere
+import com.relentnet.cuttracker.ui.weight.paceWords
 import com.relentnet.cuttracker.ui.theme.CutIcons
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
@@ -204,6 +207,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
         ) { stage -> when (stage) {
             0 -> ToppedOut(st, onNext = { vm.saveSettings(st.settings.copy(onboarded = false)) })
             1 -> LateCard(
+                at = st.settings.pickTime,
                 onRest = { vm.setMode(DayMode.REST) },
                 onClimb = { vm.setMode(DayMode.CLIMB, preCheck = setOf(ProgramSpec.ITEM_CLIMB)) },
             )
@@ -245,6 +249,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                         }
                     },
                     onSwipeCheck = { haptics.tap(); vm.toggleItem(it.id, date = editDate) },
+                    // Rows that open something (a meal picker, the lifts) still tick in one tap on the box, like the widget.
+                    onCheck = if (it.pick || (it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past)) ({ haptics.tap(); vm.toggleItem(it.id, date = editDate) }) else null,
                 )
                 Unfold(it.id == ProgramSpec.ITEM_WEIGH && weighOpen) {
                     WeighInline(
@@ -298,14 +304,15 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     if (infoOpen) WallInfoSheet(onDismiss = { infoOpen = false })
 }
 
-/** 7-day average and pace. Tapping opens the full Weight sheet with the chart. */
+/** 7-day average and the pace sentence Weight uses. Tapping opens Weight. */
 @Composable
 private fun WeightTile(st: AppState, onWeight: () -> Unit) {
     val c = CutTheme.colors
     val s = st.settings
     val avg = ProgramEngine.sevenDayAverage(st.weighIns, st.today)
     val shown = tickedFloat((avg ?: s.startWeight).toFloat())
-    val onPace = avg != null && ProgramEngine.onPace(avg, st.dayN, s, ProgramEngine.paceAnchor(st.weighIns, s))
+    val gap = avg?.let { it - ProgramEngine.paceWeight(st.dayN, s, ProgramEngine.paceAnchor(st.weighIns, s)) }
+    val onPace = gap != null && gap <= ProgramSpec.PACE_TOLERANCE_LB
     Card(Modifier.fillMaxWidth().clickable(onClick = onWeight, role = Role.Button), padding = PaddingValues(14.dp, 12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -316,14 +323,9 @@ private fun WeightTile(st: AppState, onWeight: () -> Unit) {
                 }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                if (avg != null) {
-                    val delta = avg - s.startWeight
-                    Text(
-                        (if (delta < 0) "" else "+") + ProgramEngine.fmt1(delta) + " · " + (if (onPace) "on pace" else "behind pace"),
-                        color = if (onPace) c.good else c.accent, style = cutStyle(12, 700, 1f, tabular = true),
-                    )
-                } else Text("No readings yet", color = c.text2, style = cutStyle(12, 600, 1f))
-                Text("CHART ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+                if (gap != null) Text(paceWords(gap), color = if (onPace) c.good else c.accent, style = cutStyle(12, 700, 1f, tabular = true))
+                else Text("No readings yet", color = c.text2, style = cutStyle(12, 600, 1f))
+                Text("WEIGHT ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
             }
         }
     }
@@ -381,12 +383,15 @@ private fun ToppedOut(st: AppState, onNext: () -> Unit) {
     }
 }
 
+/** "7pm", "7:30pm": the pick time from Settings as the card says it. */
+private fun clockWords(t: java.time.LocalTime): String = t.format(DateTimeFormatter.ofPattern(if (t.minute == 0) "ha" else "h:mma", Locale.US)).lowercase()
+
 @Composable
-private fun LateCard(onRest: () -> Unit, onClimb: () -> Unit) {
+private fun LateCard(at: java.time.LocalTime, onRest: () -> Unit, onClimb: () -> Unit) {
     val c = CutTheme.colors
     Card(Modifier.fillMaxWidth(), border = c.accent, borderWidth = 2.dp, radius = 14.dp, padding = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("It's 7pm and no day is picked.", color = c.text, style = cutStyle(20, 800, 1.1f, -0.02f, display = true))
+            Text("It's ${clockWords(at)} and no day is picked.", color = c.text, style = cutStyle(20, 800, 1.1f, -0.02f, display = true))
             Sub("Guessing Rest day. Weigh in and hit protein and the chain is safe. Nothing else required tonight.")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BigButton("Yep, Rest day", onClick = onRest, modifier = Modifier.weight(1f), height = 48.dp, fontSize = 13)
@@ -401,14 +406,16 @@ private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
     val climb = ProgramEngine.script(DayMode.CLIMB, st.settings)
     val off = ProgramEngine.script(DayMode.OFF, st.settings)
     val rest = ProgramEngine.script(DayMode.REST, st.settings)
+    // The sentence under each card is the day page's own (Beta), so the cards tell the truth about the plan as edited there.
+    fun sub(mode: DayMode, items: List<ScriptItem>) = "${dayWhere(mode, st.settings)} ${items.size} items, ${ProgramEngine.totalXp(items)} xp."
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PickCard(Modifier.weight(1f), HoldShape.CRIMP, "Climb day", "Climb, then 15 min push at the gym. ${climb.size} items, ${ProgramEngine.totalXp(climb)} xp.") { onPick(DayMode.CLIMB) }
-            PickCard(Modifier.weight(1f), HoldShape.JUG, "Off day", "15 min core + push at home. ${off.size} items, ${ProgramEngine.totalXp(off)} xp.") { onPick(DayMode.OFF) }
+            PickCard(Modifier.weight(1f), HoldShape.CRIMP, dayTitle(DayMode.CLIMB), sub(DayMode.CLIMB, climb)) { onPick(DayMode.CLIMB) }
+            PickCard(Modifier.weight(1f), HoldShape.JUG, dayTitle(DayMode.OFF), sub(DayMode.OFF, off)) { onPick(DayMode.OFF) }
         }
         PickCard(
-            Modifier.fillMaxWidth(), HoldShape.SLOPER, "Rest day",
-            "Weigh in and eat the script. No block. ${rest.size} items, ${ProgramEngine.totalXp(rest)} xp. Workouts ${st.workoutsThisWeek} of ${st.settings.workoutsPerWeek} this week.",
+            Modifier.fillMaxWidth(), HoldShape.SLOPER, dayTitle(DayMode.REST),
+            sub(DayMode.REST, rest) + " Workouts ${st.workoutsThisWeek} of ${st.settings.workoutsPerWeek} this week.",
             wide = true,
         ) { onPick(DayMode.REST) }
     }
