@@ -72,7 +72,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val weekFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
 private val wdFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale.US)
 
 /** A gentle S up the wall, Monday bottom-left to Sunday top-right. Same seven anchors every week, in a 390-wide box. */
@@ -221,48 +220,29 @@ fun Wall(
         }
 
         // Front layer: route tag and the week chrome, full speed.
-        Box(
-            Modifier.offset((-6).dp, 186.dp * ys + statusTop).rotate(-8f).background(c.accent).padding(16.dp, 5.dp, 12.dp, 5.dp),
-        ) { Text("${v.level(st.level).uppercase()} · WEEK ${ProgramEngine.weekOf(selected, st.settings.startDate).coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true)) }
-        // Settings sits top right on every tab. The week lives at the foot of the wall, by the tag that names it.
-        SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).padding(top = 12.dp + statusTop, end = 20.dp))
         Row(
-            Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 74.dp),
+            Modifier.offset((-6).dp, 180.dp * ys + statusTop).rotate(-8f).background(c.accent).padding(start = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            WeekPill(weekLabel(weekStart), canEarlier, canLater, onWeek)
-            ChromeButton(CutIcons.Info, "How to read the wall", onClick = onInfo)
+            TapeStep(CutIcons.Back, "Earlier week", canEarlier) { onWeek(-1) }
+            // Numbers the wall on screen (Monday to Sunday) from the route's first wall, so each step reads a new week.
+            val wall = java.time.temporal.ChronoUnit.WEEKS.between(ProgramEngine.weekStart(st.settings.startDate), weekStart) + 1
+            Text("${v.level(st.level).uppercase()} · WEEK ${wall.coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true))
+            TapeStep(CutIcons.Forward, "Later week", canLater) { onWeek(1) }
         }
+        // Settings sits top right on every tab.
+        SettingsGear(onSettings, Modifier.align(Alignment.TopEnd).padding(top = 12.dp + statusTop, end = 20.dp))
+        ChromeButton(CutIcons.Info, "How to read the wall", Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 74.dp), onClick = onInfo)
     }
 }
 
 private val ROPE = setOf(DayResult.SEND, DayResult.MIN, DayResult.FREEZE, DayResult.SKIP, DayResult.TODAY)
 
-private fun weekLabel(monday: LocalDate): String {
-    val sunday = monday.plusDays(6)
-    val end = if (sunday.month == monday.month) "${sunday.dayOfMonth}" else sunday.format(weekFmt)
-    return "${monday.format(weekFmt)} TO $end".uppercase()
-}
-
-/** "‹ OCT 13 TO 19 ›": the week on the wall, and the two steps to the one before and after. */
+/** One arrow on the tape: the week before or after. Faded where there is no week to go to. */
 @Composable
-private fun WeekPill(label: String, canEarlier: Boolean, canLater: Boolean, onWeek: (Int) -> Unit) {
+private fun TapeStep(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
     val c = CutTheme.colors
-    val shape = RoundedCornerShape(16.dp)
-    Row(
-        Modifier.height(36.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        WeekStep(CutIcons.Back, "Earlier week", canEarlier) { onWeek(-1) }
-        Text(label, color = c.text, style = cutStyle(11, 800, 1f, 0.08f, tabular = true))
-        WeekStep(CutIcons.Forward, "Later week", canLater) { onWeek(1) }
-    }
-}
-
-@Composable
-private fun WeekStep(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
-    val c = CutTheme.colors
-    Box(Modifier.size(40.dp, 36.dp).pressable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, contentDescription = label, Modifier.size(12.dp), tint = if (enabled) c.text2 else c.dim)
+    Box(Modifier.size(40.dp, 34.dp).pressable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = label, Modifier.size(12.dp), tint = c.onAccent.copy(alpha = if (enabled) 1f else 0.3f))
     }
 }
