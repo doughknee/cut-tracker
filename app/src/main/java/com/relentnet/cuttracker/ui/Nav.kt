@@ -145,16 +145,16 @@ fun App(vm: AppViewModel) {
                     composable(Routes.ONBOARDING) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(0) { inclusive = true }; launchSingleTop = true } })
                     }
-                    composable(Routes.TODAY) {
+                    composable(Routes.TODAY) { TabRoom {
                         TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) }, onRoute = { nav.goTab(Routes.ROUTE) })
-                    }
+                    } }
                     composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }) }
-                    composable(Routes.BETA) {
+                    composable(Routes.BETA) { TabRoom {
                         BetaScreen(
                             vm, onMeals = { nav.navigate(Routes.BETA_MEALS) }, onLifts = { nav.navigate(Routes.BETA_LIFTS) }, onDay = { nav.navigate(Routes.betaDay(it)) },
                             onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onTargets = { nav.navigate(Routes.BETA_TARGETS) }, onWeek = { nav.navigate(Routes.BETA_WEEK) },
                         )
-                    }
+                    } }
                     composable(Routes.BETA_MEALS) { MealsPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA_LIFTS) { LiftsPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA_DAY) { entry ->
@@ -167,7 +167,7 @@ fun App(vm: AppViewModel) {
                         val focus = entry.arguments?.getString("focus")?.takeIf { it != "-" }
                         SettingsSectionScreen(vm, section = (entry.arguments?.getString("section") ?: "data") + (if (focus != null) "/$focus" else ""), onBack = { nav.popBackStack() })
                     }
-                    composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) }
+                    composable(Routes.ROUTE) { TabRoom { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) } }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }, onRoute = { nav.goTab(Routes.ROUTE) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS) {
@@ -175,7 +175,13 @@ fun App(vm: AppViewModel) {
                     }
                 }
             }
-            if (route in Routes.tabs) {
+        }
+        // Over the pages, not beside them: a page opening from a tab keeps its size while the bar slides away.
+        androidx.compose.animation.AnimatedVisibility(
+            route in Routes.tabs, Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(tween(220)) { it }, exit = slideOutVertically(tween(220)) { it },
+        ) {
+            Column {
                 val total = st.items.size
                 SendBar(progress = if (total == 0) 0f else st.totals.done.toFloat() / total, full = st.isSend)
                 BottomNav(current = route, onGo = { nav.goTab(it) })
@@ -269,6 +275,15 @@ fun NavHostController.goTab(route: String) = navigate(route) {
 }
 
 /** The 3dp Send progress bar that sits above the nav on every tab. */
+/** The Send bar (3dp) and the tab row (66dp) above the gesture bar. */
+private val TabBarHeight = 69.dp
+
+/** A tab page leaves the bar's room at the bottom, so it is the same size whether the bar is showing or sliding away. */
+@Composable
+private fun TabRoom(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars).padding(bottom = TabBarHeight)) { content() }
+}
+
 @Composable
 fun SendBar(progress: Float, full: Boolean) {
     val c = CutTheme.colors
