@@ -146,8 +146,10 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     var seen by remember(date) { mutableStateOf(done) }
     val fresh = done - seen
     LaunchedEffect(done) { if (fresh.isNotEmpty()) kotlinx.coroutines.delay(450); seen = done }
-    val remaining = items.filter { it.id !in done || it.id in fresh }
-    val finished = items.filter { it.id in done && it.id !in fresh }
+    // Hide completed (Settings, Appearance) folds ticked rows into Done; off, they stay in place, ticked.
+    val hide = st.settings.hideDone
+    val remaining = items.filter { !hide || it.id !in done || it.id in fresh }
+    val finished = if (hide) items.filter { it.id in done && it.id !in fresh } else emptyList()
     val next = remaining.firstOrNull { it.id !in done }
     var changing by remember(date) { mutableStateOf(false) }
     val late = !past && mode == null && !changing && (!now.isBefore(st.settings.pickTime) || now.hour < st.settings.resetHour)
@@ -253,7 +255,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Eyebrow(if (past) "Script · late ticks count" else "Script")
-                Eyebrow("${tickedInt(finished.size)} / ${items.size}")
+                Eyebrow("${tickedInt(items.count { it.id in done })} / ${items.size}")
             }
             if (items.isEmpty() && !past && ProgramSpec.ITEM_WEIGH !in done) {
                 CheckRow(
@@ -275,9 +277,11 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
             for (it in remaining) {
                 val isNext = it === next
                 key(it.id) { Column(Modifier.animateContentSize(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow))) {
+                val isDone = it.id in done
+                val reading = if (isDone && it.id == ProgramSpec.ITEM_WEIGH) dayReading else null
                 CheckRow(
-                    label = it.label,
-                    sub = if (it.id == ProgramSpec.ITEM_WEIGH && prevWeigh != null) "Last ${ProgramEngine.fmt1(prevWeigh.lb)}. Tap to log." else it.sub,
+                    label = if (reading != null) "${it.label} · ${ProgramEngine.fmt1(reading.lb)} lb" else it.label,
+                    sub = if (reading != null) "Tap to fix it." else if (it.id == ProgramSpec.ITEM_WEIGH && prevWeigh != null) "Last ${ProgramEngine.fmt1(prevWeigh.lb)}. Tap to log." else it.sub,
                     time = it.time, xp = it.xp, done = it.id in done, next = isNext,
                     tag = if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && ProgramEngine.weekWon(st.liftSets, st.today)) "Week won" else null,
                     onClick = {
@@ -290,11 +294,11 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                     },
                     onSwipeCheck = { haptics.tap(); vm.toggleItem(it.id, date = editDate) },
                     // Rows that open something (a meal picker, the lifts) still tick in one tap on the box, like the widget.
-                    onCheck = if (it.pick || (it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past)) ({ haptics.tap(); closeInline(); vm.toggleItem(it.id, date = editDate) }) else null,
+                    onCheck = if (it.id != ProgramSpec.ITEM_WEIGH && (isDone || it.pick || (it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past))) ({ haptics.tap(); closeInline(); vm.toggleItem(it.id, date = editDate) }) else null,
                 )
                 Unfold(it.id == ProgramSpec.ITEM_WEIGH && weighOpen) {
                     WeighInline(
-                        prefill = prevWeigh?.lb ?: st.settings.startWeight,
+                        prefill = reading?.lb ?: prevWeigh?.lb ?: st.settings.startWeight,
                         onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) },
                     )
                 }
@@ -343,7 +347,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                                     else -> vm.toggleItem(it.id, date = editDate)
                                 }
                             },
-                            onCheck = if (it.pick) ({ haptics.tap(); closeInline(); vm.toggleItem(it.id, date = editDate) }) else null,
+                            onCheck = if (reading == null) ({ haptics.tap(); closeInline(); vm.toggleItem(it.id, date = editDate) }) else null,
                         )
                         if (it.pick) Unfold(pickOpen == it.id) {
                             val slot = st.settings.meals.firstOrNull { m -> m.id == it.id }
@@ -482,9 +486,9 @@ private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
     // The sentence under each card is the day page's own (Beta), so the cards tell the truth about the plan as edited there.
     fun sub(mode: DayMode, items: List<ScriptItem>) = "${dayWhere(mode, st.settings)} ${com.relentnet.cuttracker.ui.components.count(items.size, "item")}, ${ProgramEngine.totalXp(items)} xp."
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PickCard(Modifier.weight(1f), HoldShape.CRIMP, dayTitle(DayMode.CLIMB), sub(DayMode.CLIMB, climb)) { onPick(DayMode.CLIMB) }
-            PickCard(Modifier.weight(1f), HoldShape.JUG, dayTitle(DayMode.OFF), sub(DayMode.OFF, off)) { onPick(DayMode.OFF) }
+        Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PickCard(Modifier.weight(1f).fillMaxHeight(), HoldShape.CRIMP, dayTitle(DayMode.CLIMB), sub(DayMode.CLIMB, climb)) { onPick(DayMode.CLIMB) }
+            PickCard(Modifier.weight(1f).fillMaxHeight(), HoldShape.JUG, dayTitle(DayMode.OFF), sub(DayMode.OFF, off)) { onPick(DayMode.OFF) }
         }
         PickCard(
             Modifier.fillMaxWidth(), HoldShape.SLOPER, dayTitle(DayMode.REST),
@@ -600,35 +604,33 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
     val c = CutTheme.colors
     val s = st.settings
     val def = ProgramEngine.defaultChoice(slot, s)
-    val counts = st.logs.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
+    val counts = st.logs.filter { slot.id in it.doneItemIds }.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
     // What this slot logged in the last 30 days, most often first: the top five lead, so a repeat is one tap.
-    val month = st.logs.filter { it.date != date && !it.date.isBefore(date.minusDays(30)) }.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
+    val month = st.logs.filter { it.date != date && !it.date.isBefore(date.minusDays(30)) && slot.id in it.doneItemIds }.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
     // A one-off frozen from a library meal (an edit or delete) points back at that meal while it exists by name.
     fun live(ref: String): String = if (!ref.startsWith("custom:")) ref else {
         val n = ProgramEngine.resolveChoice(slot, ref, s).name
         s.library.firstOrNull { it.name.equals(n, ignoreCase = true) }?.let { "lib:" + it.id } ?: ref
     }
-    val top = month.entries.groupBy({ live(it.key) }, { it.value }).mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.map { it.key }
-        .filter { it.startsWith("custom:") || ProgramEngine.libMeal(it.removePrefix("lib:"), s) != null }.take(5)
-    val yesterday = st.logs.firstOrNull { it.date == date.minusDays(1) }?.picks?.get(slot.id)?.let(::live)
+    fun real(ref: String) = ref.startsWith("custom:") || ProgramEngine.libMeal(ref.removePrefix("lib:"), s) != null
+    val chosen = current?.let(::live)?.takeIf(::real)
+    val top = (listOfNotNull(chosen) + month.entries.groupBy({ live(it.key) }, { it.value }).mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.map { it.key }
+        .filter(::real)).distinct().take(5)
     // The slot's own kind first, then whatever gets picked most.
     val sorted = s.library.sortedWith(compareByDescending<LibMeal> { it.kind == slot.id }.thenByDescending { counts["lib:" + it.id] ?: 0 }).let { l ->
         val d = l.firstOrNull { "lib:" + it.id == def.ref }
         if (d != null) listOf(d) + l.filter { it !== d } else l
     }
-    val selected = current ?: def.ref
+    val selected = chosen ?: current ?: def.ref
     var recipeOpen by remember { mutableStateOf<String?>(null) }
     var form by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<Boolean?>(null) }  // null closed, false = one-off, true = new library meal
     // A long library gets a search box; the top five and yesterday stay above it.
     var query by remember { mutableStateOf("") }
-    Column(Modifier.padding(start = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.padding(start = 40.dp, top = 8.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         for (ref in top) {
-            val n = month[ref] ?: 0
-            PickRow(ProgramEngine.resolveChoice(slot, ref, s), (if (ref == def.ref) "DEFAULT · " else "") + "$n× IN 30 DAYS", selected == ref) { onPick(ref) }
-        }
-        if (yesterday != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("SAME AS YESTERDAY") { onPick(yesterday) }
-            Text(ProgramEngine.resolveChoice(slot, yesterday, s).name, color = c.text2, style = cutStyle(12, 600, 1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val n = month.entries.filter { e -> live(e.key) == ref }.sumOf { e -> e.value }
+            val why = listOfNotNull("DEFAULT".takeIf { ref == def.ref }, "$n× IN 30 DAYS".takeIf { n > 0 }).joinToString(" · ").ifEmpty { null }
+            PickRow(ProgramEngine.resolveChoice(slot, ref, s), why, selected == ref) { onPick(ref) }
         }
         if (s.library.size > 8) Field(
             query, { query = it }, Modifier.fillMaxWidth(), height = 44.dp, fontSize = 14, weight = 600,
@@ -657,7 +659,7 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
             }
         }
         // The last few one-off entries for this slot, so a repeat is one tap instead of retyping.
-        val recents = st.logs.sortedByDescending { it.date }.mapNotNull { it.picks[slot.id] }.filter { it.startsWith("custom:") && it != current && it !in top }.distinct().take(3)
+        val recents = st.logs.filter { slot.id in it.doneItemIds }.sortedByDescending { it.date }.mapNotNull { it.picks[slot.id] }.filter { it.startsWith("custom:") && it != current && it !in top }.distinct().take(3)
         for (ref in recents) PickRow(ProgramEngine.resolveChoice(slot, ref, s), "RECENT", false) { onPick(ref) }
         if (current != null && current.startsWith("custom:") && current !in top) PickRow(ProgramEngine.resolveChoice(slot, current, s), null, true, null)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

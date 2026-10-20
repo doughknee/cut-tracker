@@ -75,6 +75,8 @@ data class Settings(
     /** Look a scanned barcode up on Open Food Facts to fill in the New meal sheet. Only counts while [onlineFeatures] is on. Off until
      *  the allow card in New meal, or the switch in Settings, turns it on: an update must not switch a new network feature on by itself. */
     val barcodeLookup: Boolean = false,
+    /** Ticked rows fold into a Done list under Today's script. Off keeps them in place, ticked. */
+    val hideDone: Boolean = false,
 ) {
     val recipeImportOn: Boolean get() = onlineFeatures && recipeImport
     val barcodeLookupOn: Boolean get() = onlineFeatures && barcodeLookup
@@ -117,6 +119,7 @@ class SettingsStore(context: Context) {
         val lastOpenDate = stringPreferencesKey("lastOpenDate")
         val lastExport = stringPreferencesKey("lastExport")
         val ledgerKept = booleanPreferencesKey("ledgerKept")
+        val hideDone = booleanPreferencesKey("hideDone")
         val seenVersion = stringPreferencesKey("seenVersion")
         val autoBackupFolder = stringPreferencesKey("autoBackupFolder")
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
@@ -180,6 +183,7 @@ class SettingsStore(context: Context) {
             lastOpenDate = p[K.lastOpenDate]?.let(LocalDate::parse),
             lastExport = p[K.lastExport]?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
             ledgerKept = p[K.ledgerKept] ?: d.ledgerKept,
+            hideDone = p[K.hideDone] ?: d.hideDone,
             seenVersion = p[K.seenVersion],
             autoBackupFolder = p[K.autoBackupFolder],
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
@@ -225,6 +229,7 @@ class SettingsStore(context: Context) {
         if (s.lastOpenDate != null) p[K.lastOpenDate] = s.lastOpenDate.toString() else p.remove(K.lastOpenDate)
         if (s.lastExport != null) p[K.lastExport] = s.lastExport.toString() else p.remove(K.lastExport)
         p[K.ledgerKept] = s.ledgerKept
+        p[K.hideDone] = s.hideDone
         if (s.seenVersion != null) p[K.seenVersion] = s.seenVersion else p.remove(K.seenVersion)
         if (s.autoBackupFolder != null) p[K.autoBackupFolder] = s.autoBackupFolder else p.remove(K.autoBackupFolder)
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)

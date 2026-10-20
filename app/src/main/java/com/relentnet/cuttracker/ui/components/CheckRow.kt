@@ -142,13 +142,12 @@ fun CheckRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
         ) {
-            if (compact) CheckBox(done, size = 20, iconSize = 11)
-            else Box(
-                // A 40dp hit area around the 26dp box, so the box is a target of its own when the row opens something.
-                Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
-                    .then(if (onCheck != null && !done) Modifier.clickable(onClick = onCheck, role = Role.Checkbox) else Modifier),
+            // A 40dp hit area around the box, so the box is a target of its own: it ticks, or on a ticked row unticks.
+            Box(
+                Modifier.size(if (compact) 32.dp else 40.dp).clip(RoundedCornerShape(12.dp))
+                    .then(if (onCheck != null) Modifier.clickable(onClick = onCheck, onClickLabel = if (done) "Untick" else "Tick", role = Role.Checkbox) else Modifier),
                 contentAlignment = Alignment.Center,
-            ) { CheckBox(done) }
+            ) { if (compact) CheckBox(done, size = 20, iconSize = 11) else CheckBox(done) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (next && !done) Text("UP NEXT", color = c.accent, style = cutStyle(10, 800, 1f, 0.1f))
                 Text(

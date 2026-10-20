@@ -35,6 +35,7 @@ data class SettingsDto(
     val weighReminder: Boolean = true, val pickReminder: Boolean = true,
     val lastExport: String? = null,
     val ledgerKept: Boolean = false,
+    val hideDone: Boolean = false,
     // Last on purpose: a v1 export ends its settings with the library, and the test for that cuts the file there.
     val library: List<LibMeal> = ProgramSpec.library,
 )
@@ -53,7 +54,7 @@ fun Settings.toDto() = SettingsDto(
     onboarded, phase, startDate.toString(), lengthWeeks, startWeight, targetWeight, caloriesP1, caloriesP2, protein, meals, exercises, checkpoints,
     weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
     plans.mapKeys { it.key.name }, liftKinds, onlineFeatures, recipeImport, barcodeLookup, palette, paletteByCalendar, customLooks, tourSeen,
-    weighReminder, pickReminder, lastExport?.toString(), ledgerKept, library,
+    weighReminder, pickReminder, lastExport?.toString(), ledgerKept, hideDone, library,
 )
 
 fun SettingsDto.toSettings() = Settings(
@@ -64,7 +65,7 @@ fun SettingsDto.toSettings() = Settings(
     onlineFeatures = onlineFeatures, recipeImport = recipeImport, barcodeLookup = barcodeLookup, palette = palette, paletteByCalendar = paletteByCalendar, customLooks = customLooks,
     tourSeen = tourSeen, weighReminder = weighReminder, pickReminder = pickReminder,
     lastExport = lastExport?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
-    ledgerKept = ledgerKept,
+    ledgerKept = ledgerKept, hideDone = hideDone,
 )
 
 suspend fun Repo.buildBackup(): Backup = Backup(

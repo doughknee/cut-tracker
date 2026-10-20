@@ -185,7 +185,16 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
             val ids = ProgramEngine.script(mode, s, log.picks).map { it.id }.toSet() + s.meals.map { it.id } + ProgramSpec.ITEM_WEIGH
             log.doneItemIds.filter { it in ids }.toSet()
         }
-        db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, picks = log.picks))
+        // Each meal not picked yet starts as what its slot logged last, so a repeat is one tick. Past days are untouched.
+        val picks = if (mode == null) log.picks else {
+            val before = db.dayLogs().all().filter { it.date.isBefore(d) }.sortedByDescending { it.date }
+            log.picks + s.meals.filter { it.id !in log.picks }.mapNotNull { m ->
+                // The last day this slot was ticked; ticked with no pick means it was the default, so nothing to carry.
+                before.firstOrNull { m.id in it.doneItemIds }?.picks?.get(m.id)
+                    ?.takeIf { r -> r.startsWith("custom:") || ProgramEngine.libMeal(r.removePrefix("lib:"), s) != null }?.let { m.id to it }
+            }
+        }
+        db.dayLogs().upsert(log.copy(mode = mode, doneItemIds = keep + preCheck, picks = picks))
     }
 
     /** Checks or unchecks an item. A meal checked this way logs the slot's current pick, or its default. */

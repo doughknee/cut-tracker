@@ -125,11 +125,9 @@ class FlowsTest {
 
     @Test fun aLoggedMealOpensItsPickerWithoutUnticking() {
         launch()
-        // The sample day has breakfast logged; it sits under Done with what was eaten.
-        // Scrolled to its edge, a row sits under the pinned weight card, so the click goes to the row itself, not a touch.
-        compose.onAllNodesWithText("DONE · ", substring = true)[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Breakfast · ", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        compose.onAllNodesWithText("Breakfast · ", substring = true)[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        // The sample day has breakfast logged; with Hide completed off (the default) it stays in the script, ticked.
+        // Scrolled to its edge, a row can sit under the pinned weight card, so the click goes to the row itself, not a touch.
+        compose.onAllNodesWithText("Breakfast")[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitUntil(5_000) { compose.onAllNodesWithText("DEFAULT", substring = true).fetchSemanticsNodes().isNotEmpty() }
         val today = runBlocking { app.repo.today() }
         val log = runBlocking { app.repo.db.dayLogs().get(today) }

@@ -208,6 +208,9 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
             )
         }
 
+        KindCard("Today", "") {
+            PlainRow("Hide completed", "ticked items fold into a Done list under the script") { Switch(s.hideDone, "Hide completed") { vm.updateSettings { s -> s.copy(hideDone = !s.hideDone) } } }
+        }
         KindCard("Feel", "") {
             PlainRow("Haptics and confetti", "a buzz on every tick, a burst on a Send") { Switch(s.haptics, "Haptics and confetti") { vm.updateSettings { s -> s.copy(haptics = !s.haptics) } } }
         }

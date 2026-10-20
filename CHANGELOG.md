@@ -41,7 +41,10 @@ What changed in Sendline, from the user's side. Newest first.
 
 ### Evenings and the week
 
-- A logged meal in Done shows what it was; tap it to change the pick, tap the box to untick.
+- Ticked items stay in place, ticked. Settings, Appearance, Hide completed folds them into a Done list instead.
+- Each meal starts the day as what you had last time for it, so a repeat is one tick. "Same as yesterday" is gone.
+- A logged meal shows what it was; tap it to change the pick. The box on any ticked row unticks it.
+- The Climb day and Off day cards are always the same height.
 - Lifting on a Rest day ticks the block, so it counts toward the week's workouts.
 - A level-up earned with a Send shows after the Send instead of vanishing under it.
 - Two messages in a row each get their turn instead of the second hiding the first.
