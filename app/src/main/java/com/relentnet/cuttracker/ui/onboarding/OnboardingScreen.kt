@@ -54,6 +54,7 @@ import com.relentnet.cuttracker.ui.components.HoldShape
 import com.relentnet.cuttracker.ui.theme.CutTheme
 import com.relentnet.cuttracker.ui.theme.cutStyle
 import kotlinx.coroutines.launch
+import com.relentnet.cuttracker.data.restoreFrom
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -84,6 +85,21 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     // A second route can be called off at the first step: back returns to the route that just ended.
     androidx.activity.compose.BackHandler(enabled = again && step == 0) { vm.updateSettings { s -> s.copy(onboarded = true) } }
     var swMissing by remember { mutableStateOf(false) }
+    // Moving phones: a backup brings the route, the logs and the settings back in one step, no set-up first.
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var restoring by remember { mutableStateOf(false) }
+    val restore = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        restoring = true
+        scope.launch {
+            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { context.contentResolver.openInputStream(uri)!!.use { vm.repo.restoreFrom(it) } }.isSuccess
+            }
+            restoring = false
+            if (ok && vm.repo.settings.current().onboarded) { vm.showToast("Restored. Everything from the backup is in place."); onDone() }
+            else vm.showToast("Could not read that file. Nothing changed.")
+        }
+    }
     val swFocus = remember { FocusRequester() }
 
     fun next() {
@@ -138,6 +154,13 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                         HoldKey(HoldShape.SLOPER, "Rest day", "weigh in, eat the script")
                     }
                     Hint("Every day is a hold. Pick which kind, finish the script, and the hold goes green. Not medical advice; check with a doctor if you have a condition, and stop if you feel unwell.")
+                    if (!again) Text(
+                        if (restoring) "RESTORING…" else "MOVING PHONES? RESTORE A BACKUP",
+                        color = c.accent, style = cutStyle(11, 800, 1f, 0.08f),
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = !restoring, role = androidx.compose.ui.semantics.Role.Button) {
+                            restore.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*"))
+                        }.padding(vertical = 14.dp),
+                    )
                 }
                 1 -> {
                     Big("Where you're starting.")
