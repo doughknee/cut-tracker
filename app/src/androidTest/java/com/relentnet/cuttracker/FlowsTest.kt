@@ -11,6 +11,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -119,5 +121,34 @@ class FlowsTest {
         compose.waitForIdle()
         Thread.sleep(1000)
         org.junit.Assert.assertTrue(compose.onAllNodesWithText("New in", substring = true).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test fun aLoggedMealOpensItsPickerWithoutUnticking() {
+        launch()
+        // The sample day has breakfast logged; it sits under Done with what was eaten.
+        // Scrolled to its edge, a row sits under the pinned weight card, so the click goes to the row itself, not a touch.
+        compose.onAllNodesWithText("DONE · ", substring = true)[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Breakfast · ", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText("Breakfast · ", substring = true)[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("DEFAULT", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        val today = runBlocking { app.repo.today() }
+        val log = runBlocking { app.repo.db.dayLogs().get(today) }
+        org.junit.Assert.assertTrue("breakfast stays ticked", "b" in log!!.doneItemIds)
+    }
+
+    @Test fun aDayInThisWeekOpensOnToday() {
+        val today = runBlocking { app.repo.today() }
+        // On a Monday there is no earlier day in the week to open.
+        org.junit.Assume.assumeTrue(today.dayOfWeek != java.time.DayOfWeek.MONDAY)
+        launch()
+        compose.onAllNodesWithText("BETA")[0].performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("This week").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText("This week")[0].performClick()
+        val yesterday = today.minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("EEE d", java.util.Locale.US))
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(yesterday).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText(yesterday)[0].performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("EDIT ON TODAY").fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodesWithText("EDIT ON TODAY")[0].performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("BACK TO TODAY", substring = true).fetchSemanticsNodes().isNotEmpty() }
     }
 }
