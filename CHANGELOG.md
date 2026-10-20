@@ -39,6 +39,20 @@ What changed in Sendline, from the user's side. Newest first.
 - The widget's weight opens Today with the weigh-in field open, from any page the app was left on.
 - Nudges has an Add row for the home-screen widget, and Weight's footer lands in the weigh-in field.
 
+### Evenings and the week
+
+- A logged meal in Done shows what it was; tap it to change the pick, tap the box to untick.
+- Lifting on a Rest day ticks the block, so it counts toward the week's workouts.
+- A level-up earned with a Send shows after the Send instead of vanishing under it.
+- Two messages in a row each get their turn instead of the second hiding the first.
+- The chain says Paused when it is.
+- The pick-a-day reminder stays quiet before the route starts, after it ends and on planned skips.
+- After the route ends, Today stops asking you to pick a day.
+- After midnight, before the day rolls over, the evening card still shows; "Change" brings back the three day cards.
+- A checkpoint day is a photo day, and Beta's Checkpoints tile says when a photo is due.
+- A day in This week has Edit on Today, and Monday morning no longer reads "0 of 1 day".
+- A second route's start weight starts from your last reading.
+
 ### Meals and the scanner
 
 - What you type in New meal, a custom look or a day-plan sheet survives a dark-mode switch or the app being closed in the background.
