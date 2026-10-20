@@ -84,7 +84,7 @@ Utility / productivity type app. No violence, sexual content, language, controll
 
 - App icon: 512x512 PNG, export from `app/src/main/res/drawable/ic_launcher_foreground.xml` on the `ic_launcher_background` color.
 - Feature graphic: 1024x500 PNG. Suggested: the wall texture with one bright green jug and the words "Send the day."
-- Phone screenshots: at least 4, 16:9 or 9:16. `store/` has 1080x2201 captures from the emulator (1.2.0, Sandstone look, dark mode, a sample week seeded with `adb shell am start -n com.relentnet.cuttracker/.MainActivity --ez seed true` on a debug build), cropped to the app window between the status bar and the gesture bar:
+- Phone screenshots: at least 4, 16:9 or 9:16. `store/` has 1080x2201 captures from the emulator (1.3.0, Sandstone look, dark mode, a sample week seeded with `adb shell am start -n com.relentnet.cuttracker/.MainActivity --ez seed true` on a debug build), cropped to the app window between the status bar and the gesture bar:
   - `01-wall.png`: Today. The week as seven holds up the wall, the rope for the chain, the script below.
   - `02-earlier-day.png`: Beta. The plan as a grid: Meals, Lifts, the kinds of day, Checkpoints, Targets, This week.
   - `03-legend.png`: Meals. The library grouped by kind, with ingredients, labels and barcodes behind one sheet.
