@@ -181,11 +181,12 @@ private fun MealSheet(
         f.protein?.let { pro = it.toString() }; f.calories?.let { cal = it.toString() }
         if (f.serving != null && recipe.isBlank()) recipe = "One serving, ${f.serving}, from the label."
         val missing = listOfNotNull("protein".takeIf { f.protein == null }, "calories".takeIf { f.calories == null })
-        note = ("Read " + f.lines.joinToString(", ") { "“$it”" } + (if (missing.isEmpty()) ". Check the numbers." else ". No ${missing.joinToString(" or ")} found, type it.")) to true
+        val next = if (missing.isNotEmpty()) "No ${missing.joinToString(" or ")} found, type it." else if (name.isBlank()) "Name it and add it." else "Check the numbers."
+        note = ("Read " + f.lines.joinToString(", ") { "“$it”" } + ". " + next) to true
     })
     Sheet(if (m == null) "New meal" else "Edit meal", onDismiss) {
         if (m == null) {
-            SheetField("Paste a recipe link", link, { link = it; note = null }, text = true, placeholder = "https://")
+            SheetField("Recipe link", link, { link = it; note = null }, text = true, placeholder = "Paste one, or share a page here")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BigButton("Scan a barcode", onClick = { note = null; if (barcodeOn) scanning = true else askBarcode = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
                 BigButton("Read a label", onClick = { note = null; reading = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
