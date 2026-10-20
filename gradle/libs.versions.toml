@@ -15,6 +15,7 @@ glance = "1.2.0"
 kotlinxSerialization = "1.11.0"
 coroutines = "1.11.0"
 mlkitBarcode = "17.3.0"
+mlkitText = "16.0.1"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -41,6 +42,8 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 # The bundled model: scans without Google Play services (the phone runs GrapheneOS), at the cost of ~3 MB of APK.
 mlkit-barcode = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcode" }
+# Latin text recognition, bundled, on the phone: reads nutrition labels into the New meal fields.
+mlkit-text = { module = "com.google.mlkit:text-recognition", version.ref = "mlkitText" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 
 [plugins]

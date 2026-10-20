@@ -114,7 +114,14 @@ fun App(vm: AppViewModel) {
     if (!st.loaded) { Splash(false); return }
     LaunchedEffect(vm.pendingTab, st.settings.onboarded) {
         val t = vm.pendingTab
-        if (t != null && st.settings.onboarded) { vm.pendingTab = null; if (t == Routes.WEIGHT) nav.navigate(Routes.WEIGHT) else nav.goTab(t) }
+        if (t != null && st.settings.onboarded) {
+            vm.pendingTab = null
+            when (t) {
+                Routes.WEIGHT -> nav.navigate(Routes.WEIGHT)
+                Routes.BETA_MEALS -> { nav.goTab(Routes.BETA); nav.navigate(Routes.BETA_MEALS) { launchSingleTop = true } }
+                else -> nav.goTab(t)
+            }
+        }
     }
     LaunchedEffect(st.settings.onboarded) {
         if (!st.settings.onboarded && route != null && route != Routes.ONBOARDING) nav.navigate(Routes.ONBOARDING) { popUpTo(0) { inclusive = true } }

@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -247,7 +248,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                 Unfold(it.pick && pickOpen == it.id) {
                     val slot = st.settings.meals.firstOrNull { m -> m.id == it.id }
                     if (slot != null) MealPicker(
-                        st, slot, current = dv.log.picks[it.id],
+                        st, slot, date, current = dv.log.picks[it.id],
                         onPick = { ref -> pickOpen = null; haptics.tap(); vm.pickMeal(it.id, ref, editDate) },
                         onSaveLib = { m -> vm.saveLibraryMeal(m) },
                     )
@@ -496,13 +497,18 @@ private fun Chip(label: String, onClick: () -> Unit) {
     ) { Text(label, color = c.text, style = cutStyle(12, 800, 1f, 0.06f, tabular = true)) }
 }
 
-/** Library meals for a slot (default pinned, then most picked), a one-off entry, and a way to add to the library. */
+/** The slot's most logged meals this month, yesterday's pick, then the library (default pinned), a one-off entry, and a way to add to the library. */
 @Composable
-private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (String?) -> Unit, onSaveLib: (LibMeal) -> Unit) {
+private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: String?, onPick: (String?) -> Unit, onSaveLib: (LibMeal) -> Unit) {
     val c = CutTheme.colors
     val s = st.settings
     val def = ProgramEngine.defaultChoice(slot, s)
     val counts = st.logs.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
+    // What this slot logged in the last 30 days, most often first: the top five lead, so a repeat is one tap.
+    val month = st.logs.filter { it.date != date && !it.date.isBefore(date.minusDays(30)) }.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
+    val top = month.entries.sortedByDescending { it.value }.map { it.key }
+        .filter { it.startsWith("custom:") || ProgramEngine.libMeal(it.removePrefix("lib:"), s) != null }.take(5)
+    val yesterday = st.logs.firstOrNull { it.date == date.minusDays(1) }?.picks?.get(slot.id)
     // The slot's own kind first, then whatever gets picked most.
     val sorted = s.library.sortedWith(compareByDescending<LibMeal> { it.kind == slot.id }.thenByDescending { counts["lib:" + it.id] ?: 0 }).let { l ->
         val d = l.firstOrNull { "lib:" + it.id == def.ref }
@@ -512,8 +518,17 @@ private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (Stri
     var recipeOpen by remember { mutableStateOf<String?>(null) }
     var form by remember { mutableStateOf<Boolean?>(null) }  // null closed, false = one-off, true = new library meal
     Column(Modifier.padding(start = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (ref in top) {
+            val n = month[ref] ?: 0
+            PickRow(ProgramEngine.resolveChoice(slot, ref, s), (if (ref == def.ref) "DEFAULT · " else "") + "$n× IN 30 DAYS", selected == ref) { onPick(ref) }
+        }
+        if (yesterday != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("SAME AS YESTERDAY") { onPick(yesterday) }
+            Text(ProgramEngine.resolveChoice(slot, yesterday, s).name, color = c.text2, style = cutStyle(12, 600, 1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
         for (m in sorted) {
             val ref = "lib:" + m.id
+            if (ref in top) continue
             val shape = RoundedCornerShape(9.dp)
             Column(Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, if (selected == ref) c.accent else c.hairline, shape)) {
                 Row(
@@ -534,32 +549,9 @@ private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (Stri
             }
         }
         // The last few one-off entries for this slot, so a repeat is one tap instead of retyping.
-        val recents = st.logs.sortedByDescending { it.date }.mapNotNull { it.picks[slot.id] }.filter { it.startsWith("custom:") && it != current }.distinct().take(3)
-        for (ref in recents) {
-            val ch = ProgramEngine.resolveChoice(slot, ref, s)
-            val shape = RoundedCornerShape(9.dp)
-            Row(
-                Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, c.hairline, shape).clickable(onClick = { onPick(ref) }, role = Role.Button).padding(12.dp, 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(ch.name, color = c.text, style = cutStyle(14, 600, 1.1f))
-                    Text("RECENT", color = c.text2, style = cutStyle(9, 800, 1f, 0.1f))
-                }
-                Text("${ch.protein}g · ${ch.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
-            }
-        }
-        if (current != null && current.startsWith("custom:")) {
-            val ch = ProgramEngine.resolveChoice(slot, current, s)
-            val shape = RoundedCornerShape(9.dp)
-            Row(
-                Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, c.accent, shape).padding(12.dp, 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(ch.name, color = c.text, style = cutStyle(14, 600, 1f))
-                Text("${ch.protein}g · ${ch.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
-            }
-        }
+        val recents = st.logs.sortedByDescending { it.date }.mapNotNull { it.picks[slot.id] }.filter { it.startsWith("custom:") && it != current && it !in top }.distinct().take(3)
+        for (ref in recents) PickRow(ProgramEngine.resolveChoice(slot, ref, s), "RECENT", false) { onPick(ref) }
+        if (current != null && current.startsWith("custom:") && current !in top) PickRow(ProgramEngine.resolveChoice(slot, current, s), null, true, null)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Chip(if (form == false) "CLOSE" else "SOMETHING ELSE") { form = if (form == false) null else false }
             Chip(if (form == true) "CLOSE" else "+ NEW MEAL") { form = if (form == true) null else true }
@@ -574,6 +566,24 @@ private fun MealPicker(st: AppState, slot: Meal, current: String?, onPick: (Stri
                 form = null
             },
         )
+    }
+}
+
+/** One choice in the picker: name, an eyebrow saying why it is here, and the numbers. No [onClick] means it is the current pick. */
+@Composable
+private fun PickRow(ch: ProgramEngine.MealChoice, eyebrow: String?, selected: Boolean, onClick: (() -> Unit)?) {
+    val c = CutTheme.colors
+    val shape = RoundedCornerShape(9.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(shape).background(c.ground).border(1.dp, if (selected) c.accent else c.hairline, shape)
+            .then(if (onClick != null) Modifier.pressable(haptic = false, onClick = onClick) else Modifier).padding(12.dp, 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(ch.name, color = c.text, style = cutStyle(14, 600, 1.1f))
+            if (eyebrow != null) Text(eyebrow, color = c.text2, style = cutStyle(9, 800, 1f, 0.1f))
+        }
+        Text("${ch.protein}g · ${ch.calories} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
     }
 }
 

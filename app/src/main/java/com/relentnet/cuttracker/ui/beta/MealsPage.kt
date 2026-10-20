@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.relentnet.cuttracker.data.Food
 import com.relentnet.cuttracker.data.FoodTable
 import com.relentnet.cuttracker.data.Ingredient
+import com.relentnet.cuttracker.data.LabelRead
 import com.relentnet.cuttracker.data.OpenFoodFacts
 import com.relentnet.cuttracker.data.RecipeImport
 import com.relentnet.cuttracker.data.kcalSum
@@ -64,6 +65,9 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
     val s = st.settings
     val haptics = LocalHaptics.current
     var sheet by rememberSaveable { mutableStateOf("") }   // "", "new", "meal:<id>", "kind:<slot id>"
+    // Something shared in from another app opens New meal with it; a second share while the sheet is up rebuilds the sheet.
+    val shared = vm.pendingShare
+    LaunchedEffect(shared) { if (shared != null) sheet = "new" }
     val kinds = s.meals.map { LibKind(it.id, it.name) }
     val ws = ProgramEngine.weekStart(st.today)
     val uses = remember(st.logs) {
@@ -81,10 +85,10 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
         empty = "No meals yet. Tap + to add one.",
     )
     when {
-        sheet == "new" -> MealSheet(null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = "" },
-            onSave = { m -> vm.saveSettings(s.copy(library = s.library + m)); sheet = "" }, onDelete = null,
+        sheet == "new" -> key(shared) { MealSheet(null, kinds, kinds.firstOrNull()?.key ?: "", onDismiss = { sheet = ""; vm.pendingShare = null },
+            onSave = { m -> vm.saveSettings(s.copy(library = s.library + m)); sheet = ""; vm.pendingShare = null }, onDelete = null, shared = shared,
             importOn = s.recipeImportOn, onAllowImport = { vm.saveSettings(s.copy(onlineFeatures = true, recipeImport = true)) },
-            barcodeOn = s.barcodeLookupOn, onAllowBarcode = { vm.saveSettings(s.copy(onlineFeatures = true, barcodeLookup = true)) })
+            barcodeOn = s.barcodeLookupOn, onAllowBarcode = { vm.saveSettings(s.copy(onlineFeatures = true, barcodeLookup = true)) }) }
         sheet.startsWith("meal:") -> s.library.firstOrNull { it.id == sheet.removePrefix("meal:") }?.let { m ->
             MealSheet(m, kinds, m.kind, onDismiss = { sheet = "" },
                 onSave = { nm -> vm.saveSettings(s.copy(library = s.library.map { if (it.id == m.id) nm else it })); sheet = "" },
@@ -120,19 +124,24 @@ fun addMealKind(s: Settings, name: String): Settings {
 private fun MealSheet(
     m: LibMeal?, kinds: List<LibKind>, kind0: String, onDismiss: () -> Unit, onSave: (LibMeal) -> Unit, onDelete: (() -> Unit)?,
     importOn: Boolean = false, onAllowImport: () -> Unit = {}, barcodeOn: Boolean = false, onAllowBarcode: () -> Unit = {},
+    shared: String? = null,
 ) {
     val c = CutTheme.colors
     val context = LocalContext.current
-    var name by remember(m) { mutableStateOf(m?.name ?: "") }
+    // A shared link goes in the link field; whatever text came with it (or plain text alone) is the name until the page says better.
+    val sharedLink = shared?.let { Regex("""https?://\S+""").find(it)?.value }
+    val sharedName = shared?.replace(sharedLink ?: "", "")?.trim()?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim() ?: ""
+    var name by remember(m) { mutableStateOf(m?.name ?: sharedName) }
     var kind by remember(m) { mutableStateOf(kind0) }
     var pro by remember(m) { mutableStateOf(m?.protein?.toString() ?: "") }
     var cal by remember(m) { mutableStateOf(m?.calories?.toString() ?: "") }
     var recipe by remember(m) { mutableStateOf(m?.recipe ?: "") }
     var lines by remember(m) { mutableStateOf(m?.ingredients ?: emptyList()) }
-    var link by remember(m) { mutableStateOf("") }
+    var link by remember(m) { mutableStateOf(sharedLink ?: "") }
     var fetching by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<Pair<String, Boolean>?>(null) }   // text, ok
     var scanning by remember { mutableStateOf(false) }
+    var reading by remember { mutableStateOf(false) }
     var askBarcode by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf("") }
     // The lines own the numbers while there are any; the fields stay editable for a meal typed by hand.
@@ -165,11 +174,22 @@ private fun MealSheet(
         fetching = false; code = ""
     }
     if (scanning) BarcodeScanner(onScan = { scanning = false; code = it }, onDismiss = { scanning = false })
+    // A label fills the number fields straight from the camera, on the phone. The note says which lines it trusted.
+    if (reading) LabelScanner(onDismiss = { reading = false }, onRead = { text ->
+        reading = false
+        val f = LabelRead.parse(text)
+        f.protein?.let { pro = it.toString() }; f.calories?.let { cal = it.toString() }
+        if (f.serving != null && recipe.isBlank()) recipe = "One serving, ${f.serving}, from the label."
+        val missing = listOfNotNull("protein".takeIf { f.protein == null }, "calories".takeIf { f.calories == null })
+        val next = if (missing.isNotEmpty()) "No ${missing.joinToString(" or ")} found, type it." else if (name.isBlank()) "Name it and add it." else "Check the numbers."
+        note = ("Read " + f.lines.joinToString(", ") { "“$it”" } + ". " + next) to true
+    })
     Sheet(if (m == null) "New meal" else "Edit meal", onDismiss) {
         if (m == null) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
-                SheetField("Paste a recipe link", link, { link = it; note = null }, Modifier.weight(1f), text = true, placeholder = "https://")
-                BigButton("Scan", onClick = { note = null; if (barcodeOn) scanning = true else askBarcode = true }, modifier = Modifier.width(88.dp), secondary = true, height = 48.dp, fontSize = 12)
+            SheetField("Recipe link", link, { link = it; note = null }, text = true, placeholder = "Paste one, or share a page here")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BigButton("Scan a barcode", onClick = { note = null; if (barcodeOn) scanning = true else askBarcode = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
+                BigButton("Read a label", onClick = { note = null; reading = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
             }
             if (!importOn && RecipeImport.isUsable(link)) AllowCard(
                 "This downloads the page you pasted, from that site, and reads the recipe out of it. Nothing else leaves the phone. You can switch it off under Settings, Data.",
@@ -224,7 +244,8 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
     var q by remember { mutableStateOf("") }
     var hits by remember { mutableStateOf<List<Food>>(emptyList()) }
     LaunchedEffect(q) { hits = if (q.isBlank()) emptyList() else search(q) }
-    SheetLabel("Ingredients")
+    // With no lines yet the search field's own label is the section label; two eyebrows in a row read as a mistake.
+    if (lines.isNotEmpty()) SheetLabel("Ingredients")
     lines.forEachIndexed { i, ing ->
         key(i, ing.name) {
             var g by remember { mutableStateOf(fmtGrams(ing.grams)) }
@@ -240,7 +261,7 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
             }
         }
     }
-    SheetField(if (lines.isEmpty()) "Add an ingredient" else "Add another", q, { q = it }, text = true, placeholder = "Search foods, like chicken breast")
+    SheetField(if (lines.isEmpty()) "Ingredients" else "Add another", q, { q = it }, text = true, placeholder = "Search foods, like chicken breast")
     hits.forEach { f ->
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.ground).clickable(role = Role.Button) { onLines(lines + Ingredient(f.name, f.defaultGrams, f.protein100, f.kcal100)); q = "" }.padding(10.dp, 8.dp),
