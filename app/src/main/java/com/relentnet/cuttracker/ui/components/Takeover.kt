@@ -67,13 +67,16 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
     val c = CutTheme.colors
     val haptics = LocalHaptics.current
     val slam = remember(t) { Animatable(1f) }
+    val calm = CutTheme.calm
 
     LaunchedEffect(t) {
         when (t) {
             is Takeover.Send -> {
                 haptics.pattern(0, 30, 40, 60)
-                slam.snapTo(1.4f)
-                slam.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessMedium))
+                if (!calm) {
+                    slam.snapTo(1.4f)
+                    slam.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessMedium))
+                }
                 haptics.heavy()
             }
             is Takeover.LevelUp -> {

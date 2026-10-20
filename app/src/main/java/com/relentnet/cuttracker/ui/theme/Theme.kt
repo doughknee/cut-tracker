@@ -60,6 +60,9 @@ val LocalDecor = staticCompositionLocalOf { Decor.NONE }
 
 /** The words the screens speak: climbing, or plain for people who do not climb. */
 val LocalVocab = staticCompositionLocalOf { com.relentnet.cuttracker.data.Vocab.CLIMBING }
+val LocalPrefs = staticCompositionLocalOf { com.relentnet.cuttracker.data.Prefs() }
+/** Calm motion: no confetti, no slam, fades instead of slides. Settings, or the phone's own animation switch. */
+val LocalCalm = staticCompositionLocalOf { false }
 
 enum class ThemeMode { SYSTEM, DARK, LIGHT, SCHEDULE;
     companion object { fun of(s: String) = when (s) { "dark" -> DARK; "light" -> LIGHT; "schedule" -> SCHEDULE; else -> SYSTEM } }
@@ -70,7 +73,19 @@ object CutTheme {
         @Composable get() = LocalCutColors.current
     val vocab: com.relentnet.cuttracker.data.Vocab
         @Composable get() = LocalVocab.current
+    val prefs: com.relentnet.cuttracker.data.Prefs
+        @Composable get() = LocalPrefs.current
+    val calm: Boolean
+        @Composable get() = LocalCalm.current
 }
+
+/** Higher contrast: secondary text, dim text and borders move toward the main text color. */
+private fun CutColors.contrasted(): CutColors = copy(
+    text2 = androidx.compose.ui.graphics.lerp(text2, text, 0.45f),
+    dim = androidx.compose.ui.graphics.lerp(dim, text2, 0.6f),
+    mutedBorder = androidx.compose.ui.graphics.lerp(mutedBorder, text2, 0.4f),
+    hairline = androidx.compose.ui.graphics.lerp(hairline, mutedBorder, 0.6f),
+)
 
 /** Whether [mode] means dark right now; [now] matters only for the schedule. */
 @Composable
@@ -94,10 +109,10 @@ private fun CutColors.eased(): CutColors = copy(
 private fun Color.eased(label: String): Color = animateColorAsState(this, tween(400), label = label).value
 
 @Composable
-fun CutTheme(mode: ThemeMode, palette: Palette = Palettes.SANDSTONE, now: java.time.LocalTime = java.time.LocalTime.now(), content: @Composable () -> Unit) {
+fun CutTheme(mode: ThemeMode, palette: Palette = Palettes.SANDSTONE, now: java.time.LocalTime = java.time.LocalTime.now(), highContrast: Boolean = false, content: @Composable () -> Unit) {
     val dark = isDarkFor(mode, now)
     // Keyed on dark so a mode flip snaps (the states are rebuilt at the new colors) while a palette change eases.
-    val c = key(dark) { palette.colors(dark).eased() }
+    val c = key(dark) { palette.colors(dark).let { if (highContrast) it.contrasted() else it }.eased() }
     val scheme = if (dark) darkColorScheme(
         primary = c.accent, onPrimary = c.onAccent, background = c.ground, onBackground = c.text,
         surface = c.surface, onSurface = c.text, surfaceVariant = c.surface, onSurfaceVariant = c.text2,

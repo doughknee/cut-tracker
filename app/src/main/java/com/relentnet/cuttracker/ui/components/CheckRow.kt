@@ -97,10 +97,12 @@ fun CheckRow(
     val scope = rememberCoroutineScope()
     var swiped by remember { mutableFloatStateOf(0f) }
     val swipeCb by androidx.compose.runtime.rememberUpdatedState(onSwipeCheck)
+    val prefs = CutTheme.prefs
+    val swipeOn = onSwipeCheck != null && prefs.swipeToTick
     val shape = RoundedCornerShape(10.dp)
 
     Box(Modifier.fillMaxWidth().clip(shape)) {
-        if (onSwipeCheck != null && !done) {
+        if (swipeOn && !done) {
             Box(
                 Modifier.matchParentSize().alpha((offset.value / threshold).coerceIn(0f, 1f)).background(c.good),
                 contentAlignment = Alignment.CenterStart,
@@ -113,7 +115,7 @@ fun CheckRow(
                 .offset { IntOffset(offset.value.roundToInt(), 0) }
                 .fillMaxWidth()
                 .then(
-                    if (onSwipeCheck != null && !done) Modifier.pointerInput(Unit) {
+                    if (swipeOn && !done) Modifier.pointerInput(Unit) {
                         detectHorizontalDragGestures(
                             onDragEnd = {
                                 val past = offset.value > threshold
@@ -160,9 +162,9 @@ fun CheckRow(
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (!compact && tag != null) Text(tag.uppercase(), color = c.good, style = cutStyle(10, 800, 1f, 0.08f))
-                else if (!compact && time != null) Text(time, color = c.text2, style = cutStyle(12, 700, 1f, tabular = true))
+                else if (!compact && time != null && prefs.showTimes) Text(time, color = c.text2, style = cutStyle(12, 700, 1f, tabular = true))
                 val xpColor by animateColorAsState(if (done) c.good else c.dim, tween(200), label = "xp")
-                Text("+$xp", color = xpColor, style = cutStyle(11, 800, 1f, tabular = true))
+                if (prefs.showXp) Text("+$xp", color = xpColor, style = cutStyle(11, 800, 1f, tabular = true))
             }
         }
     }

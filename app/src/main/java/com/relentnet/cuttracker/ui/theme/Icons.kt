@@ -20,6 +20,7 @@ private fun stroke(name: String, width: Float, vararg paths: String): ImageVecto
 private fun circle(cx: Float, cy: Float, r: Float) = "M${cx - r} $cy a$r $r 0 1 0 ${2 * r} 0 a$r $r 0 1 0 ${-2 * r} 0"
 
 object CutIcons {
+    val Widget = stroke("widget", 2f, "M4 6h7v12H4z", "M14 6h6v5h-6z", "M14 14h6v4h-6z")
     val You = stroke("you", 2f, "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6")
     val Today = stroke("today", 2f, "M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z", "M3 9h18M8 2v4M16 2v4")
     val Weight = stroke("weight", 2f, "M3 17l5-6 4 4 5-8 4 5")

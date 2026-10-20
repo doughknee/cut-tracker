@@ -41,9 +41,20 @@ class MainActivity : ComponentActivity() {
             val mode = ThemeMode.of(st.settings.theme)
             // A minute tick so a scheduled dark and a calendar look change while the app is open.
             val now by produceState(java.time.LocalDateTime.now()) { while (true) { kotlinx.coroutines.delay(60_000); value = java.time.LocalDateTime.now() } }
-            val palette = Palettes.of(st.settings, now.toLocalDate())
-            CutTheme(mode, palette, now.toLocalTime()) {
-                CompositionLocalProvider(LocalHaptics provides remember { haptics }, com.relentnet.cuttracker.ui.theme.LocalVocab provides st.settings.vocab) { App(vm) }
+            val p = st.settings.prefs
+            val palette = Palettes.of(st.settings, now.toLocalDate()).let { if (p.wallDecor) it else it.copy(decor = com.relentnet.cuttracker.ui.theme.Decor.NONE) }
+            // The phone's "Remove animations" switch counts as calm unless Settings says always.
+            val phoneCalm = remember { android.provider.Settings.Global.getFloat(contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            CutTheme(mode, palette, now.toLocalTime(), highContrast = p.highContrast) {
+                CompositionLocalProvider(
+                    LocalHaptics provides remember { haptics },
+                    com.relentnet.cuttracker.ui.theme.LocalVocab provides st.settings.vocab,
+                    com.relentnet.cuttracker.ui.theme.LocalPrefs provides p,
+                    com.relentnet.cuttracker.ui.theme.LocalCalm provides (p.reduceMotion == "on" || phoneCalm),
+                    // Text size on top of the phone's own.
+                    androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * p.textScale),
+                ) { App(vm) }
             }
         }
     }

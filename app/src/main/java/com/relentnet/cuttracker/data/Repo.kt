@@ -151,6 +151,8 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         db.badges().observeAll(), db.liftSets().observeAll(), db.photos().observeAll(),
     ) { arr ->
         val s = arr[0] as Settings
+        ProgramEngine.firstDay = s.prefs.weekStart
+        Clock.mode = s.prefs.clock
         val today = arr[1] as LocalDate
         val logs = arr[2] as List<DayLog>
         val weighIns = arr[3] as List<WeighIn>

@@ -137,7 +137,7 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
     var newsOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(st.settings.seenVersion, version) {
         if (version.isNotBlank() && st.settings.seenVersion != version) {
-            if (st.settings.tourSeen && st.logs.isNotEmpty() && whatsNew[version] != null) newsOpen = true
+            if (st.settings.tourSeen && st.settings.prefs.whatsNewNote && st.logs.isNotEmpty() && whatsNew[version] != null) newsOpen = true
             else vm.updateSettings { s -> s.copy(seenVersion = version) }
         }
     }
@@ -150,14 +150,15 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
     // Derived in the same frame as the tick, so the row never blinks out before it shows as ticked.
     var seen by remember(date) { mutableStateOf(done) }
     val fresh = done - seen
-    LaunchedEffect(done) { if (fresh.isNotEmpty()) kotlinx.coroutines.delay(450); seen = done }
+    val calm = CutTheme.calm
+    LaunchedEffect(done) { if (fresh.isNotEmpty() && !calm) kotlinx.coroutines.delay(450); seen = done }
     // Hide completed (Settings, App) folds ticked rows into Done; off, they stay in place, ticked.
     val hide = st.settings.hideDone
     val remaining = items.filter { !hide || it.id !in done || it.id in fresh }
     val finished = if (hide) items.filter { it.id in done && it.id !in fresh } else emptyList()
     val next = remaining.firstOrNull { it.id !in done }
     var changing by remember(date) { mutableStateOf(false) }
-    val late = !past && mode == null && !changing && (!now.isBefore(st.settings.pickTime) || now.hour < st.settings.resetHour)
+    val late = !past && mode == null && !changing && st.settings.prefs.eveningCard && (!now.isBefore(st.settings.pickTime) || now.hour < st.settings.resetHour)
     val welcomeBack = !past && st.missedRun >= 2 && st.settings.welcomeBackSeen != st.today
     val prevWeigh = st.weighInBefore(date)
 
@@ -560,7 +561,7 @@ private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int
         Row(Modifier.heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("${tickedInt(dv.totals.protein)}", color = if (hit) c.good else c.text, style = cutStyle(13, 800, 1f, tabular = true), softWrap = false)
             Text(" / $proteinTarget g", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
-            Text("   ${tickedInt(dv.totals.calories)} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
+            if (CutTheme.prefs.showCalories) Text("   ${tickedInt(dv.totals.calories)} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
         }
     }
 }
@@ -581,9 +582,11 @@ private fun WeighInline(s: com.relentnet.cuttracker.data.Settings, prefill: Doub
     }
     Column(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Chip("-.2") { adjust(-0.2) }
+        val step = CutTheme.prefs.weighStep
+        val stepWords = ProgramEngine.fmt1(step).removePrefix("0")
+        Chip("-$stepWords") { adjust(-step) }
         Field(text, { text = it; bad = false }, Modifier.weight(1f), onDone = ::go, focusRequester = focus)
-        Chip("+.2") { adjust(0.2) }
+        Chip("+$stepWords") { adjust(step) }
         Box(
             Modifier.height(44.dp).clip(RoundedCornerShape(9.dp)).background(c.accent).clickable(onClick = ::go, role = Role.Button).padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center,

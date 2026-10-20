@@ -11,9 +11,18 @@ What changed in Sendline, from the user's side. Newest first.
 - The wall guide on Today is a plain i in the corner of the wall.
 - Swipe the wall sideways for the week before or after.
 
+### A fuller You tab
+
+- The You tab has three groups: Today, Nudges and Widget; Theme, Feel and access, Words and units; Data and About.
+- Today: switch off the tape, the rope, holiday decorations, xp, times, calories, swipe to tick or the evening card; pick weigh-in steps of 0.1, 0.2 or 0.5; choose the tab the app opens on. A preview card follows every switch.
+- Feel and access: larger text on top of the phone's size, higher contrast, calm motion (no confetti or bounce, pages fade), celebrations as full screen, a short note or nothing, and haptics on their own.
+- Words and units: weeks can start on Sunday, everywhere from the wall to the Route calendar, and the clock can be 12 or 24-hour whatever the phone says.
+- Widget: add it from here, and hide your weight on it for a phone others see.
+- Nudges: on a checkpoint morning the weigh-in reminder says so and asks for the photo. About: the update note can be switched off.
+
 ### Settings, sorted
 
-- Appearance is now two pages. Theme is the look: dark or light, the calendar, the looks grid. App is how Sendline behaves: the words, Hide completed, when the day rolls over (moved from Nudges), units, haptics.
+- Appearance is now Theme, the look: dark or light, the calendar, the looks grid. The rest moved to Today, Feel and access, and Words and units; when the day rolls over moved from Nudges to Today.
 - Kilograms. Settings, App, Units switches every weight you read or type: the weigh-in, the widget, Weight and its chart, Targets, checkpoints and lifts. Weights are kept the same underneath, so switching back and forth loses nothing. Setup asks too, beside the first weigh-in.
 - Quiet days. Each reminder has a row of days; tap one and that reminder stays quiet on it.
 - Every Settings page opens on a picture of what it changes: Nudges shows the reminders as they land in the shade, App a corner of Today in your words and unit, Data what is on this phone (days, weigh-ins, lift sets, photos and their size, and how fresh the last backup is), About the app in one line.

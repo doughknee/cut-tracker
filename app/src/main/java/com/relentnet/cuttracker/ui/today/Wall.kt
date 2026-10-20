@@ -167,7 +167,7 @@ fun Wall(
                     val cy = (ay(sel) + HOLD / 2).toPx()
                     drawCircle(Brush.radialGradient(listOf(c.text.copy(alpha = 0.18f), Color.Transparent), Offset(cx, cy), 58.dp.toPx()), 58.dp.toPx(), Offset(cx, cy))
                 }
-                val onRope = days.indices.filter { (st.results[days[it]] ?: DayResult.FUTURE) in ROPE }
+                val onRope = if (!st.settings.prefs.showRope) emptyList() else days.indices.filter { (st.results[days[it]] ?: DayResult.FUTURE) in ROPE }
                 for (k in 1 until onRope.size) {
                     val a = onRope[k - 1]; val b = onRope[k]
                     drawLine(
@@ -218,7 +218,7 @@ fun Wall(
         }
 
         // Front layer: route tag and the week chrome, full speed.
-        Row(
+        if (st.settings.prefs.showTape) Row(
             Modifier.offset((-6).dp, 180.dp * ys + statusTop).rotate(-8f).background(c.accent).padding(start = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

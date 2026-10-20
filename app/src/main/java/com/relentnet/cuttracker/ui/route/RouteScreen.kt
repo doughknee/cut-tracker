@@ -188,7 +188,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
     LaunchedEffect(Unit) { delay(380); thisWeekRequester.bringIntoView() }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth().padding(start = 34.dp, end = 22.dp)) {
-            for (d in "MTWTFSS") Text("$d", Modifier.weight(1f), color = c.dim, style = cutStyle(9, 800, 1f, 0.06f), textAlign = TextAlign.Center)
+            for (d in if (s.prefs.weekStartsSunday) "SMTWTFS" else "MTWTFSS") Text("$d", Modifier.weight(1f), color = c.dim, style = cutStyle(9, 800, 1f, 0.06f), textAlign = TextAlign.Center)
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             for (w in 0 until rows) {

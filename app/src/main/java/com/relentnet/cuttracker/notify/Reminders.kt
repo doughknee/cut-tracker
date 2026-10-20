@@ -78,8 +78,14 @@ object Reminders {
         )
         val n = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title(kind))
-            .setContentText(text(kind))
+            .apply {
+                // On a checkpoint morning the weigh-in reminder asks for the photo too.
+                val s = runBlocking { App.of(context).settings.current() }
+                val today = day ?: runBlocking { App.of(context).repo.today() }
+                val cp = kind == KIND_WEIGH && s.prefs.checkpointNote && s.checkpoints.any { !it.free && it.localDate == today }
+                setContentTitle(if (cp) "Checkpoint day" else title(kind))
+                setContentText(if (cp) "Weigh in before food, then take the progress photo." else text(kind))
+            }
             .setStyle(NotificationCompat.BigTextStyle())
             .setContentIntent(open)
             .setAutoCancel(true)

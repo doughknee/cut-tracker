@@ -88,6 +88,9 @@ object SettingsSections {
     const val DATA = "data"
     const val ABOUT = "about"
     const val DEVELOPER = "developer"
+    const val TODAY = "today"
+    const val FEEL = "feel"
+    const val WIDGET = "widget"
 }
 
 @Composable
@@ -115,6 +118,7 @@ fun SettingsScreen(vm: AppViewModel, onSection: (String) -> Unit) {
             }
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp) {
+            CategoryRow(CutIcons.Check, "Today", todayLine(s)) { onSection(SettingsSections.TODAY) }
             CategoryRow(CutIcons.Today, "Nudges", when {
                 !notifOn -> "Notifications are off"
                 !s.weighReminder && !s.pickReminder -> "Both reminders off"
@@ -123,8 +127,14 @@ fun SettingsScreen(vm: AppViewModel, onSection: (String) -> Unit) {
                     if (s.pickReminder) "pick a day ${clockText(context, s.pickTime)}" else null,
                 ).joinToString(", ").replaceFirstChar { it.uppercase() }
             }) { onSection(SettingsSections.NUDGES) }
+            CategoryRow(CutIcons.Widget, "Widget", if (s.prefs.widgetHideWeight) "On the home screen, weight hidden" else "On the home screen") { onSection(SettingsSections.WIDGET) }
+        }
+        Card(Modifier.fillMaxWidth(), radius = 14.dp) {
             CategoryRow(CutIcons.Layers, "Theme", themeLine(s)) { onSection(SettingsSections.THEME) }
-            CategoryRow(CutIcons.Zap, "App", appLine(s)) { onSection(SettingsSections.APP) }
+            CategoryRow(CutIcons.Zap, "Feel and access", feelLine(s.prefs)) { onSection(SettingsSections.FEEL) }
+            CategoryRow(CutIcons.Beta, "Words and units", appLine(s)) { onSection(SettingsSections.APP) }
+        }
+        Card(Modifier.fillMaxWidth(), radius = 14.dp) {
             CategoryRow(CutIcons.Data, "Data", "Export, import, online features, wipe. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = !s.devOptions) { onSection(SettingsSections.ABOUT) }
             if (s.devOptions) CategoryRow(CutIcons.Gear, "Developer options", "Preview onboarding as a new user", last = true) { onSection(SettingsSections.DEVELOPER) }
@@ -157,6 +167,9 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
     when (section.substringBefore('/')) {
         SettingsSections.THEME -> { ThemePage(vm, onBack); return }
         SettingsSections.APP -> { AppPage(vm, onBack); return }
+        SettingsSections.TODAY -> { TodayPage(vm, onBack); return }
+        SettingsSections.FEEL -> { FeelPage(vm, onBack); return }
+        SettingsSections.WIDGET -> { WidgetPage(vm, onBack); return }
     }
     val focus = section.substringAfter('/', "")
     val section = section.substringBefore('/')
@@ -274,11 +287,8 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                     }
                     if (s.pickReminder) QuietDays(s.pickQuiet, "pick-a-day") { d -> haptics.tick(); vm.updateSettings { s -> s.copy(pickQuiet = if (d in s.pickQuiet) s.pickQuiet - d else s.pickQuiet + d) } }
                 }
-                val widgets = context.getSystemService(android.appwidget.AppWidgetManager::class.java)
-                if (widgets?.isRequestPinAppWidgetSupported == true) KindCard("On the home screen", "") {
-                    PlainRow("The Sendline widget", "weigh in, pick the day and tick meals without opening the app") {
-                        LinkText("Add") { widgets.requestPinAppWidget(android.content.ComponentName(context, com.relentnet.cuttracker.widget.CutWidgetReceiver::class.java), null, null) }
-                    }
+                KindCard("On checkpoint days", "") {
+                    SwitchRow("Say so in the weigh-in", "the morning reminder reads Checkpoint day and asks for the photo", s.prefs.checkpointNote) { vm.updatePrefs { it.copy(checkpointNote = !it.checkpointNote) } }
                 }
             }
             SettingsSections.DATA -> {
@@ -352,6 +362,9 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                         PlainRow("Version", version.ifBlank { null }) { }
                     }
                 }
+                KindCard("Updates", "") {
+                    SwitchRow("What's new", "a short note on what changed, the first time an updated app opens", s.prefs.whatsNewNote) { vm.updatePrefs { it.copy(whatsNewNote = !it.whatsNewNote) } }
+                }
                 Sub("Sendline is a logbook and a scoreboard, not medical advice. Your targets are yours; talk to a doctor before a cut if you have a condition.", size = 12)
             }
         }
@@ -390,8 +403,7 @@ internal fun exportAge(d: LocalDate?): String {
 }
 
 /** A time the way the phone shows times: 19:00 or 7:00 PM. */
-internal fun clockText(context: android.content.Context, t: LocalTime): String =
-    t.format(if (android.text.format.DateFormat.is24HourFormat(context)) timeFmt else DateTimeFormatter.ofPattern("h:mm a", Locale.US))
+internal fun clockText(context: android.content.Context, t: LocalTime): String = com.relentnet.cuttracker.data.Clock.text(context, t)
 
 @Composable
 internal fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
@@ -400,10 +412,10 @@ internal fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
     val shape = RoundedCornerShape(8.dp)
     Box(
         Modifier.height(36.dp).clip(shape).background(c.ground).border(1.dp, c.mutedBorder, shape)
-            .clickable(role = Role.Button) { TimePickerDialog(context, { _, h, m -> onPick(LocalTime.of(h, m)) }, value.hour, value.minute, android.text.format.DateFormat.is24HourFormat(context)).show() }
+            .clickable(role = Role.Button) { TimePickerDialog(context, { _, h, m -> onPick(LocalTime.of(h, m)) }, value.hour, value.minute, com.relentnet.cuttracker.data.Clock.is24(context)).show() }
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
-    ) { Text(value.format(if (android.text.format.DateFormat.is24HourFormat(context)) timeFmt else DateTimeFormatter.ofPattern("h:mm a", Locale.US)), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
+    ) { Text(clockText(context, value), color = c.text, style = cutStyle(14, 800, 1f, tabular = true)) }
 }
 
 /** What the Theme row says: the mode, and the look the app wears right now. */
@@ -413,12 +425,30 @@ private fun themeLine(s: com.relentnet.cuttracker.data.Settings): String {
     return "$mode, $look"
 }
 
-/** What the App row says: the words, the unit, and whatever is off its default. */
+/** What the Words and units row says: the words, the unit, and whatever is off its default. */
 private fun appLine(s: com.relentnet.cuttracker.data.Settings): String = listOfNotNull(
     if (s.training == null) "Climbing words" else "Plain words",
     if (s.kg) "kg" else "lb",
-    if (s.hideDone) "hide completed" else null,
-    if (s.haptics) null else "haptics off",
+    if (s.prefs.weekStartsSunday) "weeks start Sunday" else null,
+    when (s.prefs.clock) { "12" -> "12-hour"; "24" -> "24-hour"; else -> null },
+).joinToString(", ")
+
+/** What the Today row says: how many of its switches are off their defaults, or that it is as it comes. */
+private fun todayLine(s: com.relentnet.cuttracker.data.Settings): String {
+    val p = s.prefs
+    val changed = listOfNotNull(
+        if (!p.showTape) "no tape" else null, if (!p.showRope) "no rope" else null, if (s.hideDone) "hide completed" else null,
+        if (!p.showXp) "no xp" else null, if (!p.swipeToTick) "tap to tick" else null, if (p.startTab != "today") "opens on ${p.startTab.replaceFirstChar { it.uppercase() }}" else null,
+    )
+    return if (changed.isEmpty()) "The wall, the script, the day's edges" else changed.joinToString(", ").replaceFirstChar { it.uppercase() }
+}
+
+/** What the Feel and access row says. */
+private fun feelLine(p: com.relentnet.cuttracker.data.Prefs): String = listOfNotNull(
+    when { p.textScale > 1.2f -> "Larger text"; p.textScale > 1.05f -> "Large text"; else -> "Phone text size" },
+    if (p.highContrast) "higher contrast" else null,
+    if (p.reduceMotion == "on") "calm motion" else null,
+    when (p.celebrate) { "quiet" -> "quiet celebrations"; "off" -> "no celebrations"; else -> null },
 ).joinToString(", ")
 
 /** ", not on Sat and Sun" after a reminder's sub; nothing when it rings every day. */

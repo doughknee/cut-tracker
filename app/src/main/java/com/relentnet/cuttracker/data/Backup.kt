@@ -40,6 +40,7 @@ data class SettingsDto(
     val kg: Boolean = false,
     /** ISO days of the week, Monday 1. */
     val weighQuiet: List<Int> = emptyList(), val pickQuiet: List<Int> = emptyList(),
+    val prefs: Prefs = Prefs(),
     // Last on purpose: a v1 export ends its settings with the library, and the test for that cuts the file there.
     val library: List<LibMeal> = ProgramSpec.library,
 )
@@ -59,7 +60,7 @@ fun Settings.toDto() = SettingsDto(
     weighInTime.toString(), pickTime.toString(), resetHour, haptics, theme, lastOpenDate?.toString(), welcomeBackSeen?.toString(), workoutsPerWeek,
     plans.mapKeys { it.key.name }, liftKinds, onlineFeatures, recipeImport, barcodeLookup, palette, paletteByCalendar, customLooks, tourSeen,
     weighReminder, pickReminder, lastExport?.toString(), ledgerKept, hideDone, training, kg,
-    weighQuiet.map { it.value }.sorted(), pickQuiet.map { it.value }.sorted(), library,
+    weighQuiet.map { it.value }.sorted(), pickQuiet.map { it.value }.sorted(), prefs, library,
 )
 
 fun SettingsDto.toSettings() = Settings(
@@ -72,6 +73,7 @@ fun SettingsDto.toSettings() = Settings(
     lastExport = lastExport?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
     ledgerKept = ledgerKept, hideDone = hideDone, training = training, kg = kg,
     weighQuiet = weighQuiet.filter { it in 1..7 }.map(java.time.DayOfWeek::of).toSet(), pickQuiet = pickQuiet.filter { it in 1..7 }.map(java.time.DayOfWeek::of).toSet(),
+    prefs = prefs,
 )
 
 suspend fun Repo.buildBackup(): Backup = Backup(

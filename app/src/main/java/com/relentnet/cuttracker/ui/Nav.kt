@@ -132,18 +132,19 @@ fun App(vm: AppViewModel) {
     }
     // The stack holds one tab at a time, so back from Beta or Route is ours to handle: it goes to Today.
     BackHandler(enabled = route in Routes.tabs && route != Routes.TODAY) { nav.goTab(Routes.TODAY) }
+    val calm = CutTheme.calm
     Box(Modifier.fillMaxSize().background(c.ground)) {
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) {
                 NavHost(
-                    nav, startDestination = if (st.settings.onboarded) Routes.TODAY else Routes.ONBOARDING,
-                    enterTransition = { enter(initialState.destination.route, targetState.destination.route) },
-                    exitTransition = { exit(initialState.destination.route, targetState.destination.route) },
-                    popEnterTransition = { popEnter(initialState.destination.route, targetState.destination.route) },
-                    popExitTransition = { popExit(initialState.destination.route, targetState.destination.route) },
+                    nav, startDestination = if (!st.settings.onboarded) Routes.ONBOARDING else when (st.settings.prefs.startTab) { "beta" -> Routes.BETA; "route" -> Routes.ROUTE; else -> Routes.TODAY },
+                    enterTransition = { if (calm) fadeIn(tween(120)) else enter(initialState.destination.route, targetState.destination.route) },
+                    exitTransition = { if (calm) fadeOut(tween(120)) else exit(initialState.destination.route, targetState.destination.route) },
+                    popEnterTransition = { if (calm) fadeIn(tween(120)) else popEnter(initialState.destination.route, targetState.destination.route) },
+                    popExitTransition = { if (calm) fadeOut(tween(120)) else popExit(initialState.destination.route, targetState.destination.route) },
                     // The back gesture seeks these two, not the pop transitions above; without them it plays the library default.
-                    predictivePopEnterTransition = { popEnter(initialState.destination.route, targetState.destination.route) },
-                    predictivePopExitTransition = { popExit(initialState.destination.route, targetState.destination.route) },
+                    predictivePopEnterTransition = { if (calm) fadeIn(tween(120)) else popEnter(initialState.destination.route, targetState.destination.route) },
+                    predictivePopExitTransition = { if (calm) fadeOut(tween(120)) else popExit(initialState.destination.route, targetState.destination.route) },
                 ) {
                     composable(Routes.ONBOARDING) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(0) { inclusive = true }; launchSingleTop = true } })
@@ -196,7 +197,7 @@ fun App(vm: AppViewModel) {
         }
         Splash(true)
         vm.toast?.let { t -> ToastPill(t.text, Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp).windowInsetsPadding(WindowInsets.navigationBars), t.action, onAction = { t.onAction?.invoke(); vm.dismissToast() }) }
-        vm.takeover?.let { TakeoverOverlay(it, confettiOn = st.settings.haptics, onDismiss = { vm.dismissTakeover() }) }
+        vm.takeover?.let { TakeoverOverlay(it, confettiOn = !calm, onDismiss = { vm.dismissTakeover() }) }
     }
 }
 

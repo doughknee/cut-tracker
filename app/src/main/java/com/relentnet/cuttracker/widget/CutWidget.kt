@@ -261,7 +261,7 @@ private fun WeighStage(st: AppState, draft: Double) {
         }
         Spacer(GlanceModifier.height(6.dp))
         Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
-            StepButton("−", -0.2)
+            StepButton("−", -s.prefs.weighStep)
             Spacer(GlanceModifier.width(8.dp))
             Column(
                 GlanceModifier.defaultWeight().fillMaxHeight().background(W.surface).cornerRadius(10.dp)
@@ -269,18 +269,18 @@ private fun WeighStage(st: AppState, draft: Double) {
                 horizontalAlignment = Alignment.CenterHorizontally, verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("WEIGH IN", style = eyebrow(W.accent))
-                Text(s.w(draft), style = TextStyle(color = W.text, fontSize = 28.sp, fontWeight = FontWeight.Bold))
+                Text(if (s.prefs.widgetHideWeight) "• • •" else s.w(draft), style = TextStyle(color = W.text, fontSize = 28.sp, fontWeight = FontWeight.Bold))
                 Text(
                     when {
                         delta == null -> "first reading"
-                        delta == 0.0 -> "yesterday ${s.w(yesterday!!)}"
+                        delta == 0.0 -> if (s.prefs.widgetHideWeight) "same as yesterday" else "yesterday ${s.w(yesterday!!)}"
                         else -> (if (delta > 0) "+" else "") + ProgramEngine.fmt1(delta) + " vs yesterday"
                     },
                     style = eyebrow(size = 9).copy(fontWeight = FontWeight.Medium),
                 )
             }
             Spacer(GlanceModifier.width(8.dp))
-            StepButton("+", 0.2)
+            StepButton("+", s.prefs.weighStep)
         }
         Spacer(GlanceModifier.height(6.dp))
         Box(
@@ -308,7 +308,7 @@ private fun PickStage(st: AppState) {
                 Text("DAY ${st.dayN} · ", style = eyebrow())
                 Image(ImageProvider(R.drawable.ic_w_check), null, GlanceModifier.size(10.dp), colorFilter = ColorFilter.tint(W.good))
                 Spacer(GlanceModifier.width(3.dp))
-                Text((if (lb != null) st.settings.w(lb) + " " else "") + "LOGGED · +${ProgramSpec.XP_WEIGH}", style = eyebrow(W.text))
+                Text((if (lb != null && !st.settings.prefs.widgetHideWeight) st.settings.w(lb) + " " else "") + "LOGGED · +${ProgramSpec.XP_WEIGH}", style = eyebrow(W.text))
             }
             Text("PICK A DAY", style = eyebrow(W.accent))
         }
@@ -388,7 +388,7 @@ private fun Dashboard(st: AppState) {
             Text("${st.totals.done} of ${st.totals.total} done", style = eyebrow(W.dim, 10).copy(fontWeight = FontWeight.Medium), modifier = GlanceModifier.defaultWeight())
             Text("$protein / ${target}g", style = eyebrow(if (protein >= target) W.good else W.text, 10))
             Text("  ·  ", style = eyebrow(W.dim, 10))
-            Text(if (lb != null) st.settings.w(lb) + "  ·  " else "", style = eyebrow(W.text2, 10))
+            Text(if (lb != null && !st.settings.prefs.widgetHideWeight) st.settings.w(lb) + "  ·  " else "", style = eyebrow(W.text2, 10))
             Text(if (safe) "Min day" else "${(target - protein).coerceAtLeast(0)}g to a Min day", style = eyebrow(if (safe) W.good else W.text2, 10))
         }
         Spacer(GlanceModifier.height(5.dp))

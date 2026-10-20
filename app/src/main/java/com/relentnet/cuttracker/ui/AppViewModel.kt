@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui
 
+import com.relentnet.cuttracker.data.vocab
 import com.relentnet.cuttracker.data.w
 import com.relentnet.cuttracker.data.wu
 import com.relentnet.cuttracker.data.unit
@@ -62,13 +63,20 @@ class AppViewModel(val repo: Repo) : ViewModel() {
             repo.events.collect { e ->
                 when (e) {
                     // Let the hold fill green on the wall before the takeover covers it.
-                    is UiEvent.Send -> viewModelScope.launch {
+                    is UiEvent.Send -> if (state.value.settings.prefs.celebrate == "quiet") {
+                        val v = state.value.settings.vocab
+                        showToast("${v.sent}. Every item ticked · +${ProgramSpec.XP_SEND} xp")
+                    } else if (state.value.settings.prefs.celebrate == "big") viewModelScope.launch {
                         delay(520)
                         // A level-up from the same tick showed in the gap; it comes back after the Send.
                         (takeover as? Takeover.LevelUp)?.let { pendingLevelUps.addFirst(it.level) }
                         takeover = Takeover.Send
                     }
-                    is UiEvent.LevelUp -> if (takeover == null) takeover = Takeover.LevelUp(e.level) else pendingLevelUps.addLast(e.level)
+                    is UiEvent.LevelUp -> when (state.value.settings.prefs.celebrate) {
+                        "big" -> if (takeover == null) takeover = Takeover.LevelUp(e.level) else pendingLevelUps.addLast(e.level)
+                        "quiet" -> state.value.settings.vocab.let { v -> showToast("${v.newGrade}: ${v.level(e.level)}") }
+                        else -> Unit
+                    }
                     is UiEvent.Badge -> showToast("${e.name} badge earned")
                     is UiEvent.Toast -> showToast(e.text)
                 }
@@ -148,6 +156,8 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     fun dismissWelcomeBack() = viewModelScope.launch { repo.dismissWelcomeBack() }
     /** Every settings edit goes through here: [f] gets the latest stored settings, never a copy a screen held. */
     fun updateSettings(then: () -> Unit = {}, f: (Settings) -> Settings) = viewModelScope.launch { repo.updateSettings(f); then() }
+    /** A [com.relentnet.cuttracker.data.Prefs] edit, atomic like every settings edit. */
+    fun updatePrefs(f: (com.relentnet.cuttracker.data.Prefs) -> com.relentnet.cuttracker.data.Prefs) = updateSettings { it.copy(prefs = f(it.prefs)) }
     fun resetProgram(then: () -> Unit = {}) = viewModelScope.launch { repo.resetProgram(); then() }
     fun seedSample() = viewModelScope.launch { repo.seedSample() }
     fun replaceLibraryMeal(old: com.relentnet.cuttracker.data.LibMeal, new: com.relentnet.cuttracker.data.LibMeal?) = viewModelScope.launch { repo.replaceLibraryMeal(old, new) }

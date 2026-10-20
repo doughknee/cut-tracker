@@ -87,6 +87,8 @@ data class Settings(
     /** Days of the week each reminder stays quiet on. */
     val weighQuiet: Set<DayOfWeek> = emptySet(),
     val pickQuiet: Set<DayOfWeek> = emptySet(),
+    /** How the app shows and feels; see [Prefs]. */
+    val prefs: Prefs = Prefs(),
 ) {
     val recipeImportOn: Boolean get() = onlineFeatures && recipeImport
     val barcodeLookupOn: Boolean get() = onlineFeatures && barcodeLookup
@@ -146,6 +148,7 @@ class SettingsStore(context: Context) {
         val kg = booleanPreferencesKey("kg")
         val weighQuiet = stringPreferencesKey("weighQuiet")
         val pickQuiet = stringPreferencesKey("pickQuiet")
+        val prefs = stringPreferencesKey("prefs")
     }
 
     val flow: Flow<Settings> = ds.data.map { p -> read(p) }
@@ -207,6 +210,7 @@ class SettingsStore(context: Context) {
             kg = p[K.kg] ?: false,
             weighQuiet = days(p[K.weighQuiet]),
             pickQuiet = days(p[K.pickQuiet]),
+            prefs = p[K.prefs]?.let { runCatching { backupJson.decodeFromString(Prefs.serializer(), it) }.getOrNull() } ?: Prefs(),
         )
     }
 
@@ -258,6 +262,7 @@ class SettingsStore(context: Context) {
         p[K.kg] = s.kg
         p[K.weighQuiet] = s.weighQuiet.joinToString(",") { it.value.toString() }
         p[K.pickQuiet] = s.pickQuiet.joinToString(",") { it.value.toString() }
+        p[K.prefs] = backupJson.encodeToString(Prefs.serializer(), s.prefs)
     }
 
     /** "1,7" is Monday and Sunday; anything unreadable is dropped. */

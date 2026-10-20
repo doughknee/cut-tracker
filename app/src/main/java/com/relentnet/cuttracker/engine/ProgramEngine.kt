@@ -54,7 +54,14 @@ object ProgramEngine {
 
     fun weekOf(day: LocalDate, start: LocalDate): Int = (ChronoUnit.DAYS.between(start, day).toInt() / 7) + 1
 
-    fun weekStart(day: LocalDate): LocalDate = day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    /**
+     * The first day of the week everywhere (wall, This week, workouts, the Route calendar), from Settings, Words and
+     * units. Set by [com.relentnet.cuttracker.data.Repo] each time the state is built.
+     * ponytail: one process-wide value rather than a parameter on every week call; fine while there is one user.
+     */
+    @Volatile var firstDay: DayOfWeek = DayOfWeek.MONDAY
+
+    fun weekStart(day: LocalDate): LocalDate = day.with(TemporalAdjusters.previousOrSame(firstDay))
 
     /**
      * The program week a Monday-to-Sunday calendar row stands for: the week of its Thursday, so the label agrees with
