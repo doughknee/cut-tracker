@@ -24,6 +24,7 @@ android {
         // -PversionCode=N lets a test build install over a newer build already on the phone (no uninstall).
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 4
         versionName = "1.3.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -74,4 +75,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.kotlin.test)
+    // UI smoke tests: run on the emulator only (ANDROID_SERIAL=emulator-5554); they reset the app's data.
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

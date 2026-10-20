@@ -8,6 +8,7 @@ Read `CUT_TRACKER_HANDOFF.md` first. The prototype (`cut-tracker-prototype.html`
 
 - Build: `./gradlew :app:assembleDebug`
 - Unit tests: `./gradlew :app:testDebugUnitTest`
+- UI smoke tests (emulator only, they reset the app's data): `ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest`. Disconnect the phone from adb first (`adb disconnect <ip:port>`).
 - Install on a connected phone: `./gradlew :app:installDebug`
 - Release: `./gradlew :app:assembleRelease` (needs `keystore.properties`, see README)
 
