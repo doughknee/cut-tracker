@@ -143,7 +143,7 @@ fun App(vm: AppViewModel) {
                     predictivePopExitTransition = { popExit(initialState.destination.route, targetState.destination.route) },
                 ) {
                     composable(Routes.ONBOARDING) {
-                        OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(Routes.ONBOARDING) { inclusive = true } } })
+                        OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(0) { inclusive = true }; launchSingleTop = true } })
                     }
                     composable(Routes.TODAY) {
                         TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) }, onRoute = { nav.goTab(Routes.ROUTE) })

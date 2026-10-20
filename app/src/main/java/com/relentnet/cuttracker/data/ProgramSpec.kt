@@ -199,9 +199,16 @@ object ProgramSpec {
     }
 
     /** True while the route's flags are exactly the defaults its numbers make (by date and target). */
-    fun flagsAreDefault(s: Settings): Boolean =
-        s.checkpoints.filter { !it.free }.map { listOf(it.date, it.target, it.note, it.label) } ==
-            defaultCheckpoints(s.startDate, s.startWeight, s.targetWeight, s.lengthWeeks).map { listOf(it.date, it.target, it.note, it.label) }
+    fun flagsAreDefault(s: Settings): Boolean {
+        val skips = s.checkpoints.filter { it.free }
+        fun key(c: Checkpoint) = listOf(c.date, c.target, if (c.note in DEFAULT_NOTES) "" else c.note, c.label)
+        // Days under a planned skip are left out on both sides: a skip on a flag day does not make the flags hand-set.
+        return s.checkpoints.filter { c -> !c.free && skips.none { it.covers(c.localDate) } }.map(::key) ==
+            defaultCheckpoints(s.startDate, s.startWeight, s.targetWeight, s.lengthWeeks).filter { d -> skips.none { it.covers(d.localDate) } }.map(::key)
+    }
+
+    /** Every note a default checkpoint has carried, so a route made by an older build still counts as untouched. */
+    private val DEFAULT_NOTES = setOf("Pace check. Photo day.", "Last checkpoint. Top out.", "Cut ends. Phase 2 unlocks.")
 
     /** The defaults before onboarding; onboarding replaces them with the user's own. */
     val checkpoints: List<Checkpoint> get() = defaultCheckpoints(PHASE_1_START, START_WEIGHT, TARGET_WEIGHT, LENGTH_WEEKS)

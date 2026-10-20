@@ -38,6 +38,8 @@ class FlowsTest {
     private val notDone = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Not done")
 
     @Before fun seed() {
+        // These wipe the app's data: never on a real phone.
+        org.junit.Assume.assumeTrue("emulator only", Build.HARDWARE == "ranchu" || Build.PRODUCT.contains("sdk"))
         val inst = InstrumentationRegistry.getInstrumentation()
         if (Build.VERSION.SDK_INT >= 33) inst.uiAutomation.grantRuntimePermission(inst.targetContext.packageName, Manifest.permission.POST_NOTIFICATIONS)
         runBlocking { app.repo.seedSample() }
@@ -70,6 +72,8 @@ class FlowsTest {
     @Test fun aFrozenDayFilledInLateBecomesASend() {
         launch()
         val frozen = compose.onAllNodesWithContentDescription(", Freeze", substring = true)
+        // Early in the week the frozen day sits on last week's wall.
+        if (frozen.fetchSemanticsNodes().isEmpty()) compose.onAllNodesWithContentDescription("Earlier week")[0].performClick()
         compose.waitUntil(5_000) { frozen.fetchSemanticsNodes().isNotEmpty() }
         val day = frozen.fetchSemanticsNodes()[0].config[SemanticsProperties.ContentDescription].first().substringBefore(",")
         frozen[0].performClick()

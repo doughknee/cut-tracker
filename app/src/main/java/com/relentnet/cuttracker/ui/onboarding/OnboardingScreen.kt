@@ -87,17 +87,23 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     var swMissing by remember { mutableStateOf(false) }
     // Moving phones: a backup brings the route, the logs and the settings back in one step, no set-up first.
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var restoring by remember { mutableStateOf(false) }
+    var restoring by rememberSaveable { mutableStateOf(false) }
     val restore = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         restoring = true
-        scope.launch {
-            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching { context.contentResolver.openInputStream(uri)!!.use { vm.repo.restoreFrom(it) } }.isSuccess
+        val resolver = context.contentResolver
+        // App lifetime, not this screen's: the restore flips onboarding, which can take this screen away mid-way.
+        vm.repo.scope.launch {
+            val ok = runCatching { resolver.openInputStream(uri)!!.use { vm.repo.restoreFrom(it) } }.isSuccess
+            val onboarded = vm.repo.settings.current().onboarded
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                restoring = false
+                when {
+                    !ok -> vm.showToast("Could not read that file. Nothing changed.")
+                    onboarded -> { vm.showToast("Restored. Everything from the backup is in place."); onDone() }
+                    else -> vm.showToast("Restored. Set up the next route.")
+                }
             }
-            restoring = false
-            if (ok && vm.repo.settings.current().onboarded) { vm.showToast("Restored. Everything from the backup is in place."); onDone() }
-            else vm.showToast("Could not read that file. Nothing changed.")
         }
     }
     val swFocus = remember { FocusRequester() }

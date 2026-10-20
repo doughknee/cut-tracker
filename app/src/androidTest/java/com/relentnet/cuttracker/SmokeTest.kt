@@ -31,6 +31,8 @@ class SmokeTest {
     private lateinit var scenario: ActivityScenario<MainActivity>
 
     @Before fun seed() {
+        // These wipe the app's data: never on a real phone.
+        org.junit.Assume.assumeTrue("emulator only", Build.HARDWARE == "ranchu" || Build.PRODUCT.contains("sdk"))
         val inst = InstrumentationRegistry.getInstrumentation()
         if (Build.VERSION.SDK_INT >= 33) inst.uiAutomation.grantRuntimePermission(inst.targetContext.packageName, Manifest.permission.POST_NOTIFICATIONS)
         val app = inst.targetContext.applicationContext as App

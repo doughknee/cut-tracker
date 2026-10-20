@@ -129,7 +129,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                     }
                     Sub("First photo against the latest. Tap any photo below to put it on the right.", size = 12)
                 }
-                Sub("Next one ${com.relentnet.cuttracker.ui.components.inDays(ProgramSpec.PHOTO_INTERVAL_DAYS - ChronoUnit.DAYS.between(st.photos.maxOf { it.date }, st.today))}. Hold one to delete.", size = 12)
+                Sub("Next one ${com.relentnet.cuttracker.ui.components.inDays(maxOf(0L, ProgramSpec.PHOTO_INTERVAL_DAYS - ChronoUnit.DAYS.between(st.photos.maxOf { it.date }, st.today)))}. Hold one to delete.", size = 12)
                 for (row in st.photos.sortedByDescending { it.date }.chunked(4)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         for (p in row) {

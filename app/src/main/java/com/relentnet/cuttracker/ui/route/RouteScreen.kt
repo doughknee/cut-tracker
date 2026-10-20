@@ -208,7 +208,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                         }
                         val said = day.format(java.time.format.DateTimeFormatter.ofPattern("EEEE MMMM d", java.util.Locale.US)) +
                             (if (r != null && r != DayResult.BEFORE) ", " + resultName(r) else "") +
-                            (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${ProgramEngine.fmt1(it)} lb" } ?: "") else if (cp?.free == true) ", planned skip" else "")
+                            (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${ProgramEngine.fmt1(it)} lb" } ?: "") else if (cp?.free == true && r != DayResult.SKIP) ", planned skip" else "")
                         Box(
                             Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier)
                                 .semantics(mergeDescendants = true) { contentDescription = said },

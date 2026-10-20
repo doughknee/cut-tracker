@@ -207,7 +207,7 @@ private fun MealSheet(
         recipe != (m?.recipe ?: "") || lines != (m?.ingredients ?: emptyList<com.relentnet.cuttracker.data.Ingredient>()) || kind != kind0
     Sheet(if (m == null) "New meal" else "Edit meal", onDismiss, dirty = dirty) {
         if (m == null) {
-            SheetField("Recipe link", link, { link = it; note = null }, text = true, placeholder = "Paste one, or share a page here")
+            SheetField("Recipe link", link, { link = it; note = null; if (it.isBlank()) fetchedFor = "" }, text = true, placeholder = "Paste one, or share a page here")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BigButton("Scan a barcode", onClick = { note = null; if (barcodeOn) scanning = true else askBarcode = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
                 BigButton("Read a label", onClick = { note = null; reading = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
