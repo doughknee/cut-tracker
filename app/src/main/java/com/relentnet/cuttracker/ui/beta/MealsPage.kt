@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.relentnet.cuttracker.data.Food
 import com.relentnet.cuttracker.data.FoodTable
 import com.relentnet.cuttracker.data.Ingredient
+import com.relentnet.cuttracker.data.LabelRead
 import com.relentnet.cuttracker.data.OpenFoodFacts
 import com.relentnet.cuttracker.data.RecipeImport
 import com.relentnet.cuttracker.data.kcalSum
@@ -140,6 +141,7 @@ private fun MealSheet(
     var fetching by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<Pair<String, Boolean>?>(null) }   // text, ok
     var scanning by remember { mutableStateOf(false) }
+    var reading by remember { mutableStateOf(false) }
     var askBarcode by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf("") }
     // The lines own the numbers while there are any; the fields stay editable for a meal typed by hand.
@@ -172,11 +174,21 @@ private fun MealSheet(
         fetching = false; code = ""
     }
     if (scanning) BarcodeScanner(onScan = { scanning = false; code = it }, onDismiss = { scanning = false })
+    // A label fills the number fields straight from the camera, on the phone. The note says which lines it trusted.
+    if (reading) LabelScanner(onDismiss = { reading = false }, onRead = { text ->
+        reading = false
+        val f = LabelRead.parse(text)
+        f.protein?.let { pro = it.toString() }; f.calories?.let { cal = it.toString() }
+        if (f.serving != null && recipe.isBlank()) recipe = "One serving, ${f.serving}, from the label."
+        val missing = listOfNotNull("protein".takeIf { f.protein == null }, "calories".takeIf { f.calories == null })
+        note = ("Read " + f.lines.joinToString(", ") { "“$it”" } + (if (missing.isEmpty()) ". Check the numbers." else ". No ${missing.joinToString(" or ")} found, type it.")) to true
+    })
     Sheet(if (m == null) "New meal" else "Edit meal", onDismiss) {
         if (m == null) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
-                SheetField("Paste a recipe link", link, { link = it; note = null }, Modifier.weight(1f), text = true, placeholder = "https://")
-                BigButton("Scan", onClick = { note = null; if (barcodeOn) scanning = true else askBarcode = true }, modifier = Modifier.width(88.dp), secondary = true, height = 48.dp, fontSize = 12)
+            SheetField("Paste a recipe link", link, { link = it; note = null }, text = true, placeholder = "https://")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BigButton("Scan a barcode", onClick = { note = null; if (barcodeOn) scanning = true else askBarcode = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
+                BigButton("Read a label", onClick = { note = null; reading = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
             }
             if (!importOn && RecipeImport.isUsable(link)) AllowCard(
                 "This downloads the page you pasted, from that site, and reads the recipe out of it. Nothing else leaves the phone. You can switch it off under Settings, Data.",
