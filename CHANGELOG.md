@@ -6,6 +6,8 @@ What changed in Sendline, from the user's side. Newest first.
 
 ### History stays put
 
+- After an update, a short note on what changed opens once on Today.
+
 - Upgrading never lowers a past day: anything 1.2.0 showed as a Send or a Min day stays one, and your xp does not move.
 - A past day keeps the result it was logged with. Raising protein, changing what a kind of day asks for or editing a meal no longer turns old Sends into Min days or uses up freezes.
 - Editing or deleting a library meal leaves the days that logged it as they were.
