@@ -69,7 +69,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
     var sheet by rememberSaveable { mutableStateOf("") }   // "", "pick", "new", "lift:<id>", "item:<id>"
     val items = ProgramEngine.script(mode, s)
     val where = dayWhere(mode, s)
-    val blockName = if (mode == DayMode.CLIMB) "Push block" else "Core block"
+    val blockName = if (mode == DayMode.CLIMB) "Push block" else "Core + push block"
     val blockWhere = if (mode == DayMode.CLIMB) "at the gym, after the session" else "at home, 15 minutes"
     val lifts = ProgramEngine.exercisesFor(mode, s)
 
@@ -97,7 +97,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
                     )
                 }
             }
-            KindCard(blockName, if (lifts.isEmpty()) "none" else "${lifts.size} lifts", sub = if (mode == DayMode.REST && lifts.isEmpty()) "A rest day asks for no block. Add a lift and it gets one." else blockWhere) {
+            KindCard(blockName, if (lifts.isEmpty()) "none" else com.relentnet.cuttracker.ui.components.count(lifts.size, "lift"), sub = if (mode == DayMode.REST && lifts.isEmpty()) "A rest day asks for no block. Add a lift and it gets one." else blockWhere) {
                 for (e in lifts) {
                     val best = ProgramEngine.sessions(st.liftSets, e.id, st.today.plusDays(1), n = 1).firstOrNull()
                     NumRow(
@@ -116,7 +116,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
                     onClick = { sheet = "item:" + it.id },
                 )
             }
-            Sub("Switch a line off and Today stops asking for it on a ${dayTitle(mode).lowercase()}. The xp adds up to the Send.", size = 12)
+            Sub("Switch an item off and Today stops asking for it on a ${dayTitle(mode).lowercase()}. The xp adds up to the Send.", size = 12)
         }
         Fab(Modifier.align(Alignment.BottomEnd)) { sheet = "new" }
     }
@@ -148,16 +148,16 @@ private fun ItemSheet(it: PlanItem?, day: String, onDismiss: () -> Unit, onSave:
     var label by androidx.compose.runtime.saveable.rememberSaveable(it?.id) { mutableStateOf(it?.label ?: "") }
     var sub by androidx.compose.runtime.saveable.rememberSaveable(it?.id) { mutableStateOf(it?.sub ?: "") }
     var xp by androidx.compose.runtime.saveable.rememberSaveable(it?.id) { mutableStateOf(it?.xp ?: 10) }
-    Sheet(if (it == null) "New line" else "Edit line", onDismiss, dirty = label != (it?.label ?: "") || sub != (it?.sub ?: "") || xp != (it?.xp ?: 10)) {
+    Sheet(if (it == null) "New item" else "Edit item", onDismiss, dirty = label != (it?.label ?: "") || sub != (it?.sub ?: "") || xp != (it?.xp ?: 10)) {
         SheetField("Name", label, { label = it }, text = true, big = true, placeholder = "What Today asks")
         SheetField("Note", sub, { sub = it }, text = true, placeholder = "Optional, shows under the name", last = true)
         SheetLabel("xp")
         MiniStepper(xp.toString(), onMinus = { xp = (xp - 5).coerceAtLeast(0) }, onPlus = { xp = (xp + 5).coerceAtMost(100) })
-        SheetNote("Shows on Today as a line to tick on a ${day.lowercase()}.")
+        SheetNote("Shows on Today as an item to tick on a ${day.lowercase()}.")
         SheetButtons(
             if (it == null) "Add it" else "Done", enabled = label.isNotBlank(),
             onPrimary = { onSave(PlanItem(it?.id ?: "i${System.currentTimeMillis()}", label.trim(), sub.trim(), it?.time ?: "", xp, it?.on ?: true)) },
-            secondary = if (it == null) "Cancel" else "Remove", onSecondary = onRemove ?: onDismiss,
+            secondary = if (it == null) "Cancel" else "Delete", onSecondary = onRemove ?: onDismiss,
         )
     }
 }

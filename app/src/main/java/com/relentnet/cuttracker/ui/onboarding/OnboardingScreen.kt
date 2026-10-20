@@ -131,10 +131,10 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                 0 -> {
                     Text("SENDLINE", color = c.accent, style = cutStyle(12, 800, 1f, 0.14f))
                     Big(if (again) "Next route." else "Twelve weeks.\nFour taps a day.")
-                    Body(if (again) "Your logs, badges and XP stay. Set a new start, a new target and a new length." else "Weigh in, eat the script, do the block, check it off. The app keeps score so you don't have to. Nothing here resets, ever.")
+                    Body(if (again) "Your logs, badges and xp stay. Set a new start, a new goal and a new length." else "Weigh in, eat the script, do the block, tick it off. The app keeps score so you don't have to. Nothing here resets, ever.")
                     Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                         HoldKey(HoldShape.CRIMP, "Climb day", "session + push block")
-                        HoldKey(HoldShape.JUG, "Off day", "core block at home")
+                        HoldKey(HoldShape.JUG, "Off day", "a short block at home")
                         HoldKey(HoldShape.SLOPER, "Rest day", "weigh in, eat the script")
                     }
                     Hint("Every day is a hold. Pick which kind, finish the script, and the hold goes green. Not medical advice; check with a doctor if you have a condition, and stop if you feel unwell.")
@@ -179,7 +179,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                     Fld("Weigh-in reminder") {
                         PickerBox(t.toString()) { TimePickerDialog(context, { _, h, m -> time = LocalTime.of(h, m).toString() }, t.hour, t.minute, true).show() }
                     }
-                    Body("That's the daily one, and it stays quiet once you weighed in. A second fires at 7pm only if no day is picked yet. Either can be switched off in Settings.")
+                    Body("That's the daily one, and it stays quiet once you have weighed in. A second fires at 7pm only if no day is picked yet. Either can be switched off in Settings.")
                 }
             }
         }

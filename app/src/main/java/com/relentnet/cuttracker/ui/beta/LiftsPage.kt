@@ -45,7 +45,7 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
         LibRow(e.id, if (e.kind in s.liftKinds) e.kind else "", "${e.sets}×", null, e.name, sub)
     }
     LibraryScreen(
-        "Lifts", "${s.exercises.size} lifts you can put in a block. The number is sets.", onBack,
+        "Lifts", "${com.relentnet.cuttracker.ui.components.count(s.exercises.size, "lift")} you can put in a block. The number is sets.", onBack,
         kinds, rows, searchHint = "Search lifts",
         onRow = { sheet = "lift:" + it.key }, onAdd = { sheet = "new" }, onEditKind = { sheet = "kind:" + it.key },
         onNewKind = { name -> vm.updateSettings { s -> if (name.isBlank() || s.liftKinds.any { it.equals(name.trim(), ignoreCase = true) }) s else s.copy(liftKinds = s.liftKinds + name.trim()) } },
@@ -80,7 +80,7 @@ fun LiftsPage(vm: AppViewModel, onBack: () -> Unit) {
                 },
                 onRemove = {
                     haptics.tap()
-                    vm.updateWithUndo("$k removed") { s -> s.copy(liftKinds = s.liftKinds - k, exercises = s.exercises.map { if (it.kind == k) it.copy(kind = "") else it }) }
+                    vm.updateWithUndo("$k deleted") { s -> s.copy(liftKinds = s.liftKinds - k, exercises = s.exercises.map { if (it.kind == k) it.copy(kind = "") else it }) }
                     sheet = ""
                 })
         } ?: run { sheet = "" }

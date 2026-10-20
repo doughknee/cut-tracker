@@ -15,6 +15,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
+import com.relentnet.cuttracker.ui.components.count
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
@@ -273,7 +274,7 @@ private fun WeighStage(st: AppState, draft: Double) {
         Box(
             GlanceModifier.fillMaxWidth().height(30.dp).background(W.accent).cornerRadius(9.dp).clickable(actionRunCallback<LogWeightAction>(actionParametersOf(ForKey to drawnFor))),
             contentAlignment = Alignment.Center,
-        ) { Text("LOG · +${ProgramSpec.XP_WEIGH} XP", style = eyebrow(W.onAccent, 11)) }
+        ) { Text("LOG · +${ProgramSpec.XP_WEIGH} xp", style = eyebrow(W.onAccent, 11)) }
     }
 }
 
@@ -303,12 +304,12 @@ private fun PickStage(st: AppState) {
         Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
             val climb = ProgramEngine.script(DayMode.CLIMB, st.settings)
             val off = ProgramEngine.script(DayMode.OFF, st.settings)
-            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, "Climb day", "${climb.size} items · ${ProgramEngine.totalXp(climb)} xp")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.CLIMB, R.drawable.ic_w_climb, "Climb day", "${count(climb.size, "item")} · ${ProgramEngine.totalXp(climb)} xp")
             Spacer(GlanceModifier.width(8.dp))
-            PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${off.size} items · ${ProgramEngine.totalXp(off)} xp")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.OFF, R.drawable.ic_w_off, "Off day", "${count(off.size, "item")} · ${ProgramEngine.totalXp(off)} xp")
             Spacer(GlanceModifier.width(8.dp))
             val rest = ProgramEngine.script(DayMode.REST, st.settings)
-            PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${rest.size} items · ${ProgramEngine.totalXp(rest)} xp")
+            PickCard(GlanceModifier.defaultWeight(), DayMode.REST, R.drawable.ic_w_rest, "Rest day", "${count(rest.size, "item")} · ${ProgramEngine.totalXp(rest)} xp")
         }
     }
 }
@@ -361,7 +362,7 @@ private fun Dashboard(st: AppState) {
             if (sent) {
                 Column(GlanceModifier.fillMaxWidth().defaultWeight().background(W.surface).cornerRadius(8.dp).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Sent", style = TextStyle(color = W.good, fontSize = 18.sp, fontWeight = FontWeight.Bold))
-                    Text("Every item checked. Hold went green.", style = eyebrow(size = 10).copy(fontWeight = FontWeight.Medium), maxLines = 1)
+                    Text("Every item ticked. Hold went green.", style = eyebrow(size = 10).copy(fontWeight = FontWeight.Medium), maxLines = 1)
                 }
             } else {
                 for (r in rowsFor(st)) { ItemRow(r); Spacer(GlanceModifier.height(3.dp)) }
@@ -376,7 +377,7 @@ private fun Dashboard(st: AppState) {
             Text("$protein / ${target}g", style = eyebrow(if (protein >= target) W.good else W.text, 10))
             Text("  ·  ", style = eyebrow(W.dim, 10))
             Text(if (lb != null) fmt1(lb) + "  ·  " else "", style = eyebrow(W.text2, 10))
-            Text(if (safe) "Safe day" else "${(target - protein).coerceAtLeast(0)}g to safe", style = eyebrow(if (safe) W.good else W.text2, 10))
+            Text(if (safe) "Min day" else "${(target - protein).coerceAtLeast(0)}g to a Min day", style = eyebrow(if (safe) W.good else W.text2, 10))
         }
         Spacer(GlanceModifier.height(5.dp))
         LinearProgressIndicator(

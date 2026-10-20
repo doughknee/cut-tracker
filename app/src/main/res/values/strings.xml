@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sendline</string>
-    <string name="widget_wide_desc">Today\'s mode, what is up next, the Send bar and your chain.</string>
+    <string name="widget_wide_desc">Today\'s kind of day, what is up next, the Send bar and your chain.</string>
 </resources>

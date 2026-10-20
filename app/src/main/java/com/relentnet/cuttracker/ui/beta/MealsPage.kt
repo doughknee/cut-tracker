@@ -81,7 +81,7 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
         LibRow(m.id, if (s.meals.any { it.id == m.kind }) m.kind else "", m.protein.toString(), "g", m.name, "${m.calories} cal" + (if (n > 0) ", $n× this week" else ""))
     }
     LibraryScreen(
-        "Meals", "${s.library.size} meals you can put on a day. The number is protein.", onBack,
+        "Meals", "${com.relentnet.cuttracker.ui.components.count(s.library.size, "meal")} you can put on a day. The number is protein.", onBack,
         kinds, rows, searchHint = "Search meals",
         onRow = { sheet = "meal:" + it.key }, onAdd = { sheet = "new" }, onEditKind = { sheet = "kind:" + it.key },
         onNewKind = { name -> vm.updateSettings { s -> addMealKind(s, name) } },
@@ -109,7 +109,7 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
                 },
                 onRemove = {
                     haptics.tap()
-                    vm.updateWithUndo("${slot.name} removed") { s -> s.copy(
+                    vm.updateWithUndo("${slot.name} deleted") { s -> s.copy(
                         meals = s.meals.filter { it.id != slot.id },
                         library = s.library.map { if (it.kind == slot.id) it.copy(kind = "") else it },
                         plans = s.plans.mapValues { (_, p) -> p.copy(slots = p.slots - slot.id) },
@@ -173,7 +173,7 @@ private fun MealSheet(
                 r.protein?.let { pro = it.toString() }; r.calories?.let { cal = it.toString() }
                 recipe = link.trim() + (r.servings?.let { ", 1 of $it servings." } ?: "")
                 val missing = listOfNotNull("protein".takeIf { r.protein == null }, "calories".takeIf { r.calories == null })
-                note = (if (missing.isEmpty()) "Found it. Check the numbers before you add it." else "Found the name. That page lists no ${missing.joinToString(" or ")}, type it.") to true
+                note = (if (missing.isEmpty()) "Found it. Check the numbers before you add it." else "Found the name. That page lists no ${missing.joinToString(" or ")}. Type " + (if (missing.size > 1) "them" else "it") + " in.") to true
             }.onFailure { note = (it.message ?: "Could not read that page.") to false }
         } finally { fetching = false }
     }
@@ -186,7 +186,7 @@ private fun MealSheet(
             setLines(lines + Ingredient(r.name, r.servingGrams ?: 100.0, r.protein100 ?: 0.0, r.kcal100 ?: 0.0))
             val missing = listOfNotNull("protein".takeIf { r.protein100 == null }, "calories".takeIf { r.kcal100 == null })
             note = (if (missing.isEmpty()) (if (r.servingGrams != null) "Found it, one serving. Change the grams if you had more." else "Found it. The label has no serving size, so this is 100 g. Change the grams.")
-                else "Found the name. Open Food Facts lists no ${missing.joinToString(" or ")} for it, type it.") to true
+                else "Found the name. Open Food Facts lists no ${missing.joinToString(" or ")} for it. Type " + (if (missing.size > 1) "them" else "it") + " in.") to true
         }.onFailure { note = (it.message ?: "Could not look that up.") to false } } finally { fetching = false; code = "" }
     }
     if (scanning) BarcodeScanner(onScan = { scanning = false; code = it }, onDismiss = { scanning = false })
@@ -200,7 +200,7 @@ private fun MealSheet(
         } else { f.protein?.let { pro = it.toString() }; f.calories?.let { cal = it.toString() } }
         if (f.serving != null && recipe.isBlank()) recipe = "One serving, ${f.serving}, from the label."
         val missing = listOfNotNull("protein".takeIf { f.protein == null }, "calories".takeIf { f.calories == null })
-        val next = if (missing.isNotEmpty()) "No ${missing.joinToString(" or ")} found, type it." else if (name.isBlank()) "Name it and add it." else "Check the numbers."
+        val next = if (missing.isNotEmpty()) "No ${missing.joinToString(" or ")} found. Type " + (if (missing.size > 1) "them" else "it") + " in." else if (name.isBlank()) "Name it and add it." else "Check the numbers."
         note = ("Read " + f.lines.joinToString(", ") { "“$it”" } + ". " + next) to true
     })
     val dirty = name != (m?.name ?: sharedName) || pro != (m?.protein?.toString() ?: "") || cal != (m?.calories?.toString() ?: "") ||
@@ -217,7 +217,7 @@ private fun MealSheet(
                 "Allow and read it", onAllow = onAllowImport, onNotNow = { link = "" },
             )
             if (askBarcode && !barcodeOn) AllowCard(
-                "This sends the digits of the barcode you scan, and nothing else, to Open Food Facts, a public food database, and reads the product's name and nutrition from the answer. You can switch it off under Settings, Data, Online features.",
+                "This sends only the barcode digits to Open Food Facts, a public food database, and reads the name and nutrition from the answer. You can switch it off under Settings, Data, Online features.",
                 "Allow and scan", onAllow = { onAllowBarcode(); askBarcode = false; scanning = true }, onNotNow = { askBarcode = false },
             )
             if (link.trim().startsWith("http://", ignoreCase = true)) SheetNote("Only https links can be read. Open the page in a browser and share it from there.")
@@ -281,7 +281,7 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
                 Field(g, { g = it; onLines(lines.toMutableList().also { l -> l[i] = ing.copy(grams = it.num() ?: 0.0) }) },
                     Modifier.width(64.dp), height = 40.dp, fontSize = 14, weight = 700, imeAction = ImeAction.Next, borderWidth = 1.dp, radius = 10.dp, padding = 8.dp)
                 Text("g", color = c.text2, style = cutStyle(12, 700, 1f))
-                Icon(CutIcons.Close, "Remove", Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button) { onLines(lines.filterIndexed { j, _ -> j != i }) }.padding(5.dp), tint = c.text2)
+                Icon(CutIcons.Close, "Take out", Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button) { onLines(lines.filterIndexed { j, _ -> j != i }) }.padding(5.dp), tint = c.text2)
             }
         }
     }
@@ -311,7 +311,7 @@ fun KindSheet(name0: String, noun: String, onDismiss: () -> Unit, onSave: (Strin
     var name by remember(name0) { mutableStateOf(name0) }
     Sheet("Edit kind", onDismiss) {
         SheetField("Kind", name, { name = it }, text = true, big = true, last = true)
-        SheetNote("Removing a kind keeps its $noun. They move to Other.")
-        SheetButtons("Done", onPrimary = { onSave(name.trim().ifBlank { name0 }) }, secondary = "Remove kind", onSecondary = onRemove, enabled = name.isNotBlank())
+        SheetNote("Deleting a kind keeps its $noun. They move to Other.")
+        SheetButtons("Done", onPrimary = { onSave(name.trim().ifBlank { name0 }) }, secondary = "Delete kind", onSecondary = onRemove, enabled = name.isNotBlank())
     }
 }

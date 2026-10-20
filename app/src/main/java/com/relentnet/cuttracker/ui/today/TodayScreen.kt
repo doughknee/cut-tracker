@@ -157,9 +157,9 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
         !past && dv.isSend -> "Sent" to c.good
         !past && dv.isMin -> "Chain safe · today" to c.good
         !past && mode == null -> "Today · pick a day" to c.accent
-        !past && ProgramSpec.ITEM_WEIGH !in done && dv.totals.protein < total -> "Today · weigh in + ${total - dv.totals.protein}g to safe" to c.accent
-        !past && dv.totals.protein < total -> "Today · ${total - dv.totals.protein}g to safe" to c.accent
-        !past -> "Today · weigh in to safe" to c.accent
+        !past && ProgramSpec.ITEM_WEIGH !in done && dv.totals.protein < total -> "Today · weigh in + ${total - dv.totals.protein}g to a Min day" to c.accent
+        !past && dv.totals.protein < total -> "Today · ${total - dv.totals.protein}g to a Min day" to c.accent
+        !past -> "Today · weigh in for a Min day" to c.accent
         else -> "${resultName(dv.result)} · earlier day" to when (dv.result) {
             DayResult.SEND, DayResult.MIN -> c.good
             DayResult.FREEZE, DayResult.SKIP -> c.freeze
@@ -235,14 +235,14 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Eyebrow(if (past) "Script · late checks count" else "Script")
+                Eyebrow(if (past) "Script · late ticks count" else "Script")
                 Eyebrow("${tickedInt(finished.size)} / ${items.size}")
             }
             if (items.isEmpty()) {
                 Box(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).dashedBorder(c.mutedBorder).padding(18.dp, 14.dp),
                 ) {
-                    Sub(if (past) "Nothing was logged. Pick what this day was and fill it in." else "Pick a day and the script shows up. Minimum day is weigh in + protein. That keeps the chain.")
+                    Sub(if (past) "Nothing was logged. Pick what this day was and fill it in." else "Pick a day and the script shows up. A Min day is weigh in + protein. That keeps the chain.")
                 }
             }
             for (it in remaining) {
@@ -327,7 +327,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     if (infoOpen) WallInfoSheet(onDismiss = { infoOpen = false })
     if (confirmNext) ConfirmDialog(
         "Start the next route?",
-        "Your logs, badges and XP stay. You set a new start, a new target and a new length, and the wall starts again at day 1.",
+        "Your logs, badges and xp stay. You set a new start, a new goal and a new length, and the wall starts again at day 1.",
         "Start it", onConfirm = { vm.updateSettings { s -> s.copy(onboarded = false) } }, onDismiss = { confirmNext = false },
     )
 }
@@ -420,7 +420,7 @@ private fun LateCard(at: java.time.LocalTime, onRest: () -> Unit, onClimb: () ->
     Card(Modifier.fillMaxWidth(), border = c.accent, borderWidth = 2.dp, radius = 14.dp, padding = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("It's ${clockWords(at)} and no day is picked.", color = c.text, style = cutStyle(20, 800, 1.1f, -0.02f, display = true))
-            Sub("Guessing Rest day. Weigh in and hit protein and the chain is safe. Nothing else required tonight.")
+            Sub("Rest day is the guess. Tap it, weigh in and hit protein, and the chain is safe. Nothing else required tonight.")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BigButton("Yep, Rest day", onClick = onRest, modifier = Modifier.weight(1f), height = 48.dp, fontSize = 13)
                 BigButton("I climbed", onClick = onClimb, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 13)
@@ -435,7 +435,7 @@ private fun PickCards(st: AppState, onPick: (DayMode) -> Unit) {
     val off = ProgramEngine.script(DayMode.OFF, st.settings)
     val rest = ProgramEngine.script(DayMode.REST, st.settings)
     // The sentence under each card is the day page's own (Beta), so the cards tell the truth about the plan as edited there.
-    fun sub(mode: DayMode, items: List<ScriptItem>) = "${dayWhere(mode, st.settings)} ${items.size} items, ${ProgramEngine.totalXp(items)} xp."
+    fun sub(mode: DayMode, items: List<ScriptItem>) = "${dayWhere(mode, st.settings)} ${com.relentnet.cuttracker.ui.components.count(items.size, "item")}, ${ProgramEngine.totalXp(items)} xp."
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PickCard(Modifier.weight(1f), HoldShape.CRIMP, dayTitle(DayMode.CLIMB), sub(DayMode.CLIMB, climb)) { onPick(DayMode.CLIMB) }

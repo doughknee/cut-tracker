@@ -196,7 +196,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
                     } },
                     Modifier.fillMaxWidth(), height = 44.dp, fontSize = 14, weight = 700, keyboard = KeyboardType.Ascii, placeholder = "Paste a code, SL-7K2Q", borderWidth = 1.dp, radius = 10.dp,
                 )
-                if (code.length >= 7 && CustomLook.decode(code) == null) Sub("Not a Sendline code. Four letters after SL-, and a typo is refused.", size = 11)
+                if (code.length >= 7 && CustomLook.decode(code) == null) Sub("Not a Sendline code. Four characters after SL-, and a typo is refused.", size = 11)
             }
         }
         sheet?.let { id ->
@@ -209,7 +209,7 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
         }
 
         KindCard("Feel", "") {
-            PlainRow("Haptics and confetti", "a tick on every check, a burst on a Send") { Switch(s.haptics, "Haptics and confetti") { vm.updateSettings { s -> s.copy(haptics = !s.haptics) } } }
+            PlainRow("Haptics and confetti", "a buzz on every tick, a burst on a Send") { Switch(s.haptics, "Haptics and confetti") { vm.updateSettings { s -> s.copy(haptics = !s.haptics) } } }
         }
         Sub("Applies at once. The widget keeps its own colors.", size = 12)
     }

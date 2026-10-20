@@ -208,7 +208,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                         }
                         val said = day.format(java.time.format.DateTimeFormatter.ofPattern("EEEE MMMM d", java.util.Locale.US)) +
                             (if (r != null && r != DayResult.BEFORE) ", " + resultName(r) else "") +
-                            (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${ProgramEngine.fmt1(it)} lb" } ?: "") else if (cp?.free == true) ", planned day off" else "")
+                            (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${ProgramEngine.fmt1(it)} lb" } ?: "") else if (cp?.free == true) ", planned skip" else "")
                         Box(
                             Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier)
                                 .semantics(mergeDescendants = true) { contentDescription = said },
@@ -269,7 +269,7 @@ private fun Legend() {
             Key("Off") { Hold(HoldShape.JUG, c.mutedBorder, 13.dp) }
             Key("Climb") { Hold(HoldShape.CRIMP, c.mutedBorder, 13.dp) }
             Key("Rest") { Hold(HoldShape.SLOPER, c.mutedBorder, 13.dp) }
-            Key("No pick") { Hold(HoldShape.PINCH, c.mutedBorder, 13.dp) }
+            Key("Not picked") { Hold(HoldShape.PINCH, c.mutedBorder, 13.dp) }
             Key("Checkpoint") { Icon(CutIcons.Flag, null, Modifier.size(11.dp), tint = c.mutedBorder) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -366,12 +366,12 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
         DayResult.SKIP -> "Planned skip" to c.freeze
         DayResult.MISSED -> "Missed · 0 xp" to c.text2
         DayResult.TODAY -> "Today · so far" to c.accent
-        DayResult.FUTURE -> (if (skipped) "Planned skip" else "Upcoming") to (if (skipped) c.freeze else c.text2)
-        else -> "Upcoming" to c.text2
+        DayResult.FUTURE -> (if (skipped) "Planned skip" else "Ahead") to (if (skipped) c.freeze else c.text2)
+        else -> "Ahead" to c.text2
     }
     val detail = if (cpAhead) when (val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, date).toInt()) { 0 -> "Today."; 1 -> "Tomorrow."; else -> "In $days days." } + cpNote else when (r) {
         DayResult.FREEZE -> "Missed. A freeze covered it, chain kept."
-        DayResult.SKIP -> "A day off you planned. Chain kept, no freeze spent."
+        DayResult.SKIP -> "A planned skip. Chain kept, no freeze spent."
         DayResult.MISSED -> "Nothing logged. Grey hold, that is all."
         DayResult.TODAY -> "In progress. Finish the script for a Send."
         DayResult.FUTURE -> if (skipped) "Planned skip. Chain kept, no freeze spent." else "Not here yet. Plan a skip if you know you will be off."

@@ -129,7 +129,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
                     }
                     Sub("First photo against the latest. Tap any photo below to put it on the right.", size = 12)
                 }
-                Sub("Next one in ${ProgramSpec.PHOTO_INTERVAL_DAYS - ChronoUnit.DAYS.between(st.photos.maxOf { it.date }, st.today)} days. Hold one to delete.", size = 12)
+                Sub("Next one ${com.relentnet.cuttracker.ui.components.inDays(ProgramSpec.PHOTO_INTERVAL_DAYS - ChronoUnit.DAYS.between(st.photos.maxOf { it.date }, st.today))}. Hold one to delete.", size = 12)
                 for (row in st.photos.sortedByDescending { it.date }.chunked(4)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         for (p in row) {
@@ -155,14 +155,14 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
             }
         }
         val cps = s.checkpoints.sortedBy { it.date }
-        KindCard("Flags", "${cps.count { !it.free }}") {
+        KindCard("On the route", "${cps.count { !it.free }}") {
             for (cp in cps) {
                 val week = ProgramEngine.checkpointWeek(cp, s.startDate, s.lengthWeeks)
                 val (state, avg) = checkpointState(st, cp.localDate, cp.target)
                 val isCurrent = !cp.free && cp.localDate == current
                 val dateLabel = if (cp.days > 1) "${cp.localDate.format(cpFmt)} to ${cp.lastDate.dayOfMonth}" else cp.localDate.format(DateTimeFormatter.ofPattern("EEE MMM d", Locale.US))
                 val (right, rc) = when {
-                    cp.free -> (if (cp.days > 1) "skip days" else "skip day") to c.text2
+                    cp.free -> (if (cp.days > 1) "planned skips" else "planned skip") to c.text2
                     state == CpState.HIT -> "hit at ${ProgramEngine.fmt1(avg!!)}" to c.good
                     state == CpState.PASSED -> (if (avg != null) "was ${ProgramEngine.fmt1(avg)}" else "passed") to c.text2
                     isCurrent -> when (val n = ChronoUnit.DAYS.between(st.today, cp.localDate)) { 0L -> "today"; 1L -> "tomorrow"; else -> "in $n days" } to c.accent
@@ -180,7 +180,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
             Modifier.clip(RoundedCornerShape(6.dp)).pressable(haptic = false, onClick = onRoute).padding(vertical = 4.dp, horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Sub("Days off are planned from the calendar on Route.", size = 12)
+            Sub("Skips are planned from the calendar on Route.", size = 12)
             Text("ROUTE ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
         }
     }
@@ -189,7 +189,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
         val taken = s.checkpoints.flatMap { cp -> (0 until cp.days).map { cp.localDate.plusDays(it.toLong()) } }.toSet()
         val from = maxOf(st.today, s.startDate).plusDays(7)
         val d = generateSequence(from) { it.plusDays(1) }.takeWhile { !it.isAfter(s.endDate) }.firstOrNull { it !in taken }
-        if (d == null) { vm.showToast("Every day from a week out already has a flag or a skip"); return@Fab }
+        if (d == null) { vm.showToast("Every day from a week out to the end already has a checkpoint or a skip"); return@Fab }
         val ncp = Checkpoint(d.toString(), ProgramEngine.paceWeight(ProgramEngine.dayNumber(d, s.startDate), s, ProgramEngine.paceAnchor(st.weighIns, s)).let { kotlin.math.round(it * 2) / 2 }, note = "Pace check.")
         vm.updateSettings { s -> s.copy(checkpoints = (s.checkpoints + ncp).sortedBy { it.date }) }
         editing = ncp.date
@@ -202,10 +202,10 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
             cp, onDismiss = { editing = null },
             onSave = { ncp ->
                 // A date is a flag's identity: moving onto a day that has one is refused, not stacked.
-                if (ncp.date != cp.date && s.checkpoints.any { it.date == ncp.date }) vm.showToast("${ncp.localDate.format(cpFmt)} already has a flag")
+                if (ncp.date != cp.date && s.checkpoints.any { it.date == ncp.date }) vm.showToast("${ncp.localDate.format(cpFmt)} already has a checkpoint")
                 else { vm.updateSettings { s -> s.copy(checkpoints = s.checkpoints.map { if (it.date == cp.date) ncp else it }.sortedBy { it.date }) }; editing = null }
             },
-            onRemove = { haptics2.tap(); vm.updateWithUndo("Flag removed") { s -> s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date }) }; editing = null },
+            onRemove = { haptics2.tap(); vm.updateWithUndo("Checkpoint deleted") { s -> s.copy(checkpoints = s.checkpoints.filter { it.date != cp.date }) }; editing = null },
         )
     }
 }
@@ -238,6 +238,6 @@ private fun CheckpointSheet(cp: Checkpoint, onDismiss: () -> Unit, onSave: (Chec
             SheetField("Target", target, { target = it }, Modifier.width(130.dp), unit = "lb")
         }
         SheetField("Note", note, { note = it }, text = true, last = true, placeholder = "Optional")
-        SheetButtons("Done", onPrimary = { onSave(cp.copy(date = date.toString(), target = target.num() ?: cp.target, note = note.trim())) }, secondary = "Remove", onSecondary = onRemove)
+        SheetButtons("Done", onPrimary = { onSave(cp.copy(date = date.toString(), target = target.num() ?: cp.target, note = note.trim())) }, secondary = "Delete", onSecondary = onRemove)
     }
 }

@@ -82,11 +82,11 @@ val WALL_HEIGHT = 484.dp
 fun resultName(r: DayResult): String = when (r) {
     DayResult.SEND -> "Send"
     DayResult.MIN -> "Min day"
-    DayResult.FREEZE -> "Frozen"
-    DayResult.SKIP -> "Skipped"
+    DayResult.FREEZE -> "Freeze"
+    DayResult.SKIP -> "Planned skip"
     DayResult.MISSED -> "Missed"
     DayResult.TODAY -> "In progress"
-    DayResult.FUTURE -> "Not yet"
+    DayResult.FUTURE -> "Ahead"
     DayResult.BEFORE -> "Before the start"
 }
 

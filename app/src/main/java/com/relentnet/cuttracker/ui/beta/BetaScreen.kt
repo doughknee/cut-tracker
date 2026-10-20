@@ -76,12 +76,12 @@ fun BetaScreen(
                 EditorTile(
                     Modifier.weight(1f), CutIcons.Meals, "Meals",
                     rows = s.meals.map { m -> m.name to s.library.count { it.kind == m.id }.toString() }.take(4),
-                    foot = "${s.library.size} meals, ${st.mealsLoggedThisWeek()} logged this week", onClick = onMeals,
+                    foot = "${com.relentnet.cuttracker.ui.components.count(s.library.size, "meal")}, ${st.mealsLoggedThisWeek()} logged this week", onClick = onMeals,
                 )
                 EditorTile(
                     Modifier.weight(1f), CutIcons.Lift, "Lifts",
                     rows = s.liftKinds.map { k -> k to s.exercises.count { it.kind == k }.toString() }.take(4),
-                    foot = "${s.exercises.size} lifts", onClick = onLifts,
+                    foot = com.relentnet.cuttracker.ui.components.count(s.exercises.size, "lift"), onClick = onLifts,
                 )
             }
             Row(share(0.9f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -196,7 +196,7 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
             if (next?.target != null) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(ProgramEngine.fmt1(next.target), color = c.text, style = cutStyle(32, 800, 1f, -0.03f, display = true, tabular = true))
-                    Text("lb on ${next.localDate.format(cpFmt)}, in ${ChronoUnit.DAYS.between(st.today, next.localDate)} days", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("lb on ${next.localDate.format(cpFmt)}, ${com.relentnet.cuttracker.ui.components.inDays(ChronoUnit.DAYS.between(st.today, next.localDate))}", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (i in cps.indices) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < idx) c.good else if (i == idx) c.accent else c.hairline))

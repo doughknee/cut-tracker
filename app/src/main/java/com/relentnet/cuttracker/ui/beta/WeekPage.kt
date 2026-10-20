@@ -71,7 +71,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
                 }
             }
         }
-        KindCard("Protein", "$hit of ${past.size.coerceAtLeast(1)} days") {
+        KindCard("Protein", "$hit of ${com.relentnet.cuttracker.ui.components.count(past.size.coerceAtLeast(1), "day")}") {
             if (past.isEmpty()) Sub("The week starts today.", Modifier.padding(14.dp, 4.dp, 14.dp, 14.dp), size = 12)
             for (d in past) {
                 val dv = st.day(d)
@@ -86,7 +86,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
             for ((d, dv) in planned) {
                 val block = dv.items.first { it.workout && it.id != ProgramSpec.ITEM_CLIMB }
                 val done = block.id in dv.log.doneItemIds
-                NumRow(if (done) "✓" else "–", block.label, sub = d.format(dayFmt), right = if (done) "done" else if (d.isAfter(st.today)) "ahead" else "not yet", rightColor = if (done) c.good else c.text2, chevron = false)
+                NumRow(if (done) "✓" else "–", block.label, sub = d.format(dayFmt), right = if (done) "done" else if (d.isAfter(st.today)) "ahead" else if (d == st.today) "not yet" else "not done", rightColor = if (done) c.good else c.text2, chevron = false)
             }
         }
         Sub("Read only. Everything here is logged from Today.", size = 12)
@@ -96,7 +96,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
         val dv = st.day(d)
         val name = when (dv.result) {
             DayResult.SEND -> "Send"; DayResult.MIN -> "Min day, chain safe"; DayResult.FREEZE -> "Missed, freeze spent"; DayResult.SKIP -> "Planned skip"
-            DayResult.MISSED -> "Missed"; DayResult.TODAY -> "Today"; DayResult.FUTURE -> "Ahead"; DayResult.BEFORE -> "Before the route"
+            DayResult.MISSED -> "Missed"; DayResult.TODAY -> "Today"; DayResult.FUTURE -> "Ahead"; DayResult.BEFORE -> "Before the start"
         }
         Sheet(d.format(DateTimeFormatter.ofPattern("EEEE MMM d", Locale.US)), onDismiss = { open = null }) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

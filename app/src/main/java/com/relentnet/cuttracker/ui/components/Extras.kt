@@ -51,6 +51,12 @@ fun String.num(): Double? {
 
 fun String.int(): Int? = num()?.roundToInt()
 
+/** "1 day", "3 days": a count with its noun, singular for one. */
+fun count(n: Number, noun: String): String = if (n.toLong() == 1L) "1 $noun" else "$n ${noun}s"
+
+/** "today", "tomorrow", "in 5 days". */
+fun inDays(n: Long): String = when (n) { 0L -> "today"; 1L -> "tomorrow"; else -> "in $n days" }
+
 private fun String.fold() = java.text.Normalizer.normalize(lowercase(), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
 
 /** True when every word of [query] appears somewhere in [fields], in any order, ignoring case and accents. */

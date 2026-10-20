@@ -118,7 +118,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
                 ).joinToString(", ").replaceFirstChar { it.uppercase() }
             }) { onSection(SettingsSections.NUDGES) }
             CategoryRow(CutIcons.Layers, "Appearance", appearanceLine(s)) { onSection(SettingsSections.APPEARANCE) }
-            CategoryRow(CutIcons.Data, "Data", "Export, import, online features, reset. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
+            CategoryRow(CutIcons.Data, "Data", "Export, import, online features, wipe. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = true) { onSection(SettingsSections.ABOUT) }
         }
         Sub("The route itself, targets, meals, lifts and checkpoints live on the Beta tab.", size = 12)
@@ -206,8 +206,8 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
         )
         "reset" -> ConfirmDialog(
             "Wipe everything?",
-            "Logs, photos, badges, XP and settings are deleted from this phone, and onboarding starts over. This cannot be undone.",
-            "Wipe it", onConfirm = { vm.resetProgram { vm.showToast("Program reset") } },
+            "Logs, photos, badges, xp and settings are deleted from this phone, and onboarding starts over. This cannot be undone.",
+            "Wipe it", onConfirm = { vm.resetProgram { vm.showToast("Everything wiped") } },
             onDismiss = { confirm = null }, extra = "Export first" to { export(false) },
         )
     }
@@ -231,13 +231,13 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                         }
                         if (fix != null) LinkText("Allow", onClick = fix) else Icon(CutIcons.Check, null, Modifier.size(16.dp), tint = c.good)
                     }
-                    PlainRow("Weigh-in", if (s.weighReminder) "before food, not once you weighed in" else "off") {
+                    PlainRow("Weigh-in", if (s.weighReminder) "before food, quiet once you have weighed in" else "off") {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (s.weighReminder) TimePick(s.weighInTime) { vm.updateSettings { s -> s.copy(weighInTime = it) } }
                             Switch(s.weighReminder, "Weigh-in reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(weighReminder = !s.weighReminder) } }
                         }
                     }
-                    PlainRow("Pick a day", if (s.pickReminder) "only if the day is unset" else "off") {
+                    PlainRow("Pick a day", if (s.pickReminder) "only if no day is picked" else "off") {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (s.pickReminder) TimePick(s.pickTime) { vm.updateSettings { s -> s.copy(pickTime = it) } }
                             Switch(s.pickReminder, "Pick-a-day reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(pickReminder = !s.pickReminder) } }
@@ -270,8 +270,8 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     }
                 }
                 KindCard("Danger", "") {
-                    PlainRow("Reset program", "logs, photos, settings, all of it") {
-                        LinkText("Reset", color = c.accent) { haptics.tap(); confirm = "reset" }
+                    PlainRow("Wipe everything", "logs, photos, settings, all of it") {
+                        LinkText("Wipe", color = c.accent) { haptics.tap(); confirm = "reset" }
                     }
                 }
             }
