@@ -367,8 +367,13 @@ private fun ItemRow(r: WRow) {
         }
         Spacer(GlanceModifier.width(7.dp))
         Text(
-            r.item.label, maxLines = 1, modifier = GlanceModifier.defaultWeight(),
+            r.item.label, maxLines = 1,
             style = body(if (r.done) W.text2 else W.text).copy(textDecoration = if (r.done) TextDecoration.LineThrough else TextDecoration.None),
+        )
+        // A meal row logs the slot's default (or its pick) on tap, through CheckItemAction; say what that is.
+        Text(
+            if (r.item.pick && !r.done) "  " + r.item.sub.substringBeforeLast(". ") else "", maxLines = 1, modifier = GlanceModifier.defaultWeight(),
+            style = body(W.dim, 10),
         )
         Text(
             if (r.next || r.done) "+${r.item.xp}" else r.item.time,
