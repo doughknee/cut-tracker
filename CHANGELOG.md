@@ -9,6 +9,7 @@ What changed in Sendline, from the user's side. Newest first.
 - A past day keeps the result it was logged with. Raising protein, changing what a kind of day asks for or editing a meal no longer turns old Sends into Min days or uses up freezes.
 - Editing or deleting a library meal leaves the days that logged it as they were.
 - Two quick edits never undo each other: steppers can be tapped fast, switches flipped back to back.
+- Editing a past day can only raise its result, unless you untick something or change its kind.
 - "Change" on a day keeps its ticks, so picking the same kind again loses nothing.
 - A lift block done on a Rest day counts as a workout.
 
@@ -19,7 +20,7 @@ What changed in Sendline, from the user's side. Newest first.
 - Every stepper repeats while held, and its number can be tapped to type it: all of Targets, and weight and reps on Today's lifts.
 - Lift numbers typed on Today survive closing the panel.
 - Numbers read the way you type them: 181,4 and 2,250 work, and a decimal no longer saves as 0.
-- A focused field always scrolls above the keyboard.
+- A focused field always scrolls above the keyboard, and a number field selects its value so typing replaces it.
 - Deleting a meal, a lift, a kind, a checkpoint or a custom look shows Undo for six seconds.
 - A sheet with unsaved edits asks before a swipe or a tap outside throws them away.
 - Search matches every word in any order and ignores accents. The lift picker and, past eight meals, Today's meal picker get a search box.
@@ -36,6 +37,8 @@ What changed in Sendline, from the user's side. Newest first.
 - Import and Reset ask first and offer Export first. A failed export says so.
 - Restoring a backup is all or nothing: a file the app cannot read leaves your data as it was.
 - Data shows when you last exported, because the phone holds the only copy until you do.
+- Save a copy writes the backup straight to a file you pick, next to Export through the share menu.
+- A denied camera offers Open settings, and coming back with it allowed opens the viewfinder.
 
 ### Easier to read and reach
 

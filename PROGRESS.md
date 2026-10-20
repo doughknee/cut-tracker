@@ -140,6 +140,7 @@ Unattended, at the user's request: audit everything and fix what a daily user fe
 - Round 6: the pick-a-day reminder answers itself from the shade (Yep, Rest day / I climbed). The weigh-in reminder deliberately gets no inline reply (decision log).
 - Round 7, release check: fixed an onboarding crash on a comma-typed start weight and typed stepper values appending to the old number; onboarding copy points targets at Beta.
 - Round 8, an independent review of the whole diff found seven regressions, all fixed: editing a past day re-judged it by today's targets (now it can only rise unless you untick or change its kind); steppers fired on touch-down so a scroll could change a value; Save session missed a number still being typed; a meal rename froze past picks; Undo restored the whole settings snapshot; day plan switches used screen state; a stale pick-a-day button could set the next day. Number fields now select their contents on focus.
+- Round 9: Save a copy (backup straight to a picked file), Open settings for a denied camera, a scrolling rules sheet, "No day picked." in the Route popover, 48dp targets for Today's small controls.
 
 Tests added: `HistoryTest` (ledger-scored history, workouts), `InputParsingTest` (numbers and search), BackupTest covers the new settings fields.
 
