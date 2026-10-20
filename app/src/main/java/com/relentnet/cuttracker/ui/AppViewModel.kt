@@ -56,7 +56,12 @@ class AppViewModel(val repo: Repo) : ViewModel() {
             repo.events.collect { e ->
                 when (e) {
                     // Let the hold fill green on the wall before the takeover covers it.
-                    is UiEvent.Send -> viewModelScope.launch { delay(520); takeover = Takeover.Send }
+                    is UiEvent.Send -> viewModelScope.launch {
+                        delay(520)
+                        // A level-up from the same tick showed in the gap; it comes back after the Send.
+                        (takeover as? Takeover.LevelUp)?.let { pendingLevelUps.addFirst(it.level) }
+                        takeover = Takeover.Send
+                    }
                     is UiEvent.LevelUp -> if (takeover == null) takeover = Takeover.LevelUp(e.level) else pendingLevelUps.addLast(e.level)
                     is UiEvent.Badge -> showToast("${e.name} badge earned")
                     is UiEvent.Toast -> showToast(e.text)
@@ -75,12 +80,24 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         }
     }
 
-    fun dismissToast() { toastJob?.cancel(); toast = null }
+    /** Plain toasts that arrived while another plain one showed; each gets its turn. An Undo toast never waits. */
+    private val queuedToasts = ArrayDeque<ToastMsg>()
+
+    fun dismissToast() { toastJob?.cancel(); toast = null; queuedToasts.removeFirstOrNull()?.let(::show) }
 
     fun showToast(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
-        toast = ToastMsg(text, action, onAction)
+        val msg = ToastMsg(text, action, onAction)
+        if (action == null && toast != null && toast?.action == null) queuedToasts.addLast(msg) else show(msg)
+    }
+
+    private fun show(msg: ToastMsg) {
+        toast = msg
         toastJob?.cancel()
-        toastJob = viewModelScope.launch { delay(if (action != null) 6000 else 1800); toast = null }
+        toastJob = viewModelScope.launch {
+            delay(if (msg.action != null) 6000 else 1800)
+            toast = null
+            queuedToasts.removeFirstOrNull()?.let { delay(200); show(it) }
+        }
     }
 
     /** Applies [f] and offers Undo, which puts the settings back as they were just before. For deletes. */

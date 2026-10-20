@@ -71,7 +71,7 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
                 }
             }
         }
-        KindCard("Protein", "$hit of ${com.relentnet.cuttracker.ui.components.count(past.size.coerceAtLeast(1), "day")}") {
+        KindCard("Protein", if (past.isEmpty()) "" else "$hit of ${com.relentnet.cuttracker.ui.components.count(past.size, "day")}") {
             if (past.isEmpty()) Sub("The week starts today.", Modifier.padding(14.dp, 4.dp, 14.dp, 14.dp), size = 12)
             for (d in past) {
                 val dv = st.day(d)
@@ -117,7 +117,11 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
                     for (m in meals) Chip(m, on = false) {}
                 }
             }
-            SheetButtons("Close", onPrimary = { open = null })
+            SheetButtons("Close", onPrimary = { open = null }, secondary = "Edit on Today", onSecondary = {
+                open = null
+                vm.viewDate = d.takeIf { it != st.today }
+                vm.requestTab(com.relentnet.cuttracker.ui.Routes.TODAY)
+            })
         }
     }
 }

@@ -98,6 +98,11 @@ fun checkpointState(st: AppState, cpDate: LocalDate, target: Double?): Pair<CpSt
 }
 
 /** The first checkpoint today has not passed is the current one. */
+/** Every 14 days, and on a checkpoint day that has no photo yet. */
+fun photoDueToday(st: AppState): Boolean =
+    ProgramEngine.photoDue(st.photos.map { it.date }, st.today, st.settings.startDate) ||
+        (currentCheckpointDate(st) == st.today && st.photos.none { it.date == st.today })
+
 fun currentCheckpointDate(st: AppState): LocalDate? =
     st.settings.checkpoints.filter { !it.free }.map { it.localDate }.sorted().firstOrNull { !st.today.isAfter(it) }
 

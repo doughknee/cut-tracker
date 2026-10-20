@@ -81,7 +81,7 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
     val haptics = LocalHaptics.current
-    val due = ProgramEngine.photoDue(st.photos.map { it.date }, st.today, s.startDate)
+    val due = photoDueToday(st)
     val current = currentCheckpointDate(st)
     var confirmDelete by remember { mutableStateOf<LocalDate?>(null) }
     // Right-hand photo of the compare pair; the left is always the first one.

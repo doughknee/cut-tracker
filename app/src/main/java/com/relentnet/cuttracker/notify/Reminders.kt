@@ -133,7 +133,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     Reminders.KIND_WEIGH -> if (s.weighReminder && app.db.weighIns().all().none { it.date == app.repo.today() }) Reminders.post(context, kind)
                     Reminders.KIND_PICK -> {
                         val today = app.repo.today()
-                        if (s.pickReminder && app.db.dayLogs().get(today)?.mode == null) Reminders.post(context, kind, today)
+                        val onRoute = !today.isBefore(s.startDate) && today.isBefore(s.endDate) && s.checkpoints.none { it.free && it.localDate == today }
+                        if (s.pickReminder && onRoute && app.db.dayLogs().get(today)?.mode == null) Reminders.post(context, kind, today)
                     }
                 }
                 Reminders.schedule(context, s)

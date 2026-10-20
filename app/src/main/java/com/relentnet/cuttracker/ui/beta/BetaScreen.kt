@@ -203,7 +203,8 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
                 }
             } else Text("No checkpoint ahead", color = c.text, style = cutStyle(15, 700, 1.2f))
         }
-        if (next?.target != null) {
+        if (com.relentnet.cuttracker.ui.route.photoDueToday(st)) Text("Photo due today", color = c.accent, style = cutStyle(11, 700, 1.2f))
+        else if (next?.target != null) {
             val toGo = avg - next.target
             Text(
                 "${idx + 1} of ${cps.size}, ${ProgramEngine.fmt1(kotlin.math.abs(toGo))} ${if (toGo >= 0) "to go" else "under"}, ${if (behind) "behind pace" else "on pace"}",

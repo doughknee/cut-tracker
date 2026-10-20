@@ -67,7 +67,7 @@ fun TargetsPage(vm: AppViewModel, onBack: () -> Unit) {
             PlainRow("Calories", "stay under") { MiniStepper("%,d".format(Locale.US, s.calories), { set { it.copy(caloriesP1 = (it.caloriesP1 - 50).coerceAtLeast(0)) } }, { set { it.copy(caloriesP1 = it.caloriesP1 + 50) } }, "cal", onType = { v -> set { it.copy(caloriesP1 = v.toInt().coerceIn(0, 10000)) } }) }
         }
         KindCard("Every week", "") {
-            PlainRow("Workouts", "blocks on Climb and Off days") { MiniStepper("${s.workoutsPerWeek}", { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek - 1).coerceAtLeast(0)) } }, { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek + 1).coerceAtMost(7)) } }, "a week", onType = { v -> set { it.copy(workoutsPerWeek = v.toInt().coerceIn(0, 7)) } }) }
+            PlainRow("Workouts", "lift blocks done, any kind of day") { MiniStepper("${s.workoutsPerWeek}", { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek - 1).coerceAtLeast(0)) } }, { set { it.copy(workoutsPerWeek = (it.workoutsPerWeek + 1).coerceAtMost(7)) } }, "a week", onType = { v -> set { it.copy(workoutsPerWeek = v.toInt().coerceIn(0, 7)) } }) }
         }
         KindCard("The route", "") {
             PlainRow("Start", "weighed on ${s.startDate.format(shortDate)}") { MiniStepper(ProgramEngine.fmt1(s.startWeight), { set { it.copy(startWeight = it.startWeight - 0.5) } }, { set { it.copy(startWeight = it.startWeight + 0.5) } }, "lb", onType = { v -> set { it.copy(startWeight = v.coerceIn(50.0, 1000.0)) } }) }

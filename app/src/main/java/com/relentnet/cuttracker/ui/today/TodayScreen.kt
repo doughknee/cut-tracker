@@ -149,7 +149,8 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     val remaining = items.filter { it.id !in done || it.id in fresh }
     val finished = items.filter { it.id in done && it.id !in fresh }
     val next = remaining.firstOrNull { it.id !in done }
-    val late = !past && mode == null && !now.isBefore(st.settings.pickTime)
+    var changing by remember(date) { mutableStateOf(false) }
+    val late = !past && mode == null && !changing && (!now.isBefore(st.settings.pickTime) || now.hour < st.settings.resetHour)
     val welcomeBack = !past && st.missedRun >= 2 && st.settings.welcomeBackSeen != st.today
     val prevWeigh = st.weighInBefore(date)
 
@@ -210,7 +211,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Icon(CutIcons.Link, null, Modifier.size(15.dp), tint = c.good)
                     Text("${tickedInt(st.chain.count)}", color = c.text, style = cutStyle(16, 800, 1f, tabular = true))
-                    Text("CHAIN", color = c.text2, style = cutStyle(10, 700, 1f, 0.08f), modifier = Modifier.padding(start = 4.dp))
+                    Text(if (st.chain.paused) "PAUSED" else "CHAIN", color = if (st.chain.paused) c.freeze else c.text2, style = cutStyle(10, 700, 1f, 0.08f), modifier = Modifier.padding(start = 4.dp))
                 }
             }
             Text(date.format(dayFmt), color = c.text, style = cutStyle(48, 800, 1f, -0.03f, display = true), maxLines = 1)
@@ -243,7 +244,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
             2 -> PickCards(st, onPick = { haptics.tap(); vm.setMode(it, date = editDate) })
             else -> ModeChipRow(
                 mode, dv, st.settings.protein,
-                onChange = { weighOpen = false; pickOpen = null; vm.setMode(null, date = editDate) },
+                onChange = { weighOpen = false; pickOpen = null; changing = true; vm.setMode(null, date = editDate) },
                 // An Off day with the block unchecked is a Rest day that was logged under the old rules; one tap fixes it.
                 onMakeRest = if (mode == DayMode.OFF && ProgramSpec.ITEM_CORE !in done) ({ haptics.tap(); vm.setMode(DayMode.REST, date = editDate) }) else null,
             )
@@ -264,7 +265,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                     WeighInline(prefill = prevWeigh?.lb ?: st.settings.startWeight, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb) })
                 }
             }
-            if (items.isEmpty()) {
+            if (items.isEmpty() && !(st.ended && !past)) {
                 Box(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).dashedBorder(c.mutedBorder).padding(18.dp, 14.dp),
                 ) {
@@ -317,7 +318,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                     color = c.text2, style = cutStyle(11, 800, 1f, 0.1f),
                     modifier = Modifier.clip(RoundedCornerShape(6.dp)).pressable { liftOpen = !liftOpen }.padding(horizontal = 6.dp, vertical = 14.dp),
                 )
-                if (liftOpen) LiftInline(vm, mode = DayMode.OFF, onSaved = { liftOpen = false })
+                if (liftOpen) LiftInline(vm, mode = DayMode.OFF, tickBlock = true, onSaved = { liftOpen = false })
             }
             if (finished.isNotEmpty()) {
                 Row(
@@ -331,14 +332,27 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 Unfold(doneOpen) { Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     for (it in finished) {
                         val reading = if (it.id == ProgramSpec.ITEM_WEIGH) dayReading else null
+                        val meal = if (it.pick) it.sub?.substringBefore(". ")?.takeIf { m -> m.isNotBlank() } else null
                         CheckRow(
-                            label = if (reading != null) "${it.label} · ${ProgramEngine.fmt1(reading.lb)} lb" else it.label,
+                            label = if (reading != null) "${it.label} · ${ProgramEngine.fmt1(reading.lb)} lb" else if (meal != null) "${it.label} · $meal" else it.label,
                             sub = null, time = null, xp = it.xp, done = true, compact = true,
                             onClick = {
-                                if (reading != null) { weighOpen = !weighOpen; pickOpen = null; liftOpen = false }
-                                else vm.toggleItem(it.id, date = editDate)
+                                when {
+                                    reading != null -> { weighOpen = !weighOpen; pickOpen = null; liftOpen = false }
+                                    it.pick -> { pickOpen = if (pickOpen == it.id) null else it.id; weighOpen = false; liftOpen = false }
+                                    else -> vm.toggleItem(it.id, date = editDate)
+                                }
                             },
+                            onCheck = if (it.pick) ({ haptics.tap(); closeInline(); vm.toggleItem(it.id, date = editDate) }) else null,
                         )
+                        if (it.pick) Unfold(pickOpen == it.id) {
+                            val slot = st.settings.meals.firstOrNull { m -> m.id == it.id }
+                            if (slot != null) MealPicker(
+                                st, slot, date, current = dv.log.picks[it.id],
+                                onPick = { ref -> pickOpen = null; haptics.tap(); vm.pickMeal(it.id, ref, editDate) },
+                                onSaveLib = { m -> vm.saveLibraryMeal(m) },
+                            )
+                        }
                         if (reading != null) Unfold(weighOpen) {
                             WeighInline(prefill = reading.lb, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb, editDate) })
                         }
