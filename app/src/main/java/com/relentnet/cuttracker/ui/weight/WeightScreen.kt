@@ -1,5 +1,7 @@
 package com.relentnet.cuttracker.ui.weight
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -198,8 +200,10 @@ fun WeightChart(st: AppState) {
     val (top, bot) = chartRange(s.startWeight, s.targetWeight, readings, projected)
     val total = s.totalDays.toFloat()
 
+    val said = "Weight chart. ${readings.size} readings" + (readings.lastOrNull()?.let { ", the last ${ProgramEngine.fmt1(it)} lb" } ?: "") +
+        ", the goal ${ProgramEngine.fmt1(s.targetWeight)} lb" + (projected?.let { ", on this pace ${ProgramEngine.fmt1(it)} lb at the end" } ?: "") + "."
     Canvas(
-        Modifier.fillMaxWidth().aspectRatio(326f / 190f).pointerInput(Unit) {
+        Modifier.fillMaxWidth().aspectRatio(326f / 190f).semantics { contentDescription = said }.pointerInput(Unit) {
             detectTapGestures(onPress = { showDots = true; tryAwaitRelease(); showDots = false })
         },
     ) {

@@ -99,7 +99,7 @@ fun Header(eyebrow: String, title: String, titleColor: Color = CutTheme.colors.t
 fun BackHeader(backLabel: String, title: String, onBack: () -> Unit) {
     Column {
         Row(
-            Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onBack, role = Role.Button).padding(vertical = 4.dp),
+            Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(6.dp)).clickable(onClick = onBack, role = Role.Button, onClickLabel = "Back to $backLabel").padding(end = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {

@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui.today
 
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -238,7 +239,7 @@ private fun ChromeButton(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     val c = CutTheme.colors
     val shape = RoundedCornerShape(9.dp)
     Box(
-        Modifier.size(32.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape)
+        Modifier.minimumInteractiveComponentSize().size(32.dp).clip(shape).background(c.surface.copy(alpha = 0.92f)).border(1.dp, c.mutedBorder, shape)
             .pressable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(icon, contentDescription = label, Modifier.size(15.dp), tint = if (!enabled) c.dim else tint ?: c.text2) }

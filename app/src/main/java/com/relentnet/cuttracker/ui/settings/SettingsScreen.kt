@@ -285,7 +285,7 @@ fun Modifier.pulseWhen(on: Boolean): Modifier = composed {
 private fun LinkText(label: String, color: Color = CutTheme.colors.accent, onClick: () -> Unit) {
     Text(
         label.uppercase(), color = color, style = cutStyle(11, 800, 1f, 0.08f),
-        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onClick, role = Role.Button).padding(6.dp, 8.dp),
+        modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onClick, role = Role.Button).padding(horizontal = 8.dp, vertical = 16.dp),
     )
 }
 

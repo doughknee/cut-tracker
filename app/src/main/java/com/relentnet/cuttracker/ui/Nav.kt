@@ -1,5 +1,6 @@
 package com.relentnet.cuttracker.ui
 
+import androidx.compose.foundation.selection.selectable
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -290,15 +291,15 @@ fun BottomNav(current: String?, onGo: (String) -> Unit) {
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() }, indication = null,
+                        .selectable(
+                            selected = on, interactionSource = remember { MutableInteractionSource() }, indication = null,
                             role = Role.Tab, onClick = { if (!on) haptics.tick(); onGo(t.route) },
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
                     val lift by animateFloatAsState(if (on) 1.12f else 1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow), label = "tab")
-                    Icon(t.icon, contentDescription = t.label, Modifier.size(22.dp).scale(lift), tint = tint)
+                    Icon(t.icon, contentDescription = null, Modifier.size(22.dp).scale(lift), tint = tint)
                     Text(t.label.uppercase(), color = tint, style = cutStyle(11, 700, 1f, 0.06f), modifier = Modifier.padding(top = 4.dp))
                 }
             }

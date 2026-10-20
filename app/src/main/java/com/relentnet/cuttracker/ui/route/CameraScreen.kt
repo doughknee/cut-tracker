@@ -101,7 +101,7 @@ fun CameraScreen(vm: AppViewModel, onDone: () -> Unit) {
                 BigButton("Cancel", onClick = onDone, modifier = Modifier.size(100.dp, 48.dp), secondary = true, height = 48.dp, fontSize = 12)
                 Box(
                     Modifier.size(72.dp).clip(CircleShape).background(c.accent).border(4.dp, c.text, CircleShape)
-                        .clickable(enabled = granted && !busy, role = Role.Button) {
+                        .clickable(enabled = granted && !busy, role = Role.Button, onClickLabel = "Take the photo") {
                             busy = true
                             haptics.tap()
                             val file = File(App.of(context).repo.photosDir, "${st.today}.jpg")

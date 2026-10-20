@@ -474,7 +474,10 @@ private fun PickCard(modifier: Modifier, hold: HoldShape, title: String, sub: St
 @Composable
 private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int, onChange: () -> Unit, onMakeRest: (() -> Unit)? = null) {
     val c = CutTheme.colors
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    androidx.compose.foundation.layout.FlowRow(
+        Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
       Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             Modifier
@@ -499,10 +502,10 @@ private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int
         ) { Text("MAKE IT REST", color = c.text, style = cutStyle(11, 800, 1f, 0.06f)) }
       }
         val hit = dv.totals.protein >= proteinTarget
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text("${tickedInt(dv.totals.protein)}", color = if (hit) c.good else c.text, style = cutStyle(13, 800, 1f, tabular = true))
-            Text(" / $proteinTarget g", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
-            Text("   ${tickedInt(dv.totals.calories)} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true))
+        Row(Modifier.heightIn(min = 36.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("${tickedInt(dv.totals.protein)}", color = if (hit) c.good else c.text, style = cutStyle(13, 800, 1f, tabular = true), softWrap = false)
+            Text(" / $proteinTarget g", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
+            Text("   ${tickedInt(dv.totals.calories)} cal", color = c.text2, style = cutStyle(12, 600, 1f, tabular = true), softWrap = false)
         }
     }
 }

@@ -89,9 +89,9 @@ fun KindCard(
                 Icon(CutIcons.Forward, null, Modifier.size(14.dp).rotate(90f + rot), tint = c.text2)
             }
             if (onEdit != null) Box(
-                Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(if (editing) c.ground else Color.Transparent).clickable(onClick = onEdit, role = Role.Button),
+                Modifier.size(44.dp).padding(4.dp).clip(RoundedCornerShape(8.dp)).background(if (editing) c.ground else Color.Transparent).clickable(onClick = onEdit, role = Role.Button),
                 contentAlignment = Alignment.Center,
-            ) { Icon(CutIcons.Gear, null, Modifier.size(14.dp), tint = if (editing) c.accent else c.text2) }
+            ) { Icon(CutIcons.Gear, "Edit $title", Modifier.size(14.dp), tint = if (editing) c.accent else c.text2) }
         }
         if (sub != null) Text(sub, color = c.text2, style = cutStyle(12, 500, 1.4f), modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp))
         AnimatedVisibility(!folded, enter = expandVertically(spring(dampingRatio = 0.9f, stiffness = 420f)) + fadeIn(), exit = shrinkVertically(spring(dampingRatio = 0.9f, stiffness = 420f)) + fadeOut()) {
@@ -148,10 +148,12 @@ fun AddRow(label: String, onClick: () -> Unit) {
 /** The 56dp orange add button; the caller puts it in a Box at BottomEnd. */
 @Composable
 fun Fab(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    // The shadow is the darkest token of the look: ground in dark, text in light.
+    val shadowTone = CutTheme.colors.let { if (it.isDark) it.ground else it.text }
     val c = CutTheme.colors
     val shape = RoundedCornerShape(18.dp)
     Box(
-        modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(end = 20.dp, bottom = 24.dp).size(56.dp).shadow(14.dp, shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+        modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(end = 20.dp, bottom = 24.dp).size(56.dp).shadow(14.dp, shape, clip = false, ambientColor = shadowTone, spotColor = shadowTone)
             .clip(shape).background(c.accent).pressable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Icon(CutIcons.Plus, "Add", Modifier.size(26.dp), tint = c.onAccent) }

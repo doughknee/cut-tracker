@@ -1,5 +1,7 @@
 package com.relentnet.cuttracker.ui.beta
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,8 +64,15 @@ fun BetaScreen(
     Column(Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.statusBars).padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 14.dp)) {
         Eyebrow("The plan for the route")
         Text("Beta", color = c.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.weight(1.3f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f)) {
+        val scrolls = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.15f || maxHeight < 560.dp
+        Column(
+            if (scrolls) Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // Fixed shares of the screen when it fits, a minimum height each when the page scrolls.
+            fun ColumnScope.share(w: Float): Modifier = if (scrolls) Modifier.heightIn(min = (w * 150).dp).height(androidx.compose.foundation.layout.IntrinsicSize.Min) else Modifier.weight(w)
+            Row(share(1.3f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 EditorTile(
                     Modifier.weight(1f), CutIcons.Meals, "Meals",
                     rows = s.meals.map { m -> m.name to s.library.count { it.kind == m.id }.toString() }.take(4),
@@ -75,11 +84,11 @@ fun BetaScreen(
                     foot = "${s.exercises.size} lifts", onClick = onLifts,
                 )
             }
-            Row(Modifier.weight(0.9f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(share(0.9f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (mode in DayMode.entries) DayTile(Modifier.weight(1f), mode, st) { onDay(mode) }
             }
-            CheckpointTile(Modifier.weight(0.9f), st, onCheckpoints)
-            Row(Modifier.weight(1.05f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CheckpointTile(share(0.9f), st, onCheckpoints)
+            Row(share(1.05f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 EditorTile(
                     Modifier.weight(1f), CutIcons.Target, "Targets",
                     rows = listOf("Protein" to "${s.protein} g", "Calories" to "%,d".format(Locale.US, s.calories), "Workouts" to "${s.workoutsPerWeek} a week"),
@@ -87,6 +96,7 @@ fun BetaScreen(
                 )
                 WeekTile(Modifier.weight(1f), st, onWeek)
             }
+        }
         }
     }
 }
@@ -186,7 +196,7 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
             if (next?.target != null) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(ProgramEngine.fmt1(next.target), color = c.text, style = cutStyle(32, 800, 1f, -0.03f, display = true, tabular = true))
-                    Text("lb on ${next.localDate.format(cpFmt)}, in ${ChronoUnit.DAYS.between(st.today, next.localDate)} days", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("lb on ${next.localDate.format(cpFmt)}, in ${ChronoUnit.DAYS.between(st.today, next.localDate)} days", color = c.text2, style = cutStyle(11, 700, 1f, tabular = true), modifier = Modifier.padding(bottom = 3.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (i in cps.indices) Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < idx) c.good else if (i == idx) c.accent else c.hairline))

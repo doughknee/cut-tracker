@@ -97,13 +97,13 @@ fun LibraryScreen(
                     AnimatedVisibility(kindForm, enter = expandVertically(spring(dampingRatio = 0.9f, stiffness = 420f)) + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                         val focus = FocusRequester()
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            IconBtn(CutIcons.Close, accent = false) { kindForm = false; newKind = "" }
+                            IconBtn(CutIcons.Close, "Cancel the new kind", accent = false) { kindForm = false; newKind = "" }
                             Field(
                                 newKind, { newKind = it }, Modifier.weight(1f), height = 40.dp, fontSize = 14, weight = 700, keyboard = KeyboardType.Text, imeAction = ImeAction.Done,
                                 onDone = { if (newKind.isNotBlank()) { onNewKind(newKind.trim()); newKind = ""; kindForm = false } },
                                 borderWidth = 1.dp, border = c.accent, radius = 10.dp, padding = 10.dp, placeholder = "New kind, like Pre-climb", focusRequester = focus,
                             )
-                            IconBtn(CutIcons.Check, accent = true) { if (newKind.isNotBlank()) { onNewKind(newKind.trim()); newKind = ""; kindForm = false } }
+                            IconBtn(CutIcons.Check, "Add the kind", accent = true) { if (newKind.isNotBlank()) { onNewKind(newKind.trim()); newKind = ""; kindForm = false } }
                         }
                     }
                 }
@@ -125,13 +125,13 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun IconBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, accent: Boolean, onClick: () -> Unit) {
+private fun IconBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, accent: Boolean, onClick: () -> Unit) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(10.dp)
     Box(
-        Modifier.size(40.dp).clip(shape).background(if (accent) c.accent else c.ground).border(1.dp, if (accent) c.accent else c.mutedBorder, shape).clickable(onClick = onClick, role = Role.Button),
+        Modifier.size(44.dp).clip(shape).background(if (accent) c.accent else c.ground).border(1.dp, if (accent) c.accent else c.mutedBorder, shape).clickable(onClick = onClick, role = Role.Button),
         contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, Modifier.size(16.dp), tint = if (accent) c.onAccent else c.text2) }
+    ) { Icon(icon, label, Modifier.size(16.dp), tint = if (accent) c.onAccent else c.text2) }
 }
 
 /** Kind pills inside a sheet: plain chips, the chosen one orange. */

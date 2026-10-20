@@ -1,5 +1,8 @@
 package com.relentnet.cuttracker.ui.route
 
+import com.relentnet.cuttracker.ui.today.resultName
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -109,7 +112,10 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
 
     Box(Modifier.fillMaxSize()) {
         Screen {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            androidx.compose.foundation.layout.FlowRow(
+                Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.Bottom,
+            ) {
                 Column {
                     Eyebrow("The Route · ${s.lengthWeeks} weeks")
                     Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.Bottom) {
@@ -147,7 +153,7 @@ private fun Stat(value: String, label: String, color: Color, icon: Boolean = fal
             if (icon) Icon(CutIcons.Link, null, Modifier.size(14.dp), tint = c.good)
             Text(value, color = color, style = cutStyle(24, 800, 1f, tabular = true))
         }
-        Text(label.uppercase(), color = c.text2, style = cutStyle(10, 700, 1f, 0.08f))
+        Text(label.uppercase(), color = c.text2, style = cutStyle(10, 700, 1f, 0.08f), softWrap = false)
     }
 }
 
@@ -200,8 +206,12 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                             cp != null -> onCheckpoints
                             else -> null
                         }
+                        val said = day.format(java.time.format.DateTimeFormatter.ofPattern("EEEE MMMM d", java.util.Locale.US)) +
+                            (if (r != null && r != DayResult.BEFORE) ", " + resultName(r) else "") +
+                            (if (cp != null && !cp.free) ", checkpoint" + (cp.target?.let { " ${ProgramEngine.fmt1(it)} lb" } ?: "") else if (cp?.free == true) ", planned day off" else "")
                         Box(
-                            Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier),
+                            Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier)
+                                .semantics(mergeDescendants = true) { contentDescription = said },
                             contentAlignment = Alignment.Center,
                         ) {
                             val flag = cp != null && !cp.free
