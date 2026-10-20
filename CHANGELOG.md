@@ -20,6 +20,17 @@ What changed in Sendline, from the user's side. Newest first.
 - Widget: add it from here, and hide your weight on it for a phone others see.
 - Nudges: on a checkpoint morning the weigh-in reminder says so and asks for the photo. About: the update note can be switched off.
 
+### Even more of the You tab
+
+- Two new pages. Weight: the big number shows the 7-day average or the latest reading, with one decimal or none; the chart shows the whole route or the last 4 or 8 weeks, every reading as a dot, and the rate line and checkpoint rings can go. Meals and lifts: what a new lift starts with (sets, reps, the weight per tap), whether a food starts at one portion or at 100 g, and a screen that stays on while the lifts are open.
+- Today: bigger holds, day names under the holds, Up next, the line under each item, strike-through, protein, the chain count and the weight tile can each go, and the Done list can start open. With the weight tile off, WEIGHT sits beside ROUTE at the top.
+- Nudges: your own words for each reminder, a Snooze button (15, 30 or 60 minutes) that asks again only if the job is still undone, hiding reminders from the lock screen, and a shortcut to the phone's sound and vibration for them.
+- Widget: light, dark or the phone's choice whatever the app wears, see-through over the wallpaper, and no xp if you like.
+- Feel and access: bold text, marks on the holds (a tick, a dot, two bars or a cross, so color is never the only cue, on the wall, the Route calendar and the week page), a plain wall without texture, and bigger tap targets.
+- Words and units: dates read Oct 20 or 20 Oct, everywhere from checkpoints to the widget.
+- Data: a Privacy card that blocks screenshots and blanks Sendline in Recents, beside the lock screen and widget switches.
+- Every settings row is one tap target and one TalkBack stop that says its name, its line and on or off; each card title is a heading, and choice chips say which one is picked.
+
 ### Settings, sorted
 
 - Appearance is now Theme, the look: dark or light, the calendar, the looks grid. The rest moved to Today, Feel and access, and Words and units; when the day rolls over moved from Nudges to Today.
