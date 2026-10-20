@@ -209,7 +209,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 Text(stateLine.uppercase(), color = stateColor, style = cutStyle(11, 800, 1f, 0.1f, tabular = true))
                 if (past) NavPill("Back to today ›", { view(st.today) }, accent = true)
                 else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Icon(CutIcons.Link, null, Modifier.size(15.dp), tint = c.good)
+                    Icon(CutIcons.Link, null, Modifier.size(15.dp), tint = if (st.chain.paused) c.freeze else c.good)
                     Text("${tickedInt(st.chain.count)}", color = c.text, style = cutStyle(16, 800, 1f, tabular = true))
                     Text(if (st.chain.paused) "PAUSED" else "CHAIN", color = if (st.chain.paused) c.freeze else c.text2, style = cutStyle(10, 700, 1f, 0.08f), modifier = Modifier.padding(start = 4.dp))
                 }
