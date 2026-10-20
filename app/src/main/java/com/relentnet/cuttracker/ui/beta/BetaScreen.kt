@@ -118,11 +118,14 @@ private fun TileFrame(modifier: Modifier, outlined: Boolean = false, onClick: ()
 }
 
 @Composable
-private fun TileTop(icon: ImageVector? = null, shape: HoldShape? = null, tint: Color = CutTheme.colors.accent, holdSize: Int = 30) {
+private fun TileTop(icon: ImageVector? = null, shape: HoldShape? = null, tint: Color = CutTheme.colors.accent, holdSize: Int = 30, badge: String? = null) {
     val c = CutTheme.colors
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         if (shape != null) Hold(shape, tint, holdSize.dp) else if (icon != null) Icon(icon, null, Modifier.size(22.dp), tint = tint)
-        Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (badge != null) Text(badge.uppercase(), color = c.accent, style = cutStyle(10, 800, 1f, 0.08f))
+            Icon(CutIcons.Forward, null, Modifier.size(12.dp), tint = c.text2)
+        }
     }
 }
 
@@ -190,7 +193,7 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
     val anchor = ProgramEngine.paceAnchor(st.weighIns, s)
     val behind = !ProgramEngine.onPace(avg, st.dayN.coerceIn(1, s.totalDays), s, anchor)
     TileFrame(modifier, outlined = true, onClick = onClick) {
-        TileTop(CutIcons.Flag, tint = c.text2)
+        TileTop(CutIcons.Flag, tint = c.text2, badge = if (!st.ended && com.relentnet.cuttracker.ui.route.photoDueToday(st)) "Photo due" else null)
         Text("Checkpoints", color = c.text2, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
         Column(Modifier.weight(1f).padding(top = 6.dp), verticalArrangement = Arrangement.Center) {
             if (next?.target != null) {
@@ -203,8 +206,7 @@ private fun CheckpointTile(modifier: Modifier, st: AppState, onClick: () -> Unit
                 }
             } else Text("No checkpoint ahead", color = c.text, style = cutStyle(15, 700, 1.2f))
         }
-        if (com.relentnet.cuttracker.ui.route.photoDueToday(st)) Text("Photo due today", color = c.accent, style = cutStyle(11, 700, 1.2f))
-        else if (next?.target != null) {
+        if (next?.target != null) {
             val toGo = avg - next.target
             Text(
                 "${idx + 1} of ${cps.size}, ${ProgramEngine.fmt1(kotlin.math.abs(toGo))} ${if (toGo >= 0) "to go" else "under"}, ${if (behind) "behind pace" else "on pace"}",
@@ -220,13 +222,13 @@ private fun WeekTile(modifier: Modifier, st: AppState, onClick: () -> Unit) {
     val s = st.settings
     val ws = ProgramEngine.weekStart(st.today)
     val hitOn = { d: java.time.LocalDate -> st.day(d).totals.protein >= s.protein }
-    val days = (0..6).map { ws.plusDays(it.toLong()) }.filter { !it.isAfter(st.today) && !it.isBefore(s.startDate) && (it != st.today || hitOn(it)) }
+    val days = (0..6).map { ws.plusDays(it.toLong()) }.filter { !it.isAfter(st.today) && !it.isBefore(s.startDate) && it.isBefore(s.endDate) && (it != st.today || hitOn(it)) }
     val hit = days.count(hitOn)
     TileFrame(modifier, outlined = true, onClick = onClick) {
         TileTop(CutIcons.Week, tint = c.text2)
         Text("This week", color = c.text2, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
         Column(Modifier.weight(1f).padding(top = 6.dp), verticalArrangement = Arrangement.Center) {
-            Meter("Protein", hit, days.size.coerceAtLeast(1), c.good)
+            Meter("Protein", hit, days.size, c.good)
             Box(Modifier.height(8.dp))
             Meter("Workouts", st.workoutsThisWeek, s.workoutsPerWeek.coerceAtLeast(1), c.good)
         }
@@ -240,10 +242,10 @@ private fun Meter(label: String, done: Int, of: Int, color: Color) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, color = c.text, style = cutStyle(11, 700, 1f))
-            Text("$done of $of", color = if (done >= of) color else c.text2, style = cutStyle(11, 700, 1f, tabular = true))
+            Text(if (of == 0) "none yet" else "$done of $of", color = if (of > 0 && done >= of) color else c.text2, style = cutStyle(11, 700, 1f, tabular = true))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            for (i in 0 until of.coerceAtMost(7)) Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(if (i < done) color else c.hairline))
+            for (i in 0 until of.coerceIn(1, 7)) Box(Modifier.weight(1f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(if (i < done) color else c.hairline))
         }
     }
 }

@@ -111,7 +111,7 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
             )
             Eyebrow(if (t is Takeover.Send) "+${ProgramSpec.XP_SEND} xp" else "New grade")
             Text(
-                if (t is Takeover.Send) "Every item ticked. Today's hold just went green." else "New grade. New grade. The chain keeps going.",
+                if (t is Takeover.Send) "Every item ticked. Today's hold just went green." else "The chain keeps going.",
                 color = c.text2, style = cutStyle(13, 500, 1.4f), textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 260.dp),
             )
             BigButton("Nice", onClick = onDismiss, modifier = Modifier.widthIn(max = 220.dp).padding(top = 10.dp).width(220.dp))

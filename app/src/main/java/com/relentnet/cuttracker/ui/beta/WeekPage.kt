@@ -117,7 +117,8 @@ fun WeekPage(vm: AppViewModel, onBack: () -> Unit) {
                     for (m in meals) Chip(m, on = false) {}
                 }
             }
-            SheetButtons("Close", onPrimary = { open = null }, secondary = "Edit on Today", onSecondary = {
+            val editable = !d.isAfter(st.today) && !d.isBefore(st.settings.startDate)
+            SheetButtons("Close", onPrimary = { open = null }, secondary = if (editable) "Edit on Today" else null, onSecondary = {
                 open = null
                 vm.viewDate = d.takeIf { it != st.today }
                 vm.requestTab(com.relentnet.cuttracker.ui.Routes.TODAY)

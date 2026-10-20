@@ -72,7 +72,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     var step by rememberSaveable { mutableIntStateOf(0) }
     // Back walks the steps backwards before it leaves.
     androidx.activity.compose.BackHandler(enabled = step > 0) { step-- }
-    var sw by rememberSaveable { mutableStateOf(st.lastWeighIn?.lb?.let(ProgramEngine::fmt1) ?: "") }
+    var sw by rememberSaveable { mutableStateOf(st.weighIns.firstOrNull { it.date == st.today }?.lb?.let(ProgramEngine::fmt1) ?: "") }
     var tw by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(s.targetWeight)) }
     var start by rememberSaveable { mutableStateOf(com.relentnet.cuttracker.engine.ProgramEngine.programDay(java.time.LocalDateTime.now(), s.resetHour).toString()) }
     var weeks by rememberSaveable { mutableStateOf(s.lengthWeeks.toString()) }

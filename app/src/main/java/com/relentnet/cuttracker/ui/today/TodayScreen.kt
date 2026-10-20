@@ -460,7 +460,7 @@ private fun LateCard(at: java.time.LocalTime, onRest: () -> Unit, onClimb: () ->
     val c = CutTheme.colors
     Card(Modifier.fillMaxWidth(), border = c.accent, borderWidth = 2.dp, radius = 14.dp, padding = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("It's ${clockWords(at)} and no day is picked.", color = c.text, style = cutStyle(20, 800, 1.1f, -0.02f, display = true))
+            Text("It's past ${clockWords(at)} and no day is picked.", color = c.text, style = cutStyle(20, 800, 1.1f, -0.02f, display = true))
             Sub("Rest day is the guess. Tap it, weigh in and hit protein, and the chain is safe. Nothing else required tonight.")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BigButton("Yep, Rest day", onClick = onRest, modifier = Modifier.weight(1f), height = 48.dp, fontSize = 13)

@@ -87,7 +87,7 @@ class AppViewModel(val repo: Repo) : ViewModel() {
 
     fun showToast(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
         val msg = ToastMsg(text, action, onAction)
-        if (action == null && toast != null && toast?.action == null) queuedToasts.addLast(msg) else show(msg)
+        if (action == null && toast != null) queuedToasts.addLast(msg) else show(msg)
     }
 
     private fun show(msg: ToastMsg) {
@@ -96,7 +96,7 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         toastJob = viewModelScope.launch {
             delay(if (msg.action != null) 6000 else 1800)
             toast = null
-            queuedToasts.removeFirstOrNull()?.let { delay(200); show(it) }
+            if (queuedToasts.isNotEmpty()) { delay(200); queuedToasts.removeFirstOrNull()?.let(::show) }
         }
     }
 

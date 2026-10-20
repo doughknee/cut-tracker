@@ -425,7 +425,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         if (add.isNotEmpty()) db.xp().insertAll(add)
         // A late check earns the XP; the takeover is for the live moment only.
         if (send && add.any { it.kind == XpKind.SEND } && date == todayFlow.value) events.tryEmit(UiEvent.Send)
-        else if (!send && add.any { it.kind == XpKind.MIN } && date == todayFlow.value) events.tryEmit(UiEvent.Toast("Chain safe · +${ProgramSpec.XP_MIN} xp"))
+        else if (!send && add.any { it.kind == XpKind.MIN } && stale.none { it.kind == XpKind.SEND } && date == todayFlow.value) events.tryEmit(UiEvent.Toast("Chain safe · +${ProgramSpec.XP_MIN} xp"))
     }
 
     private suspend fun afterWrite(xpBefore: Int) {
