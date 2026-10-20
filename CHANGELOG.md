@@ -27,6 +27,18 @@ What changed in Sendline, from the user's side. Newest first.
 - A sheet with unsaved edits asks before a swipe or a tap outside throws them away.
 - Search matches every word in any order and ignores accents. The lift picker and, past eight meals, Today's meal picker get a search box.
 
+### Mornings
+
+- Weigh in before you pick the day: the row is there first thing, and the reminder opens it.
+- A tick shows as a tick for a moment before the row moves to Done.
+- A day that becomes a Min day says "Chain safe", the way a Send gets its moment.
+- Past pick time, the late card also offers "It was an off day".
+- Saving lifts on Today ticks the block, and never unticks it.
+- A weight the app cannot read says so instead of doing nothing.
+- This week counts today only once protein is hit, so the morning never reads as a miss.
+- The widget's weight opens Today with the weigh-in field open, from any page the app was left on.
+- Nudges has an Add row for the home-screen widget, and Weight's footer lands in the weigh-in field.
+
 ### Meals and the scanner
 
 - What you type in New meal, a custom look or a day-plan sheet survives a dark-mode switch or the app being closed in the background.

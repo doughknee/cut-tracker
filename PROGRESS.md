@@ -152,6 +152,7 @@ Unattended, at the user's request: audit everything and fix what a daily user fe
 - A one-time "New in 1.3.0" note on the first open after the update (UI test: once, then never again), the Route and Checkpoints open state kept through a restart, the untick decision moved inside the write lock.
 - Back up every week to a folder picked with the system picker (no network), tested through the real picker with the clock moved eight days; the privacy policy says where the copy goes.
 - Light-mode pass of eight screens (one legend fix), and a day-one walk as a new user (no issues found).
+- Round 15, mornings (a fresh-eyes audit of the first ten minutes of a day): weigh-in row before a pick, ticks that settle in place, an Off day answer on the late card, a Min toast, the widget's weight opening the field, an Add widget row, lift save ticking inside the write, a message for an unreadable weight, this week not counting the morning as a miss. The release check on the emulator caught the widget's weight landing on whatever page was open (fixed: the flag always goes to Today) and a silent Next on onboarding's empty start weight (now says what is missing). 60 unit and 9 UI tests pass; installed on the Pixel at 04:52, not opened.
 
 Tests added: `HistoryTest` (ledger-scored history, workouts), `InputParsingTest` (numbers and search), BackupTest covers the new settings fields.
 
