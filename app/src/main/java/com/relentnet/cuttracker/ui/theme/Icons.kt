@@ -51,4 +51,6 @@ object CutIcons {
     val Beta = stroke("beta", 2f, "M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z", "M8 9h8M8 13h8M8 17h5")
     val Pen = stroke("pen", 2.2f, "M4 20l4.5-1L19 8.5l-3.5-3.5L5 15.5z", "M13 7.5l3.5 3.5")
     val Info = stroke("info", 2.2f, circle(12f, 12f, 9.5f), "M12 11v6M12 7.5v.5")
+    /** Stacked discs: what the phone keeps, exported and imported. */
+    val Data = stroke("data", 2.2f, "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z", "M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6", "M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6")
 }

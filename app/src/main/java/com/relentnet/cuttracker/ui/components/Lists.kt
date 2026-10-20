@@ -317,7 +317,7 @@ fun PlainRow(title: String, sub: String? = null, last: Boolean = false, control:
         Row(Modifier.fillMaxWidth().padding(14.dp, 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, color = c.text, style = cutStyle(15, 700, 1.1f))
-                if (!sub.isNullOrBlank()) Text(sub, color = c.text2, style = cutStyle(11, 500, 1.2f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (!sub.isNullOrBlank()) Text(sub, color = c.text2, style = cutStyle(11, 500, 1.25f), maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             control()
         }

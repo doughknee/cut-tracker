@@ -50,6 +50,8 @@ data class Settings(
     /** Each reminder can be switched off on its own. */
     val weighReminder: Boolean = true,
     val pickReminder: Boolean = true,
+    /** When a backup was last exported; null for never. */
+    val lastExport: LocalDate? = null,
     /** What each kind of day asks for. */
     val plans: Map<DayMode, DayPlan> = ProgramSpec.defaultPlans(),
     /** Kinds a lift can belong to, in display order. */
@@ -107,6 +109,7 @@ class SettingsStore(context: Context) {
         val pickReminder = booleanPreferencesKey("pickReminder")
         val theme = stringPreferencesKey("theme")
         val lastOpenDate = stringPreferencesKey("lastOpenDate")
+        val lastExport = stringPreferencesKey("lastExport")
         val welcomeBackSeen = stringPreferencesKey("welcomeBackSeen")
         val plans = stringPreferencesKey("plans")
         val liftKinds = stringPreferencesKey("liftKinds")
@@ -166,6 +169,7 @@ class SettingsStore(context: Context) {
             pickReminder = p[K.pickReminder] ?: d.pickReminder,
             theme = p[K.theme] ?: d.theme,
             lastOpenDate = p[K.lastOpenDate]?.let(LocalDate::parse),
+            lastExport = p[K.lastExport]?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
         )
     }
@@ -207,6 +211,7 @@ class SettingsStore(context: Context) {
         p[K.pickReminder] = s.pickReminder
         p[K.theme] = s.theme
         if (s.lastOpenDate != null) p[K.lastOpenDate] = s.lastOpenDate.toString() else p.remove(K.lastOpenDate)
+        if (s.lastExport != null) p[K.lastExport] = s.lastExport.toString() else p.remove(K.lastExport)
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)
     }
 

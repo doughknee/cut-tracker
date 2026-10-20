@@ -109,9 +109,16 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
             }
         }
         Card(Modifier.fillMaxWidth(), radius = 14.dp) {
-            CategoryRow(CutIcons.Today, "Nudges", if (notifOn) "Weigh-in ${s.weighInTime.format(timeFmt)}, pick a day ${s.pickTime.format(timeFmt)}" else "Notifications are off") { onSection(SettingsSections.NUDGES) }
+            CategoryRow(CutIcons.Today, "Nudges", when {
+                !notifOn -> "Notifications are off"
+                !s.weighReminder && !s.pickReminder -> "Both reminders off"
+                else -> listOfNotNull(
+                    if (s.weighReminder) "weigh-in ${clockText(context, s.weighInTime)}" else null,
+                    if (s.pickReminder) "pick a day ${clockText(context, s.pickTime)}" else null,
+                ).joinToString(", ").replaceFirstChar { it.uppercase() }
+            }) { onSection(SettingsSections.NUDGES) }
             CategoryRow(CutIcons.Layers, "Appearance", appearanceLine(s)) { onSection(SettingsSections.APPEARANCE) }
-            CategoryRow(CutIcons.Camera, "Data", "Export, import, online features, reset") { onSection(SettingsSections.DATA) }
+            CategoryRow(CutIcons.Data, "Data", "Export, import, online features, reset. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
             CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = true) { onSection(SettingsSections.ABOUT) }
         }
         Sub("The route itself, targets, meals, lifts and checkpoints live on the Beta tab.", size = 12)
@@ -173,6 +180,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
             putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(send, "Export Sendline"))
+        vm.updateSettings { s -> s.copy(lastExport = LocalDate.now()) }
     }
 
     when (confirm) {
@@ -209,13 +217,13 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                         }
                         if (fix != null) LinkText("Allow", onClick = fix) else Icon(CutIcons.Check, null, Modifier.size(16.dp), tint = c.good)
                     }
-                    PlainRow("Weigh-in", if (s.weighReminder) "before food, skipped once you weighed in" else "off") {
+                    PlainRow("Weigh-in", if (s.weighReminder) "before food, not once you weighed in" else "off") {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (s.weighReminder) TimePick(s.weighInTime) { vm.updateSettings { s -> s.copy(weighInTime = it) } }
                             Switch(s.weighReminder, "Weigh-in reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(weighReminder = !s.weighReminder) } }
                         }
                     }
-                    PlainRow("Pick a day", if (s.pickReminder) "only if the day is still unset" else "off") {
+                    PlainRow("Pick a day", if (s.pickReminder) "only if the day is unset" else "off") {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             if (s.pickReminder) TimePick(s.pickTime) { vm.updateSettings { s -> s.copy(pickTime = it) } }
                             Switch(s.pickReminder, "Pick-a-day reminder") { haptics.tick(); vm.updateSettings { s -> s.copy(pickReminder = !s.pickReminder) } }
@@ -228,7 +236,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
             }
             SettingsSections.DATA -> {
                 Sub("Everything lives on this phone. Export is how it moves to another one.", size = 12)
-                KindCard("Backup", "") {
+                KindCard("Backup", exportAge(s.lastExport), sub = "The only copy of your logs is on this phone until you export one. Save it somewhere that is not this phone.") {
                     PlainRow("Export", "a JSON file of everything but photos") { LinkText("Share") { export(false) } }
                     PlainRow("Export with photos", "a zip, bigger") { LinkText("Share") { export(true) } }
                     PlainRow("Import", "replaces what is on this phone") { LinkText("Pick a file") { confirm = "import" } }
@@ -288,6 +296,17 @@ private fun LinkText(label: String, color: Color = CutTheme.colors.accent, onCli
         modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onClick, role = Role.Button).padding(horizontal = 8.dp, vertical = 16.dp),
     )
 }
+
+/** "last export today", "last export 12 days ago", "never exported". */
+private fun exportAge(d: LocalDate?): String {
+    if (d == null) return "never exported"
+    val n = java.time.temporal.ChronoUnit.DAYS.between(d, LocalDate.now())
+    return when { n <= 0 -> "exported today"; n == 1L -> "exported yesterday"; else -> "exported $n days ago" }
+}
+
+/** A time the way the phone shows times: 19:00 or 7:00 PM. */
+private fun clockText(context: android.content.Context, t: LocalTime): String =
+    t.format(if (android.text.format.DateFormat.is24HourFormat(context)) timeFmt else DateTimeFormatter.ofPattern("h:mm a", Locale.US))
 
 @Composable
 private fun TimePick(value: LocalTime, onPick: (LocalTime) -> Unit) {
