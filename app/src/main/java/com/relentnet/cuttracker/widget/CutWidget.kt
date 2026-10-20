@@ -95,6 +95,8 @@ private val DraftKey = doublePreferencesKey("draft")
 private val DraftDayKey = androidx.datastore.preferences.core.stringPreferencesKey("draftDay")
 /** The program day a widget was drawn for. A tap on a widget drawn before the rollover only redraws it. */
 private val ForKey = ActionParameters.Key<String>("for")
+/** Opens Today with the weigh-in field open; MainActivity reads it as the reminder's extra of the same name. */
+private val WeighKey = ActionParameters.Key<Boolean>(com.relentnet.cuttracker.notify.Reminders.EXTRA_WEIGH)
 private var drawnFor: String = ""
 private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
 
@@ -253,7 +255,8 @@ private fun WeighStage(st: AppState, draft: Double) {
             StepButton("−", -0.2)
             Spacer(GlanceModifier.width(8.dp))
             Column(
-                GlanceModifier.defaultWeight().fillMaxHeight().background(W.surface).cornerRadius(10.dp),
+                GlanceModifier.defaultWeight().fillMaxHeight().background(W.surface).cornerRadius(10.dp)
+                    .clickable(actionStartActivity<MainActivity>(actionParametersOf(WeighKey to true))),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("WEIGH IN", style = eyebrow(W.accent))

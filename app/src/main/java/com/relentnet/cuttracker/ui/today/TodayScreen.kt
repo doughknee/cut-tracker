@@ -141,9 +141,14 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
     val done = dv.log.doneItemIds
     val mode = dv.log.mode
     val all = dv.isSend
-    val remaining = items.filter { it.id !in done }
-    val finished = items.filter { it.id in done }
-    val next = remaining.firstOrNull()
+    // A row just ticked stays in place, ticked, for a beat before it leaves for Done, so the tick is seen.
+    // Derived in the same frame as the tick, so the row never blinks out before it shows as ticked.
+    var seen by remember(date) { mutableStateOf(done) }
+    val fresh = done - seen
+    LaunchedEffect(done) { if (fresh.isNotEmpty()) kotlinx.coroutines.delay(450); seen = done }
+    val remaining = items.filter { it.id !in done || it.id in fresh }
+    val finished = items.filter { it.id in done && it.id !in fresh }
+    val next = remaining.firstOrNull { it.id !in done }
     val late = !past && mode == null && !now.isBefore(st.settings.pickTime)
     val welcomeBack = !past && st.missedRun >= 2 && st.settings.welcomeBackSeen != st.today
     val prevWeigh = st.weighInBefore(date)
@@ -233,6 +238,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 at = st.settings.pickTime,
                 onRest = { vm.setMode(DayMode.REST) },
                 onClimb = { vm.setMode(DayMode.CLIMB, preCheck = setOf(ProgramSpec.ITEM_CLIMB)) },
+                onOff = { vm.setMode(DayMode.OFF) },
             )
             2 -> PickCards(st, onPick = { haptics.tap(); vm.setMode(it, date = editDate) })
             else -> ModeChipRow(
@@ -248,6 +254,16 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 Eyebrow(if (past) "Script · late ticks count" else "Script")
                 Eyebrow("${tickedInt(finished.size)} / ${items.size}")
             }
+            if (items.isEmpty() && !past && ProgramSpec.ITEM_WEIGH !in done) {
+                CheckRow(
+                    label = "Weigh in", sub = prevWeigh?.let { "Last ${ProgramEngine.fmt1(it.lb)}. Tap to log." } ?: "Before food. Log it, ignore the number.",
+                    time = null, xp = ProgramSpec.XP_WEIGH, done = false, next = true,
+                    onClick = { weighOpen = !weighOpen },
+                )
+                Unfold(weighOpen) {
+                    WeighInline(prefill = prevWeigh?.lb ?: st.settings.startWeight, onLog = { lb -> weighOpen = false; haptics.tap(); vm.logWeight(lb) })
+                }
+            }
             if (items.isEmpty()) {
                 Box(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).dashedBorder(c.mutedBorder).padding(18.dp, 14.dp),
@@ -261,7 +277,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 CheckRow(
                     label = it.label,
                     sub = if (it.id == ProgramSpec.ITEM_WEIGH && prevWeigh != null) "Last ${ProgramEngine.fmt1(prevWeigh.lb)}. Tap to log." else it.sub,
-                    time = it.time, xp = it.xp, done = false, next = isNext,
+                    time = it.time, xp = it.xp, done = it.id in done, next = isNext,
                     tag = if (it.workout && it.id != ProgramSpec.ITEM_CLIMB && ProgramEngine.weekWon(st.liftSets, st.today)) "Week won" else null,
                     onClick = {
                         when {
@@ -291,7 +307,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                 }
                 Unfold(it.workout && it.id != ProgramSpec.ITEM_CLIMB && liftOpen && !past) {
                     // Saving the session checks the block. Swiping the row checks it without a session.
-                    LiftInline(vm, mode = mode ?: DayMode.OFF, onSaved = { liftOpen = false; vm.toggleItem(it.id) })
+                    LiftInline(vm, mode = mode ?: DayMode.OFF, tickBlock = true, onSaved = { liftOpen = false })
                 }
                 } }
             }
@@ -426,7 +442,7 @@ private fun ToppedOut(st: AppState, onNext: () -> Unit) {
 private fun clockWords(t: java.time.LocalTime): String = t.format(DateTimeFormatter.ofPattern(if (t.minute == 0) "ha" else "h:mma", Locale.US)).lowercase()
 
 @Composable
-private fun LateCard(at: java.time.LocalTime, onRest: () -> Unit, onClimb: () -> Unit) {
+private fun LateCard(at: java.time.LocalTime, onRest: () -> Unit, onClimb: () -> Unit, onOff: () -> Unit) {
     val c = CutTheme.colors
     Card(Modifier.fillMaxWidth(), border = c.accent, borderWidth = 2.dp, radius = 14.dp, padding = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -436,6 +452,10 @@ private fun LateCard(at: java.time.LocalTime, onRest: () -> Unit, onClimb: () ->
                 BigButton("Yep, Rest day", onClick = onRest, modifier = Modifier.weight(1f), height = 48.dp, fontSize = 13)
                 BigButton("I climbed", onClick = onClimb, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 13)
             }
+            Text(
+                "IT WAS AN OFF DAY", color = c.text2, style = cutStyle(11, 800, 1f, 0.08f),
+                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button, onClick = onOff).padding(vertical = 12.dp, horizontal = 4.dp),
+            )
         }
     }
 }
@@ -527,19 +547,26 @@ private fun ModeChipRow(mode: DayMode?, dv: AppState.DayView, proteinTarget: Int
 private fun WeighInline(prefill: Double, onLog: (Double) -> Unit) {
     val c = CutTheme.colors
     var text by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(prefill)) }
+    var bad by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
     val haptics = LocalHaptics.current
     LaunchedEffect(Unit) { focus.requestFocus() }
     fun adjust(d: Double) { text = ProgramEngine.fmt1((text.num() ?: prefill) + d); haptics.tick() }
-    fun go() { text.num()?.takeIf { it in 40.0..1000.0 }?.let(onLog) }
-    Row(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+    fun go() {
+        val lb = text.num()?.takeIf { it in 40.0..1000.0 }
+        if (lb != null) onLog(lb) else { haptics.pattern(0, 40, 60, 40); bad = true }
+    }
+    Column(Modifier.fillMaxWidth().padding(start = 40.dp, top = 2.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Chip("-.2") { adjust(-0.2) }
-        Field(text, { text = it }, Modifier.weight(1f), onDone = ::go, focusRequester = focus)
+        Field(text, { text = it; bad = false }, Modifier.weight(1f), onDone = ::go, focusRequester = focus)
         Chip("+.2") { adjust(0.2) }
         Box(
             Modifier.height(44.dp).clip(RoundedCornerShape(9.dp)).background(c.accent).clickable(onClick = ::go, role = Role.Button).padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center,
         ) { Text("LOG", color = c.onAccent, style = cutStyle(12, 800, 1f, 0.06f)) }
+    }
+    if (bad) Text("Type a weight like 181.4.", color = c.accent, style = cutStyle(12, 600, 1.2f))
     }
 }
 

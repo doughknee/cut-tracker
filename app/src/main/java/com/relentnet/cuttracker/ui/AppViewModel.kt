@@ -111,7 +111,7 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         repo.logWeight(lb, date)
         showToast("Logged ${com.relentnet.cuttracker.engine.ProgramEngine.fmt1(lb)} · +${ProgramSpec.XP_WEIGH} xp")
     }
-    fun saveLiftSession(entries: List<Repo.LiftEntry>) = viewModelScope.launch { repo.saveLiftSession(entries) }
+    fun saveLiftSession(entries: List<Repo.LiftEntry>, tickBlock: String? = null) = viewModelScope.launch { repo.saveLiftSession(entries, tickBlock) }
     fun savePhoto(path: String) = viewModelScope.launch { repo.savePhoto(path) }
     fun deletePhoto(date: java.time.LocalDate) = viewModelScope.launch { repo.deletePhoto(date) }
     fun dismissWelcomeBack() = viewModelScope.launch { repo.dismissWelcomeBack() }

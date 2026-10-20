@@ -241,7 +241,11 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     data class LiftEntry(val exerciseId: String, val weightLb: Double, val reps: Int, val sets: Int)
 
-    suspend fun saveLiftSession(entries: List<LiftEntry>) = write { s, today ->
+    suspend fun saveLiftSession(entries: List<LiftEntry>, tickBlock: String? = null) = write { s, today ->
+        if (tickBlock != null) {
+            val log = db.dayLogs().get(today) ?: DayLog(today)
+            if (tickBlock !in log.doneItemIds) db.dayLogs().upsert(log.copy(doneItemIds = log.doneItemIds + tickBlock))
+        }
         val before = db.liftSets().all()
         var gained = 0
         if (db.xp().count(XpKind.LIFT_SESSION, today.toString()) == 0) {
@@ -421,6 +425,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         if (add.isNotEmpty()) db.xp().insertAll(add)
         // A late check earns the XP; the takeover is for the live moment only.
         if (send && add.any { it.kind == XpKind.SEND } && date == todayFlow.value) events.tryEmit(UiEvent.Send)
+        else if (!send && add.any { it.kind == XpKind.MIN } && date == todayFlow.value) events.tryEmit(UiEvent.Toast("Chain safe · +${ProgramSpec.XP_MIN} xp"))
     }
 
     private suspend fun afterWrite(xpBefore: Int) {

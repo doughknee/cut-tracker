@@ -167,7 +167,10 @@ fun WeightScreen(vm: AppViewModel, onBack: () -> Unit, onCheckpoints: () -> Unit
         }
         Card(Modifier.fillMaxWidth(), padding = PaddingValues(12.dp, 14.dp, 12.dp, 10.dp)) { WeightChart(st) }
         Row(
-            Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onBack, role = Role.Button).padding(vertical = 4.dp, horizontal = 2.dp),
+            Modifier.clip(RoundedCornerShape(6.dp)).clickable(role = Role.Button) {
+                if (st.weighIns.none { it.date == st.today }) vm.pendingWeigh = true
+                onBack()
+            }.padding(vertical = 14.dp, horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Sub("Readings are logged on Today's weigh-in row.", size = 12)

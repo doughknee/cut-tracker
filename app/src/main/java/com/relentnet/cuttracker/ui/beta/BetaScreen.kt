@@ -218,8 +218,9 @@ private fun WeekTile(modifier: Modifier, st: AppState, onClick: () -> Unit) {
     val c = CutTheme.colors
     val s = st.settings
     val ws = ProgramEngine.weekStart(st.today)
-    val days = (0..6).map { ws.plusDays(it.toLong()) }.filter { !it.isAfter(st.today) }
-    val hit = days.count { d -> st.day(d).totals.protein >= s.protein }
+    val hitOn = { d: java.time.LocalDate -> st.day(d).totals.protein >= s.protein }
+    val days = (0..6).map { ws.plusDays(it.toLong()) }.filter { !it.isAfter(st.today) && !it.isBefore(s.startDate) && (it != st.today || hitOn(it)) }
+    val hit = days.count(hitOn)
     TileFrame(modifier, outlined = true, onClick = onClick) {
         TileTop(CutIcons.Week, tint = c.text2)
         Text("This week", color = c.text2, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))

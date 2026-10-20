@@ -52,7 +52,7 @@ private data class Entry(val weight: Double, val reps: Int)
 
 /** The exercise cards, rest timer and Save session, rendered inside Today under the workout row. */
 @Composable
-fun LiftInline(vm: AppViewModel, mode: DayMode, onSaved: () -> Unit) {
+fun LiftInline(vm: AppViewModel, mode: DayMode, tickBlock: Boolean = false, onSaved: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
@@ -88,7 +88,7 @@ fun LiftInline(vm: AppViewModel, mode: DayMode, onSaved: () -> Unit) {
             vm.saveLiftSession(exercises.map { e ->
                 val v = draft[key(e.id)] ?: (0.0 to 10)
                 Repo.LiftEntry(e.id, v.first, v.second, e.sets)
-            })
+            }, tickBlock = if (tickBlock) ProgramEngine.blockItemId(mode) else null)
             onSaved()
         })
     }

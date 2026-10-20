@@ -260,6 +260,12 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                         }
                     }
                 }
+                val widgets = context.getSystemService(android.appwidget.AppWidgetManager::class.java)
+                if (widgets?.isRequestPinAppWidgetSupported == true) KindCard("On the home screen", "") {
+                    PlainRow("The Sendline widget", "weigh in, pick the day and tick meals without opening the app") {
+                        LinkText("Add") { widgets.requestPinAppWidget(android.content.ComponentName(context, com.relentnet.cuttracker.widget.CutWidgetReceiver::class.java), null, null) }
+                    }
+                }
                 KindCard("The day", "") {
                     PlainRow("Rolls over at", "a late night still counts as today until then") { TimePick(LocalTime.of(s.resetHour, 0)) { vm.updateSettings { s -> s.copy(resetHour = it.hour) } } }
                 }
