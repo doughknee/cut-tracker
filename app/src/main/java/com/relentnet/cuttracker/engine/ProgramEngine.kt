@@ -53,6 +53,13 @@ object ProgramEngine {
 
     fun weekStart(day: LocalDate): LocalDate = day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
+    /**
+     * The program week a Monday-to-Sunday calendar row stands for: the week of its Thursday, so the label agrees with
+     * Today's wall for most of the row. Null outside the route, so a 12-week route never shows a week 13.
+     */
+    fun rowWeek(monday: LocalDate, start: LocalDate, weeks: Int): Int? =
+        monday.plusDays(3).takeIf { !it.isBefore(start) }?.let { weekOf(it, start) }?.takeIf { it <= weeks }
+
     /** Checkpoint "Week N" label: the nearest whole week since the start, so a checkpoint 13 days in reads Week 2. */
     fun checkpointWeek(cp: Checkpoint, start: LocalDate, weeks: Int): Int =
         ((ChronoUnit.DAYS.between(start, cp.localDate).toInt() + 3) / 7).coerceIn(1, weeks)

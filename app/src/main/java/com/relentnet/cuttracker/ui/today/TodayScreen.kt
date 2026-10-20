@@ -10,6 +10,7 @@ import com.relentnet.cuttracker.ui.components.Hold
 import com.relentnet.cuttracker.ui.components.HoldShape
 import com.relentnet.cuttracker.ui.components.holdShape
 import com.relentnet.cuttracker.ui.components.pressable
+import com.relentnet.cuttracker.ui.route.dashedBorder
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -98,7 +99,7 @@ import java.util.Locale
 private val dayFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d", Locale.US)
 
 @Composable
-fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) {
+fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, onRoute: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val now by vm.nowTime.collectAsStateWithLifecycle()
@@ -182,7 +183,13 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit) 
                 }
             }
             Text(date.format(dayFmt), color = c.text, style = cutStyle(48, 800, 1f, -0.03f, display = true), maxLines = 1)
-            Sub("Day ${ProgramEngine.dayNumber(date, st.settings.startDate).coerceAtMost(st.settings.totalDays)} of ${st.settings.totalDays}", size = 12)
+            Row(
+                Modifier.clip(RoundedCornerShape(6.dp)).pressable(haptic = false, onClick = onRoute).padding(end = 6.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Sub("Day ${ProgramEngine.dayNumber(date, st.settings.startDate).coerceAtMost(st.settings.totalDays)} of ${st.settings.totalDays}", size = 12)
+                Text("ROUTE ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+            }
         }
 
         if (welcomeBack) WelcomeBack(st.chain.count, onOk = { vm.dismissWelcomeBack() })
@@ -603,7 +610,3 @@ private fun CustomMealForm(toLibrary: Boolean, onLog: (String, Int, Int, Boolean
     }
 }
 
-private fun Modifier.dashedBorder(color: Color) = drawBehind {
-    val stroke = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))
-    drawRoundRect(color, style = stroke, cornerRadius = CornerRadius(10.dp.toPx()))
-}
