@@ -86,6 +86,7 @@ object SettingsSections {
     const val APPEARANCE = "appearance"
     const val DATA = "data"
     const val ABOUT = "about"
+    const val DEVELOPER = "developer"
 }
 
 @Composable
@@ -119,7 +120,8 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onSection: (String) -> 
             }) { onSection(SettingsSections.NUDGES) }
             CategoryRow(CutIcons.Layers, "Appearance", appearanceLine(s)) { onSection(SettingsSections.APPEARANCE) }
             CategoryRow(CutIcons.Data, "Data", "Export, import, online features, wipe. " + exportAge(s.lastExport).replaceFirstChar { it.uppercase() } + ".") { onSection(SettingsSections.DATA) }
-            CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = true) { onSection(SettingsSections.ABOUT) }
+            CategoryRow(CutIcons.Info, "About", "Sendline, privacy, what stays on the phone", last = !s.devOptions) { onSection(SettingsSections.ABOUT) }
+            if (s.devOptions) CategoryRow(CutIcons.Gear, "Developer options", "Preview onboarding as a new user", last = true) { onSection(SettingsSections.DEVELOPER) }
         }
         Sub("The route itself, targets, meals, lifts and checkpoints live on the ${CutTheme.vocab.beta} tab.", size = 12)
     }
@@ -145,7 +147,7 @@ private fun CategoryRow(icon: ImageVector, title: String, sub: String, last: Boo
 
 /** One category page. Every control applies at once, the way the Beta pages do. [section] may carry "/<focus>". */
 @Composable
-fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit) {
+fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit, onPreviewOnboarding: () -> Unit = {}) {
     if (section.substringBefore('/') == SettingsSections.APPEARANCE) { AppearancePage(vm, onBack); return }
     val focus = section.substringAfter('/', "")
     val section = section.substringBefore('/')
@@ -227,7 +229,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
             onDismiss = { confirm = null }, extra = "Export first" to { export(false) },
         )
     }
-    val title = when (section) { SettingsSections.NUDGES -> "Nudges"; SettingsSections.APPEARANCE -> "Appearance"; SettingsSections.DATA -> "Data"; else -> "About" }
+    val title = when (section) { SettingsSections.NUDGES -> "Nudges"; SettingsSections.APPEARANCE -> "Appearance"; SettingsSections.DATA -> "Data"; SettingsSections.DEVELOPER -> "Developer options"; else -> "About" }
     Screen(bottomInset = true) {
         BackHeader(backLabel = "Settings", title = title, onBack = onBack)
         when (section) {
@@ -308,12 +310,36 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
                     }
                 }
             }
+            SettingsSections.DEVELOPER -> {
+                Sub("Tools for trying the app out. Nothing here changes your route or your logs.", size = 12)
+                KindCard("Onboarding", "") {
+                    PlainRow("Preview onboarding", "the first run as a new user would see it; nothing you enter is saved") { LinkText("Run", onClick = onPreviewOnboarding) }
+                }
+                KindCard("This page", "") {
+                    PlainRow("Hide developer options", "tap the version on About seven times to bring them back") {
+                        LinkText("Hide") { vm.updateSettings { s -> s.copy(devOptions = false) }; onBack() }
+                    }
+                }
+            }
             else -> {
                 val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
+                // Seven taps on the version unlock developer options, the way Android's build number does.
+                var taps by remember { mutableIntStateOf(0) }
+                fun tapVersion() {
+                    if (s.devOptions) { vm.showToast("Developer options are already on, in Settings."); return }
+                    taps++
+                    when {
+                        taps >= 7 -> { haptics.tap(); vm.updateSettings { s -> s.copy(devOptions = true) }; vm.showToast("Developer options are on, in Settings.") }
+                        taps >= 3 -> vm.showToast("${7 - taps} more ${if (7 - taps == 1) "tap" else "taps"} to developer options.")
+                    }
+                }
                 KindCard("Sendline", version) {
                     PlainRow("Privacy policy", "what the app keeps and what it never does") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://doughknee.github.io/cut-tracker/privacy.html"))) } }
                     PlainRow("Everything stays on this phone", if (s.onlineFeatures) "no account, online only when you ask" else "no account, no network") { Icon(CutIcons.Shield, null, Modifier.size(16.dp), tint = c.good) }
                     PlainRow("The code", "public, on GitHub") { LinkText("Read") { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/doughknee/cut-tracker"))) } }
+                    Box(Modifier.clickable(onClickLabel = "Count a tap toward developer options", onClick = ::tapVersion)) {
+                        PlainRow("Version", version.ifBlank { null }) { }
+                    }
                 }
                 Sub("Sendline is a logbook and a scoreboard, not medical advice. Your targets are yours; talk to a doctor before a cut if you have a condition.", size = 12)
             }

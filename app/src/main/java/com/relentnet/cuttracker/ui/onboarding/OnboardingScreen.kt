@@ -67,15 +67,16 @@ private val longDate: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMM
 
 /** Four steps. Finishing writes the program settings, logs the first weigh-in and lands on Today. */
 @Composable
-fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
+fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
-    val s = st.settings
+    // A preview (Developer options) starts from a fresh install's settings and writes nothing; onDone just leaves.
+    val s = if (preview) remember { com.relentnet.cuttracker.data.Settings() } else st.settings
     val context = LocalContext.current
     var step by rememberSaveable { mutableIntStateOf(0) }
     // Back walks the steps backwards before it leaves.
     androidx.activity.compose.BackHandler(enabled = step > 0) { step-- }
-    var sw by rememberSaveable { mutableStateOf(st.weighIns.firstOrNull { it.date == st.today }?.lb?.let(ProgramEngine::fmt1) ?: "") }
+    var sw by rememberSaveable { mutableStateOf(if (preview) "" else st.weighIns.firstOrNull { it.date == st.today }?.lb?.let(ProgramEngine::fmt1) ?: "") }
     var tw by rememberSaveable { mutableStateOf(ProgramEngine.fmt1(s.targetWeight)) }
     var start by rememberSaveable { mutableStateOf(com.relentnet.cuttracker.engine.ProgramEngine.programDay(java.time.LocalDateTime.now(), s.resetHour).toString()) }
     var weeks by rememberSaveable { mutableStateOf(s.lengthWeeks.toString()) }
@@ -87,10 +88,11 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
     var trainName by rememberSaveable { mutableStateOf(s.training ?: "") }
     val v = if (climbs) Vocab.CLIMBING else Vocab.plain(trainName)
     // Starting the next route keeps every log, badge and XP; only the program changes.
-    val again = st.logs.isNotEmpty() || st.weighIns.isNotEmpty()
+    val again = !preview && (st.logs.isNotEmpty() || st.weighIns.isNotEmpty())
     var starting by rememberSaveable { mutableStateOf(false) }
     // A second route can be called off at the first step: back returns to the route that just ended.
     androidx.activity.compose.BackHandler(enabled = again && step == 0) { vm.updateSettings { s -> s.copy(onboarded = true) } }
+    androidx.activity.compose.BackHandler(enabled = preview && step == 0, onBack = onDone)
     var swMissing by remember { mutableStateOf(false) }
     // Moving phones: a backup brings the route, the logs and the settings back in one step, no set-up first.
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -126,6 +128,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                 if (pro.isBlank()) pro = ((b * 0.9 / 5).toInt() * 5).coerceIn(80, 300).toString()
             }
             4 -> {
+                if (preview) { vm.showToast("Preview done. Nothing was saved."); onDone(); return }
                 if (starting) return   // a second tap while the first save runs does nothing
                 starting = true
                 val startWeight = sw.num() ?: s.startWeight
@@ -152,6 +155,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
         Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.systemBars).padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 20.dp).imePadding(),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
+        if (preview) Text("PREVIEW · NOTHING IS SAVED", color = c.accent, style = cutStyle(10, 800, 1f, 0.1f))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (i in 0..4) Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(2.dp)).background(if (i <= step) c.accent else c.hairline))
         }
@@ -182,6 +186,7 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
                         if (restoring) "RESTORING…" else "MOVING PHONES? RESTORE A BACKUP",
                         color = c.accent, style = cutStyle(11, 800, 1f, 0.08f),
                         modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(enabled = !restoring, role = androidx.compose.ui.semantics.Role.Button) {
+                            if (preview) { vm.showToast("Preview: restoring is off here."); return@clickable }
                             restore.launch(arrayOf("application/json", "application/zip", "application/octet-stream", "text/plain", "*/*"))
                         }.padding(vertical = 14.dp),
                     )
@@ -231,7 +236,8 @@ fun OnboardingScreen(vm: AppViewModel, onDone: () -> Unit) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (again && step == 0) BigButton("Not yet", onClick = { vm.updateSettings { s -> s.copy(onboarded = true) } }, modifier = Modifier.width(120.dp), secondary = true)
+            if (preview && step == 0) BigButton("Exit", onClick = onDone, modifier = Modifier.width(120.dp), secondary = true)
+            else if (again && step == 0) BigButton("Not yet", onClick = { vm.updateSettings { s -> s.copy(onboarded = true) } }, modifier = Modifier.width(120.dp), secondary = true)
             else BigButton("Back", onClick = { if (step > 0) step-- }, modifier = Modifier.width(120.dp).alpha(if (step > 0) 1f else 0f), secondary = true, enabled = step > 0)
             BigButton(when (step) { 0 -> "Let's go"; 4 -> "Start the route"; else -> "Next" }, onClick = ::next, modifier = Modifier.weight(1f))
         }

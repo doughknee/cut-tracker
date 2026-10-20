@@ -86,6 +86,8 @@ object Routes {
     const val CHECKPOINTS = "checkpoints"
     const val CAMERA = "camera"
     const val ONBOARDING = "onboarding"
+    /** Developer options: the first run as a new user, saving nothing. */
+    const val ONBOARDING_PREVIEW = "onboarding-preview"
     const val BETA_MEALS = "beta/meals"
     const val BETA_LIFTS = "beta/lifts"
     const val BETA_DAY = "beta/day/{mode}"
@@ -165,7 +167,13 @@ fun App(vm: AppViewModel) {
                     composable(Routes.BETA_WEEK) { WeekPage(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS_SECTION) { entry ->
                         val focus = entry.arguments?.getString("focus")?.takeIf { it != "-" }
-                        SettingsSectionScreen(vm, section = (entry.arguments?.getString("section") ?: "data") + (if (focus != null) "/$focus" else ""), onBack = { nav.popBackStack() })
+                        SettingsSectionScreen(
+                            vm, section = (entry.arguments?.getString("section") ?: "data") + (if (focus != null) "/$focus" else ""), onBack = { nav.popBackStack() },
+                            onPreviewOnboarding = { nav.navigate(Routes.ONBOARDING_PREVIEW) },
+                        )
+                    }
+                    composable(Routes.ONBOARDING_PREVIEW) {
+                        OnboardingScreen(vm, preview = true, onDone = { nav.popBackStack() })
                     }
                     composable(Routes.ROUTE) { TabRoom { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) } }
                     composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }, onRoute = { nav.goTab(Routes.ROUTE) }) }

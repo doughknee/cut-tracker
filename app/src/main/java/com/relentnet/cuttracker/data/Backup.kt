@@ -128,7 +128,7 @@ suspend fun Repo.restoreBackup(b: Backup) {
     val badges = b.badges.map { Badge(it.id, Instant.ofEpochMilli(it.earnedAt)) }
     val projects = b.projects.map { WeeklyProject(LocalDate.parse(it.weekStart), it.id, it.progress, it.done) }
     val here = settings.current()
-    val settingsIn = b.settings.toSettings().copy(autoBackupFolder = here.autoBackupFolder, seenVersion = here.seenVersion)
+    val settingsIn = b.settings.toSettings().copy(autoBackupFolder = here.autoBackupFolder, seenVersion = here.seenVersion, devOptions = here.devOptions)
     replaceAll {
         db.dayLogs().clear(); db.weighIns().clear(); db.liftSets().clear(); db.photos().clear()
         db.xp().clear(); db.badges().clear(); db.projects().clear()

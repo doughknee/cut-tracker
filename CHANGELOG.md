@@ -65,6 +65,10 @@ What changed in Sendline, from the user's side. Newest first.
 - A day in This week has Edit on Today, and Monday morning no longer reads "0 of 1 day".
 - A second route's start weight starts from your last reading.
 
+### Developer options
+
+- Tap the version on Settings, About seven times to unlock Developer options. The first one previews onboarding as a new user and saves nothing.
+
 ### Meals and the scanner
 
 - What you type in New meal, a custom look or a day-plan sheet survives a dark-mode switch or the app being closed in the background.

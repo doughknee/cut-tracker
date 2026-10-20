@@ -79,6 +79,8 @@ data class Settings(
     val hideDone: Boolean = false,
     /** Null keeps the climbing words. Otherwise what the user calls their training (Run, Gym), and the app speaks plainly; see [Vocab]. */
     val training: String? = null,
+    /** Developer options, unlocked by tapping the version on About seven times. This phone only, not in backups. */
+    val devOptions: Boolean = false,
 ) {
     val recipeImportOn: Boolean get() = onlineFeatures && recipeImport
     val barcodeLookupOn: Boolean get() = onlineFeatures && barcodeLookup
@@ -134,6 +136,7 @@ class SettingsStore(context: Context) {
         val recipeImport = booleanPreferencesKey("recipeImport")
         val barcodeLookup = booleanPreferencesKey("barcodeLookup")
         val training = stringPreferencesKey("training")
+        val devOptions = booleanPreferencesKey("devOptions")
     }
 
     val flow: Flow<Settings> = ds.data.map { p -> read(p) }
@@ -191,6 +194,7 @@ class SettingsStore(context: Context) {
             autoBackupFolder = p[K.autoBackupFolder],
             welcomeBackSeen = p[K.welcomeBackSeen]?.let(LocalDate::parse),
             training = p[K.training],
+            devOptions = p[K.devOptions] ?: false,
         )
     }
 
@@ -238,6 +242,7 @@ class SettingsStore(context: Context) {
         if (s.autoBackupFolder != null) p[K.autoBackupFolder] = s.autoBackupFolder else p.remove(K.autoBackupFolder)
         if (s.welcomeBackSeen != null) p[K.welcomeBackSeen] = s.welcomeBackSeen.toString() else p.remove(K.welcomeBackSeen)
         if (s.training != null) p[K.training] = s.training else p.remove(K.training)
+        p[K.devOptions] = s.devOptions
     }
 
     suspend fun clear() = ds.edit { it.clear() }
