@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -17,27 +18,33 @@ object AutoBackup {
 
     /** "Documents/Sendline" from a tree URI, for the Data page. */
     fun folderName(tree: String): String = runCatching {
-        DocumentsContract.getTreeDocumentId(Uri.parse(tree)).substringAfter(':').ifBlank { "the folder you picked" }
+        val id = DocumentsContract.getTreeDocumentId(Uri.parse(tree))
+        (if (':' in id) id.substringAfter(':') else "").ifBlank { "the folder you picked" }
     }.getOrDefault("the folder you picked")
+
+    /** One copy at a time: two quick resumes never write the day's file twice. */
+    private val running = kotlinx.coroutines.sync.Mutex()
 
     /**
      * Writes sendline-<date>.json into the picked folder when the last export is [EVERY_DAYS] old or [force] is set.
-     * Returns true when a file was written. A revoked folder or a full disk fails quietly; the Data page shows the
-     * date of the last copy that did land.
+     * Returns true when a file was written. A revoked folder or a full disk fails quietly (and removes the half-written
+     * file); the Data page shows the date of the last copy that did land.
      */
-    suspend fun runIfDue(context: Context, repo: Repo, force: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+
+    suspend fun runIfDue(context: Context, repo: Repo, force: Boolean = false): Boolean = withContext(Dispatchers.IO) { running.withLock {
         val s = repo.settings.current()
         val tree = s.autoBackupFolder?.let(Uri::parse) ?: return@withContext false
         val today = LocalDate.now()
         val last = s.lastExport
         if (!force && last != null && ChronoUnit.DAYS.between(last, today) < EVERY_DAYS) return@withContext false
+        var doc: Uri? = null
         runCatching {
             val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
-            val doc = DocumentsContract.createDocument(context.contentResolver, parent, "application/json", "sendline-$today.json")
-                ?: error("the folder refused the file")
             val text = backupJson.encodeToString(Backup.serializer(), repo.buildBackup())
-            context.contentResolver.openOutputStream(doc)!!.use { it.write(text.toByteArray()) }
+            doc = DocumentsContract.createDocument(context.contentResolver, parent, "application/json", "sendline-$today.json")
+                ?: error("the folder refused the file")
+            context.contentResolver.openOutputStream(doc!!)!!.use { it.write(text.toByteArray()) }
             repo.updateSettings { it.copy(lastExport = today) }
-        }.isSuccess
-    }
+        }.onFailure { doc?.let { d -> runCatching { DocumentsContract.deleteDocument(context.contentResolver, d) } } }.isSuccess
+    } }
 }

@@ -188,6 +188,10 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
         vm.updateSettings(then = {
             scope.launch {
                 val ok = com.relentnet.cuttracker.data.AutoBackup.runIfDue(context.applicationContext, vm.repo, force = true)
+                if (!ok) {
+                    runCatching { context.contentResolver.releasePersistableUriPermission(uri, flags) }
+                    vm.updateSettings { s -> s.copy(autoBackupFolder = null) }
+                }
                 vm.showToast(if (ok) "Backed up. The next copy lands in a week." else "Could not write to that folder. Pick another one.")
             }
         }) { s -> s.copy(autoBackupFolder = uri.toString()) }
@@ -206,7 +210,7 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit)
             putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(send, "Export Sendline"))
-        vm.updateSettings { s -> s.copy(lastExport = LocalDate.now()) }
+        vm.updateSettings { s -> if (s.autoBackupFolder != null) s else s.copy(lastExport = LocalDate.now()) }
     }
 
     when (confirm) {

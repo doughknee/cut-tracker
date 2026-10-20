@@ -288,17 +288,23 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
      */
     suspend fun keepOldScoresOnce() = lock.withLock {
         val s = settings.current()
-        if (s.ledgerKept || !s.onboarded) return@withLock
+        if (s.ledgerKept) return@withLock
+        if (!s.onboarded) { settings.update { it.copy(ledgerKept = true) }; return@withLock }
         val today = ProgramEngine.programDay(LocalDateTime.now(), s.resetHour)
         val weighed = db.weighIns().all().map { it.date }.toSet()
         val scored = ProgramEngine.scoredDays(db.xp().all())
         val now = Instant.now()
-        val add = db.dayLogs().all().filter { it.date.isBefore(today) }.mapNotNull { log ->
+        val add = mutableListOf<XpEvent>()
+        for (log in db.dayLogs().all().filter { it.date.isBefore(today) }) {
             val had = scored[log.date]
             when (ProgramEngine.liveResult(log, log.date in weighed, s)) {
-                DayResult.SEND -> if (had != DayResult.SEND) XpEvent(date = log.date, at = now, kind = XpKind.SEND, amount = 0) else null
-                DayResult.MIN -> if (had == null) XpEvent(date = log.date, at = now, kind = XpKind.MIN, amount = 0) else null
-                else -> null
+                DayResult.SEND -> if (had != DayResult.SEND) {
+                    val mins = db.xp().forDate(log.date).filter { it.kind == XpKind.MIN }
+                    if (mins.isNotEmpty()) db.xp().deleteIds(mins.map { it.id })
+                    add += XpEvent(date = log.date, at = now, kind = XpKind.SEND, amount = mins.sumOf { it.amount })
+                }
+                DayResult.MIN -> if (had == null) add += XpEvent(date = log.date, at = now, kind = XpKind.MIN, amount = 0)
+                else -> Unit
             }
         }
         if (add.isNotEmpty()) db.xp().insertAll(add)
@@ -358,6 +364,9 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     }
 
     suspend fun resetProgram() = lock.withLock {
+        settings.current().autoBackupFolder?.let { f ->
+            runCatching { appContext.contentResolver.releasePersistableUriPermission(android.net.Uri.parse(f), android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+        }
         db.dayLogs().clear(); db.weighIns().clear(); db.liftSets().clear(); db.photos().clear()
         db.xp().clear(); db.badges().clear(); db.projects().clear()
         photosDir.listFiles()?.forEach { it.delete() }
