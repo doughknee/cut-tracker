@@ -549,9 +549,14 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
     val counts = st.logs.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
     // What this slot logged in the last 30 days, most often first: the top five lead, so a repeat is one tap.
     val month = st.logs.filter { it.date != date && !it.date.isBefore(date.minusDays(30)) }.mapNotNull { it.picks[slot.id] }.groupingBy { it }.eachCount()
-    val top = month.entries.sortedByDescending { it.value }.map { it.key }
+    // A one-off frozen from a library meal (an edit or delete) points back at that meal while it exists by name.
+    fun live(ref: String): String = if (!ref.startsWith("custom:")) ref else {
+        val n = ProgramEngine.resolveChoice(slot, ref, s).name
+        s.library.firstOrNull { it.name.equals(n, ignoreCase = true) }?.let { "lib:" + it.id } ?: ref
+    }
+    val top = month.entries.groupBy({ live(it.key) }, { it.value }).mapValues { it.value.sum() }.entries.sortedByDescending { it.value }.map { it.key }
         .filter { it.startsWith("custom:") || ProgramEngine.libMeal(it.removePrefix("lib:"), s) != null }.take(5)
-    val yesterday = st.logs.firstOrNull { it.date == date.minusDays(1) }?.picks?.get(slot.id)
+    val yesterday = st.logs.firstOrNull { it.date == date.minusDays(1) }?.picks?.get(slot.id)?.let(::live)
     // The slot's own kind first, then whatever gets picked most.
     val sorted = s.library.sortedWith(compareByDescending<LibMeal> { it.kind == slot.id }.thenByDescending { counts["lib:" + it.id] ?: 0 }).let { l ->
         val d = l.firstOrNull { "lib:" + it.id == def.ref }

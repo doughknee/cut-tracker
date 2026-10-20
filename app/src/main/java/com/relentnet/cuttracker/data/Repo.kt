@@ -169,7 +169,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
 
     // Writes
 
-    suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: LocalDate? = null) = write(date) { s, d ->
+    suspend fun setMode(mode: DayMode?, preCheck: Set<String> = emptySet(), date: LocalDate? = null) = write(date, rescore = true) { s, d ->
         val log = db.dayLogs().get(d) ?: DayLog(d)
         // "Change" (null) keeps every tick so picking the same kind again loses nothing; a kind keeps what its script has.
         val keep = if (mode == null) log.doneItemIds else {
@@ -180,7 +180,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     }
 
     /** Checks or unchecks an item. A meal checked this way logs the slot's current pick, or its default. */
-    suspend fun toggleItem(id: String, date: LocalDate? = null) = write(date) { _, d ->
+    suspend fun toggleItem(id: String, date: LocalDate? = null) = write(date, rescore = isTicked(id, date)) { _, d ->
         val log = db.dayLogs().get(d) ?: DayLog(d)
         val done = if (id in log.doneItemIds) log.doneItemIds - id else log.doneItemIds + id
         db.dayLogs().upsert(log.copy(doneItemIds = done))
@@ -198,7 +198,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
      * keep its numbers as a one-off entry first, so history and This week do not move.
      */
     suspend fun replaceLibraryMeal(old: LibMeal, new: LibMeal?) = write { s, today ->
-        if (new == null || new.protein != old.protein || new.calories != old.calories || new.name != old.name) {
+        if (new == null || new.protein != old.protein || new.calories != old.calories) {
             val ref = "lib:${old.id}"
             val frozen = ProgramEngine.customRef(old.protein, old.calories, old.name)
             val byDefault = s.meals.filter { it.defaultLib == old.id }.map { it.id }.toSet()
@@ -327,14 +327,22 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
     // Internals
 
     /** Runs [block] for [date] (today when null, never a future day), then reconciles that day's XP. */
-    private suspend fun write(date: LocalDate? = null, block: suspend (Settings, LocalDate) -> Unit) = lock.withLock {
+    /** Whether [id] is ticked on [date] (today when null): unticking is the one edit that may lower a past day. */
+    private suspend fun isTicked(id: String, date: LocalDate?): Boolean =
+        id in (db.dayLogs().get(date?.takeIf { it.isBefore(today()) } ?: today())?.doneItemIds ?: emptySet())
+
+    /**
+     * [rescore] lets a past day's Send or Min be taken away by this write (an untick, a new kind). Without it a past
+     * day can only move up, so fixing a weigh-in typo or ticking a forgotten snack never re-judges it by today's targets.
+     */
+    private suspend fun write(date: LocalDate? = null, rescore: Boolean = false, block: suspend (Settings, LocalDate) -> Unit) = lock.withLock {
         val s = settings.current()
         val today = ProgramEngine.programDay(LocalDateTime.now(), s.resetHour)
         todayFlow.value = today
         val d = date?.takeIf { it.isBefore(today) } ?: today
         val xpBefore = db.xp().total()
         block(s, d)
-        syncDay(d)
+        syncDay(d, keepScore = !rescore && d.isBefore(today))
         afterWrite(xpBefore)
     }
 
@@ -342,7 +350,7 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
      * Reconciles the XP ledger for [date] with its DayLog: one `item` event per done item, `send` when all items are
      * done, `min` when it is a Min day but not a Send.
      */
-    private suspend fun syncDay(date: LocalDate) {
+    private suspend fun syncDay(date: LocalDate, keepScore: Boolean = false) {
         val s = settings.current()
         val log = db.dayLogs().get(date) ?: DayLog(date)
         val items = ProgramEngine.script(log.mode, s, log.picks)
@@ -353,6 +361,11 @@ class Repo(context: Context, val db: CutDb, val settings: SettingsStore) {
         val min = ProgramEngine.isMin(items, log.doneItemIds, s.protein)
         if (send) wanted[XpKind.SEND to null] = ProgramSpec.XP_SEND
         if (min && !send) wanted[XpKind.MIN to null] = ProgramSpec.XP_MIN
+        if (keepScore) {
+            // A past day keeps the score it has unless this write earns a better one.
+            if (existing.any { it.kind == XpKind.SEND }) { wanted.remove(XpKind.MIN to null); wanted[XpKind.SEND to null] = ProgramSpec.XP_SEND }
+            else if (existing.any { it.kind == XpKind.MIN } && !send) wanted[XpKind.MIN to null] = ProgramSpec.XP_MIN
+        }
         val managed = setOf(XpKind.ITEM, XpKind.SEND, XpKind.MIN)
         val stale = existing.filter { e -> e.kind in managed && (e.kind to e.ref) !in wanted }
         if (stale.isNotEmpty()) db.xp().deleteIds(stale.map { it.id })

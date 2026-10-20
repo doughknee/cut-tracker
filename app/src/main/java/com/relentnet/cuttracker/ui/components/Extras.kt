@@ -70,14 +70,17 @@ fun Modifier.repeatingPress(label: String, onClick: () -> Unit): Modifier = comp
     pointerInput(Unit) {
         coroutineScope {
             detectTapGestures(onPress = {
-                cb()
+                var repeated = false
                 val job = launch {
                     delay(400)
+                    repeated = true
                     var gap = 120L
                     while (isActive) { cb(); delay(gap); gap = (gap * 0.85).toLong().coerceAtLeast(40) }
                 }
-                tryAwaitRelease()
+                val released = tryAwaitRelease()
                 job.cancel()
+                // A plain tap counts once on release; a press that became a scroll counts nothing.
+                if (released && !repeated) cb()
             })
         }
     }.semantics { role = Role.Button; contentDescription = label; onClick { cb(); true } }

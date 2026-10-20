@@ -81,7 +81,9 @@ fun LiftInline(vm: AppViewModel, mode: DayMode, onSaved: () -> Unit) {
                 onChange = { draft[key(e.id)] = it.weight to it.reps; haptics.tick() },
             )
         }
+        val focus = androidx.compose.ui.platform.LocalFocusManager.current
         BigButton("Save session · checks the block", modifier = Modifier.fillMaxWidth(), height = 48.dp, fontSize = 13, onClick = {
+            focus.clearFocus()   // commits a number still being typed before the draft is read
             haptics.pattern(0, 20)
             vm.saveLiftSession(exercises.map { e ->
                 val v = draft[key(e.id)] ?: (0.0 to 10)

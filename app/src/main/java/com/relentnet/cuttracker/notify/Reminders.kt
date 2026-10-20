@@ -65,7 +65,7 @@ object Reminders {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
-    fun post(context: Context, kind: String) {
+    fun post(context: Context, kind: String, day: java.time.LocalDate? = null) {
         ensureChannel(context)
         val open = PendingIntent.getActivity(
             context, if (kind == KIND_WEIGH) 11 else 12, Intent(context, MainActivity::class.java).putExtra(EXTRA_TAB, "today").putExtra(EXTRA_WEIGH, kind == KIND_WEIGH).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -81,8 +81,8 @@ object Reminders {
             .apply {
                 // The same two answers as Today's evening card, right from the shade.
                 if (kind == KIND_PICK) {
-                    addAction(0, "Yep, Rest day", pickIntent(context, "REST"))
-                    addAction(0, "I climbed", pickIntent(context, "CLIMB"))
+                    addAction(0, "Yep, Rest day", pickIntent(context, "REST", day))
+                    addAction(0, "I climbed", pickIntent(context, "CLIMB", day))
                 }
             }
             .build()
@@ -90,9 +90,9 @@ object Reminders {
     }
 }
 
-private fun pickIntent(context: Context, mode: String): PendingIntent = PendingIntent.getBroadcast(
+private fun pickIntent(context: Context, mode: String, day: java.time.LocalDate?): PendingIntent = PendingIntent.getBroadcast(
     context, if (mode == "REST") 21 else 22,
-    Intent(context, PickReceiver::class.java).putExtra(PickReceiver.MODE, mode),
+    Intent(context, PickReceiver::class.java).putExtra(PickReceiver.MODE, mode).putExtra(PickReceiver.DAY, day?.toString()),
     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
 )
 
@@ -105,8 +105,9 @@ class PickReceiver : BroadcastReceiver() {
         Thread {
             runBlocking {
                 val today = app.repo.today()
-                // Only if the day is still unset: a tap on a stale notification never overwrites a pick made in the app.
-                if (app.db.dayLogs().get(today)?.mode == null) {
+                // Only for the day it was posted on, and only if that day is still unset: a stale notification changes nothing.
+                val day = intent.getStringExtra(DAY)
+                if ((day == null || day == today.toString()) && app.db.dayLogs().get(today)?.mode == null) {
                     val pre = if (mode == com.relentnet.cuttracker.data.DayMode.CLIMB) setOf(com.relentnet.cuttracker.data.ProgramSpec.ITEM_CLIMB) else emptySet()
                     app.repo.setMode(mode, pre)
                 }
@@ -116,7 +117,7 @@ class PickReceiver : BroadcastReceiver() {
         }.start()
     }
 
-    companion object { const val MODE = "mode" }
+    companion object { const val MODE = "mode"; const val DAY = "day" }
 }
 
 class AlarmReceiver : BroadcastReceiver() {
@@ -132,7 +133,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     Reminders.KIND_WEIGH -> if (s.weighReminder && app.db.weighIns().all().none { it.date == app.repo.today() }) Reminders.post(context, kind)
                     Reminders.KIND_PICK -> {
                         val today = app.repo.today()
-                        if (s.pickReminder && app.db.dayLogs().get(today)?.mode == null) Reminders.post(context, kind)
+                        if (s.pickReminder && app.db.dayLogs().get(today)?.mode == null) Reminders.post(context, kind, today)
                     }
                 }
                 Reminders.schedule(context, s)

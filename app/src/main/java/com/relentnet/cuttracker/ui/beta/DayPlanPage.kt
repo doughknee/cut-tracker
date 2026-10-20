@@ -65,7 +65,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
     val s = st.settings
     val haptics = LocalHaptics.current
     val plan = ProgramEngine.plan(mode, s)
-    fun save(p: DayPlan) = vm.updateSettings { s -> s.copy(plans = s.plans + (mode to p)) }
+    fun save(f: (DayPlan) -> DayPlan) = vm.updateSettings { s -> s.copy(plans = s.plans + (mode to f(ProgramEngine.plan(mode, s)))) }
     var sheet by rememberSaveable { mutableStateOf("") }   // "", "pick", "new", "lift:<id>", "item:<id>"
     val items = ProgramEngine.script(mode, s)
     val where = dayWhere(mode, s)
@@ -93,7 +93,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
                     val on = m.id in plan.slots
                     NumRow(
                         "${m.xp}", m.name, unit = "xp", sub = "any of ${s.library.count { it.kind == m.id }}",
-                        on = on, onSwitch = { haptics.tick(); save(plan.copy(slots = if (on) plan.slots - m.id else plan.slots + m.id)) },
+                        on = on, onSwitch = { haptics.tick(); save { plan -> plan.copy(slots = if (on) plan.slots - m.id else plan.slots + m.id) } },
                     )
                 }
             }
@@ -112,7 +112,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
                 NumRow("${ProgramSpec.XP_WEIGH}", "Weigh in", unit = "xp", sub = "always on", on = true, onSwitch = { haptics.tap() })
                 for (it in plan.items) NumRow(
                     if (it.xp > 0) "${it.xp}" else "–", it.label, unit = if (it.xp > 0) "xp" else null, sub = it.sub.ifBlank { null },
-                    on = it.on, onSwitch = { haptics.tick(); save(plan.copy(items = plan.items.map { x -> if (x.id == it.id) x.copy(on = !x.on) else x })) },
+                    on = it.on, onSwitch = { haptics.tick(); save { plan -> plan.copy(items = plan.items.map { x -> if (x.id == it.id) x.copy(on = !x.on) else x }) } },
                     onClick = { sheet = "item:" + it.id },
                 )
             }
@@ -123,7 +123,7 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
 
     when {
         sheet == "pick" -> LiftPicker(st.settings.liftKinds, s.exercises.filter { !it.phase2Only || it.id in plan.lifts }, plan.lifts, onDismiss = { sheet = "" },
-            onDone = { ids -> save(plan.copy(lifts = ids)); sheet = "" })
+            onDone = { ids -> save { plan -> plan.copy(lifts = ids) }; sheet = "" })
         sheet.startsWith("lift:") -> s.exercises.firstOrNull { it.id == sheet.removePrefix("lift:") }?.let { e ->
             var sets by remember(e) { mutableStateOf(e.sets) }
             Sheet(e.name, onDismiss = { sheet = "" }) {
@@ -131,14 +131,14 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
                 MiniStepper(sets.toString(), onMinus = { sets = (sets - 1).coerceAtLeast(1) }, onPlus = { sets = (sets + 1).coerceAtMost(10) }, unit = "× ${e.repTarget.ifBlank { "reps" }}")
                 SheetNote("Sets change the lift itself, on every day that uses it. Reps and the weight step are on the Lifts page.")
                 SheetButtons("Done", onPrimary = { vm.updateSettings { s -> s.copy(exercises = s.exercises.map { if (it.id == e.id) it.copy(sets = sets) else it }) }; sheet = "" },
-                    secondary = "Take out", onSecondary = { haptics.tap(); save(plan.copy(lifts = plan.lifts - e.id)); sheet = "" })
+                    secondary = "Take out", onSecondary = { haptics.tap(); save { plan -> plan.copy(lifts = plan.lifts - e.id) }; sheet = "" })
             }
         } ?: run { sheet = "" }
         sheet == "new" || sheet.startsWith("item:") -> {
             val it = plan.items.firstOrNull { x -> x.id == sheet.removePrefix("item:") }
             if (sheet != "new" && it == null) { sheet = "" } else ItemSheet(it, dayTitle(mode), onDismiss = { sheet = "" },
-                onSave = { ni -> save(plan.copy(items = if (it == null) plan.items + ni else plan.items.map { x -> if (x.id == ni.id) ni else x })); sheet = "" },
-                onRemove = if (it == null) null else ({ haptics.tap(); save(plan.copy(items = plan.items.filter { x -> x.id != it.id })); sheet = "" }))
+                onSave = { ni -> save { plan -> plan.copy(items = if (it == null) plan.items + ni else plan.items.map { x -> if (x.id == ni.id) ni else x }) }; sheet = "" },
+                onRemove = if (it == null) null else ({ haptics.tap(); save { plan -> plan.copy(items = plan.items.filter { x -> x.id != it.id }) }; sheet = "" }))
         }
     }
 }

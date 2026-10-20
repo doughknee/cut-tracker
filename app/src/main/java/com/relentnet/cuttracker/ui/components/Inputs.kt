@@ -65,25 +65,33 @@ fun Field(
     radius: Dp = 9.dp,
     padding: Dp = 12.dp,
     singleLine: Boolean = true,
+    /** Number fields select their contents on focus, so typing replaces a prefilled value instead of appending to it. */
+    selectAllOnFocus: Boolean = keyboard == KeyboardType.Decimal || keyboard == KeyboardType.Number,
 ) {
     val c = CutTheme.colors
     val shape = RoundedCornerShape(radius)
     var focused by remember { mutableStateOf(false) }
+    var tfv by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(value, androidx.compose.ui.text.TextRange(value.length))) }
+    // The caller owns the text; a change from outside (a chip, a parse) lands with the cursor at the end.
+    val shown = if (tfv.text == value) tfv else androidx.compose.ui.text.input.TextFieldValue(value, androidx.compose.ui.text.TextRange(value.length))
     // A focused field scrolls itself above the keyboard once the keyboard has opened, wherever it sits on the page.
     val bring = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
     val imeBottom = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current)
     androidx.compose.runtime.LaunchedEffect(focused, imeBottom) { if (focused && imeBottom > 0) bring.bringIntoView() }
     val borderColor by animateColorAsState(if (focused) c.accent else border, tween(140), label = "fieldBorder")
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = shown,
+        onValueChange = { tfv = it; if (it.text != value) onValueChange(it.text) },
         modifier = modifier
             .height(height)
             .clip(shape)
             .background(background, shape)
             .border(borderWidth, borderColor, shape)
             .bringIntoViewRequester(bring)
-            .onFocusChanged { focused = it.isFocused }
+            .onFocusChanged {
+                if (it.isFocused && !focused && selectAllOnFocus) tfv = shown.copy(selection = androidx.compose.ui.text.TextRange(0, shown.text.length))
+                focused = it.isFocused
+            }
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
         textStyle = cutStyle(fontSize, weight, 1f, tabular = true).copy(color = c.text, textAlign = if (center) TextAlign.Center else TextAlign.Start),
         singleLine = singleLine,

@@ -87,14 +87,16 @@ class AppViewModel(val repo: Repo) : ViewModel() {
     fun updateWithUndo(text: String, f: (Settings) -> Settings) = viewModelScope.launch {
         val before = repo.settings.current()
         repo.updateSettings(f)
-        showToast(text, "Undo") { viewModelScope.launch { repo.updateSettings { before } } }
+        val after = repo.settings.current()
+        showToast(text, "Undo") { viewModelScope.launch { repo.updateSettings { it.restoreFrom(before, after) } } }
     }
 
     /** Deletes a library meal (past days keep what they logged) and offers Undo. */
     fun deleteMeal(m: com.relentnet.cuttracker.data.LibMeal) = viewModelScope.launch {
         val before = repo.settings.current()
         repo.replaceLibraryMeal(m, null)
-        showToast("${m.name} deleted", "Undo") { viewModelScope.launch { repo.updateSettings { before } } }
+        val after = repo.settings.current()
+        showToast("${m.name} deleted", "Undo") { viewModelScope.launch { repo.updateSettings { it.restoreFrom(before, after) } } }
     }
 
     /** Lift numbers typed on Today, keyed "<date>:<exercise id>", so closing the panel or tapping elsewhere keeps them. */
@@ -123,3 +125,15 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         fun factory(repo: Repo): ViewModelProvider.Factory = viewModelFactory { initializer { AppViewModel(repo) } }
     }
 }
+
+/** Undo for a delete: each list a delete can touch goes back to [before] only if the delete changed it ([after]). */
+private fun Settings.restoreFrom(before: Settings, after: Settings) = copy(
+    library = if (after.library != before.library) before.library else library,
+    meals = if (after.meals != before.meals) before.meals else meals,
+    plans = if (after.plans != before.plans) before.plans else plans,
+    exercises = if (after.exercises != before.exercises) before.exercises else exercises,
+    liftKinds = if (after.liftKinds != before.liftKinds) before.liftKinds else liftKinds,
+    checkpoints = if (after.checkpoints != before.checkpoints) before.checkpoints else checkpoints,
+    customLooks = if (after.customLooks != before.customLooks) before.customLooks else customLooks,
+    palette = if (after.palette != before.palette) before.palette else palette,
+)
