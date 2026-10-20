@@ -79,8 +79,16 @@ fun BarcodeScanner(onScan: (String) -> Unit, onDismiss: () -> Unit) {
 fun LabelScanner(onRead: (String) -> Unit, onDismiss: () -> Unit) {
     val reader = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     DisposableEffect(Unit) { onDispose { reader.close() } }
-    CameraScanner("Fill the frame with the nutrition facts and hold still.", DpSize(300.dp, 380.dp), onRead, onDismiss, sharp = true) { image, found ->
-        reader.process(image).addOnSuccessListener { text -> if (LabelRead.parse(text.text).any) found(text.text) }
+    val started = remember { System.currentTimeMillis() }
+    var hint by remember { mutableStateOf("Fill the frame with the nutrition facts and hold still.") }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(8000); hint = "Still reading. Get closer so the table fills the frame, in good light. Labels in English read best." }
+    CameraScanner(hint, DpSize(300.dp, 380.dp), onRead, onDismiss, sharp = true) { image, found ->
+        reader.process(image).addOnSuccessListener { text ->
+            // The first three seconds wait for a frame with both numbers; a blurry first frame usually has only one.
+            val f = LabelRead.parse(text.text)
+            val waited = System.currentTimeMillis() - started > 3000
+            if ((f.protein != null && f.calories != null) || (waited && f.any)) found(text.text)
+        }
     }
 }
 
@@ -104,7 +112,14 @@ private fun CameraScanner(
     LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
     val executor = remember { Executors.newSingleThreadExecutor() }
     val done = remember { AtomicBoolean(false) }
-    DisposableEffect(Unit) { onDispose { executor.shutdown() } }
+    var provider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    var failed by remember { mutableStateOf(false) }
+    // The camera is bound to the page's lifecycle, so it has to be let go here or it keeps running after the scan.
+    DisposableEffect(Unit) { onDispose { provider?.unbindAll(); executor.shutdown() } }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        if (!granted && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) { granted = true; denied = false }
+        onPauseOrDispose { }
+    }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(c.ground)) {
@@ -114,7 +129,7 @@ private fun CameraScanner(
                         scaleType = PreviewView.ScaleType.FILL_CENTER
                         val future = ProcessCameraProvider.getInstance(ctx)
                         future.addListener({
-                            val provider = future.get()
+                            val p = future.get().also { provider = it }
                             val preview = Preview.Builder().build().also { it.surfaceProvider = surfaceProvider }
                             val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).apply {
                                 if (sharp) setResolutionSelector(ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy(Size(1280, 960), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)).build())
@@ -125,8 +140,8 @@ private fun CameraScanner(
                                 process(InputImage.fromMediaImage(image, proxy.imageInfo.rotationDegrees)) { r -> if (done.compareAndSet(false, true)) onResult(r) }
                                     .addOnCompleteListener { proxy.close() }
                             }
-                            provider.unbindAll()
-                            runCatching { provider.bindToLifecycle(lifecycle, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis) }
+                            p.unbindAll()
+                            runCatching { p.bindToLifecycle(lifecycle, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis) }.onFailure { failed = true }
                         }, ContextCompat.getMainExecutor(ctx))
                     }
                 },
@@ -134,13 +149,20 @@ private fun CameraScanner(
             ) else Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text("Camera access needed.", color = c.text, style = cutStyle(28, 800, 1f, -0.02f, display = true))
                 Sub(if (denied) "Allow the camera in system settings, then come back." else "Asking for the camera.")
+                if (denied) BigButton("Open settings", onClick = {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null)))
+                }, modifier = Modifier.fillMaxWidth(), height = 48.dp, fontSize = 13)
             }
-            Box(Modifier.align(Alignment.Center).size(frame).border(3.dp, c.accent, RoundedCornerShape(16.dp)))
+            if (failed) Column(Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.systemBars).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("The camera did not start.", color = c.text, style = cutStyle(28, 800, 1f, -0.02f, display = true))
+                Sub("Another app may be using it. Close this and try again.")
+            }
+            if (granted && !failed) Box(Modifier.align(Alignment.Center).size(frame).border(3.dp, c.accent, RoundedCornerShape(16.dp)))
             Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().windowInsetsPadding(WindowInsets.systemBars).padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Sub(hint, color = c.text)
+                if (granted && !failed) Sub(hint, color = c.text)
                 BigButton("Cancel", onClick = onDismiss, modifier = Modifier.fillMaxWidth(), secondary = true, height = 48.dp, fontSize = 13)
             }
         }

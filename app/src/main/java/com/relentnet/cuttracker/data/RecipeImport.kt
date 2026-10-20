@@ -18,7 +18,8 @@ data class RecipeInfo(val name: String, val protein: Int?, val calories: Int?, v
 
 /**
  * The app's one network call: GET the page the user pasted, read its JSON-LD Recipe block, nothing else. HTTPS only,
- * 2 MB cap, no cookies, no redirects to another host. The parser is pure so the test can feed it saved pages.
+ * 2 MB cap, no cookies. A redirect is followed the way a short link works, HTTPS to HTTPS only (Android never follows a
+ * downgrade). The parser is pure so the test can feed it saved pages.
  */
 object RecipeImport {
     private const val MAX_BYTES = 2 * 1024 * 1024
@@ -37,7 +38,7 @@ object RecipeImport {
             conn.setRequestProperty("Accept", "text/html,application/xhtml+xml")
             conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
             try {
-                if (conn.responseCode !in 200..299) error("The page answered ${conn.responseCode}.")
+                if (conn.responseCode !in 200..299) error(if (conn.responseCode in 300..399) "That link sends the app somewhere it will not follow. Open it in a browser and share the page from there." else "The site said no (${conn.responseCode}). Open it in a browser and type the numbers.")
                 val bytes = conn.inputStream.use { it.readNBytes(MAX_BYTES) }
                 val html = String(bytes, Charsets.UTF_8)
                 val (info, why) = parseDetailed(html)
@@ -45,8 +46,12 @@ object RecipeImport {
             } finally { conn.disconnect() }
         }.recoverCatching { e ->
             // On phones that gate the network per app (GrapheneOS), a denied app sees every host as unknown.
-            if (e is java.net.UnknownHostException) throw IllegalStateException("Could not reach that site. Check the connection, and that Sendline is allowed to use the network in the phone's app settings.")
-            throw e
+            when (e) {
+                is java.net.UnknownHostException -> throw IllegalStateException("Could not reach that site. Check the connection, and that Sendline is allowed to use the network in the phone's app settings.")
+                is java.net.SocketTimeoutException -> throw IllegalStateException("The site took too long to answer. Try again in a moment.")
+                is java.io.IOException -> throw IllegalStateException("Could not reach that site. Check the link and the connection.")
+                else -> throw e
+            }
         }
     }
 

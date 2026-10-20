@@ -125,9 +125,9 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
         sheet == "pick" -> LiftPicker(st.settings.liftKinds, s.exercises.filter { !it.phase2Only || it.id in plan.lifts }, plan.lifts, onDismiss = { sheet = "" },
             onDone = { ids -> save { plan -> plan.copy(lifts = ids) }; sheet = "" })
         sheet.startsWith("lift:") -> s.exercises.firstOrNull { it.id == sheet.removePrefix("lift:") }?.let { e ->
-            var sets by remember(e) { mutableStateOf(e.sets) }
-            Sheet(e.name, onDismiss = { sheet = "" }) {
-                SheetLabel("Sets on a ${dayTitle(mode).lowercase()}")
+            var sets by androidx.compose.runtime.saveable.rememberSaveable(e.id) { mutableStateOf(e.sets) }
+            Sheet(e.name, onDismiss = { sheet = "" }, dirty = sets != e.sets) {
+                SheetLabel("Sets")
                 MiniStepper(sets.toString(), onMinus = { sets = (sets - 1).coerceAtLeast(1) }, onPlus = { sets = (sets + 1).coerceAtMost(10) }, unit = "× ${e.repTarget.ifBlank { "reps" }}")
                 SheetNote("Sets change the lift itself, on every day that uses it. Reps and the weight step are on the Lifts page.")
                 SheetButtons("Done", onPrimary = { vm.updateSettings { s -> s.copy(exercises = s.exercises.map { if (it.id == e.id) it.copy(sets = sets) else it }) }; sheet = "" },
@@ -145,10 +145,10 @@ fun DayPlanPage(vm: AppViewModel, mode: DayMode, onBack: () -> Unit) {
 
 @Composable
 private fun ItemSheet(it: PlanItem?, day: String, onDismiss: () -> Unit, onSave: (PlanItem) -> Unit, onRemove: (() -> Unit)?) {
-    var label by remember(it) { mutableStateOf(it?.label ?: "") }
-    var sub by remember(it) { mutableStateOf(it?.sub ?: "") }
-    var xp by remember(it) { mutableStateOf(it?.xp ?: 10) }
-    Sheet(if (it == null) "New line" else "Edit line", onDismiss) {
+    var label by androidx.compose.runtime.saveable.rememberSaveable(it?.id) { mutableStateOf(it?.label ?: "") }
+    var sub by androidx.compose.runtime.saveable.rememberSaveable(it?.id) { mutableStateOf(it?.sub ?: "") }
+    var xp by androidx.compose.runtime.saveable.rememberSaveable(it?.id) { mutableStateOf(it?.xp ?: 10) }
+    Sheet(if (it == null) "New line" else "Edit line", onDismiss, dirty = label != (it?.label ?: "") || sub != (it?.sub ?: "") || xp != (it?.xp ?: 10)) {
         SheetField("Name", label, { label = it }, text = true, big = true, placeholder = "What Today asks")
         SheetField("Note", sub, { sub = it }, text = true, placeholder = "Optional, shows under the name", last = true)
         SheetLabel("xp")

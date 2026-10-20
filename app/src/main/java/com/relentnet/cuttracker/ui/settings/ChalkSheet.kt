@@ -60,13 +60,14 @@ fun ChalkSheet(look: CustomLook?, dark: Boolean, onDismiss: () -> Unit, onSave: 
     val c = CutTheme.colors
     val haptics = LocalHaptics.current
     val clipboard = LocalClipboardManager.current
-    var hue by remember { mutableIntStateOf(look?.hue ?: 24) }
-    var stone by remember { mutableIntStateOf(look?.stone ?: 0) }
-    var name by remember { mutableStateOf(look?.name ?: "") }
+    var hue by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(look?.hue ?: 24) }
+    var stone by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(look?.stone ?: 0) }
+    var name by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(look?.name ?: "") }
     val draft = CustomLook(look?.id ?: "", name, hue, stone)
     val p = draft.palette()
     val live = p.colors(dark)
-    Sheet(if (look == null) "Chalk your own" else "Edit look", onDismiss) {
+    val dirty = hue != (look?.hue ?: 24) || stone != (look?.stone ?: 0) || name != (look?.name ?: "")
+    Sheet(if (look == null) "Chalk your own" else "Edit look", onDismiss, dirty = dirty) {
         Text("One hue on one stone. The sends and the freeze pick themselves so nothing clashes.", color = c.text2, style = cutStyle(12, 500, 1.4f))
         CompositionLocalProvider(LocalCutColors provides live, LocalDecor provides Decor.NONE) {
             Box(Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(12.dp)).background(live.wall).border(1.dp, live.hairline, RoundedCornerShape(12.dp))) {

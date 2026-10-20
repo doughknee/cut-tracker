@@ -565,7 +565,7 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
     }
     val selected = current ?: def.ref
     var recipeOpen by remember { mutableStateOf<String?>(null) }
-    var form by remember { mutableStateOf<Boolean?>(null) }  // null closed, false = one-off, true = new library meal
+    var form by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<Boolean?>(null) }  // null closed, false = one-off, true = new library meal
     // A long library gets a search box; the top five and yesterday stay above it.
     var query by remember { mutableStateOf("") }
     Column(Modifier.padding(start = 40.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -615,7 +615,7 @@ private fun MealPicker(st: AppState, slot: Meal, date: LocalDate, current: Strin
             toLibrary = form == true,
             onLog = { name, p, cal, save ->
                 if (save) {
-                    val m = LibMeal("lib_" + System.currentTimeMillis(), name.ifBlank { "New meal" }, p, cal)
+                    val m = LibMeal("lib_" + System.currentTimeMillis(), name.ifBlank { "New meal" }, p, cal, kind = slot.id)
                     onSaveLib(m); onPick("lib:" + m.id)
                 } else onPick(ProgramEngine.customRef(p, cal, name))
                 form = null

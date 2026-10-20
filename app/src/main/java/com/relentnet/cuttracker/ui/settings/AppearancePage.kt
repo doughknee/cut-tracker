@@ -189,7 +189,11 @@ fun AppearancePage(vm: AppViewModel, onBack: () -> Unit) {
                     if (row.size == 1) Box(Modifier.weight(1f))
                 }
                 Field(
-                    code, { v -> code = v.take(8); CustomLook.fromCode(v, CustomLook.PREFIX + System.currentTimeMillis().toString(36))?.let { add(it); code = "" } },
+                    code, { v -> code = v.take(8); CustomLook.fromCode(v, CustomLook.PREFIX + System.currentTimeMillis().toString(36))?.let { l ->
+                        val twin = looks.firstOrNull { it.hue == l.hue && it.stone == l.stone }
+                        if (twin != null) { haptics.tick(); vm.updateSettings { s -> s.copy(palette = twin.id, paletteByCalendar = false) }; vm.showToast("You have that look already: ${twin.name.ifBlank { "yours" }}") } else add(l)
+                        code = ""
+                    } },
                     Modifier.fillMaxWidth(), height = 44.dp, fontSize = 14, weight = 700, keyboard = KeyboardType.Ascii, placeholder = "Paste a code, SL-7K2Q", borderWidth = 1.dp, radius = 10.dp,
                 )
                 if (code.length >= 7 && CustomLook.decode(code) == null) Sub("Not a Sendline code. Four letters after SL-, and a typo is refused.", size = 11)

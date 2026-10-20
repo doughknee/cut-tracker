@@ -39,6 +39,8 @@ object OpenFoodFacts {
         }.recoverCatching { e ->
             // On phones that gate the network per app (GrapheneOS), a denied app sees every host as unknown.
             if (e is java.net.UnknownHostException) throw IllegalStateException("Could not reach Open Food Facts. Check the connection, and that Sendline is allowed to use the network in the phone's app settings.")
+            if (e is java.net.SocketTimeoutException) throw IllegalStateException("Open Food Facts took too long to answer. Try again in a moment.")
+            if (e is java.io.IOException) throw IllegalStateException("Could not reach Open Food Facts. Check the connection.")
             throw e
         }
     }

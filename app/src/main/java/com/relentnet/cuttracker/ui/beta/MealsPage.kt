@@ -1,5 +1,7 @@
 package com.relentnet.cuttracker.ui.beta
 
+import com.relentnet.cuttracker.ui.components.num
+import androidx.compose.runtime.saveable.Saver
 import com.relentnet.cuttracker.ui.components.int
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -103,8 +105,7 @@ fun MealsPage(vm: AppViewModel, onBack: () -> Unit) {
             KindSheet(slot.name, "meals", onDismiss = { sheet = "" },
                 onSave = { name ->
                     if (s.meals.any { it.id != slot.id && it.name.trim().equals(name.trim(), ignoreCase = true) }) vm.showToast("There is already a kind called ${name.trim()}")
-                    else vm.updateSettings { s -> s.copy(meals = s.meals.map { if (it.id == slot.id) it.copy(name = name.trim()) else it }) }
-                    sheet = ""
+                    else { vm.updateSettings { s -> s.copy(meals = s.meals.map { if (it.id == slot.id) it.copy(name = name.trim()) else it }) }; sheet = "" }
                 },
                 onRemove = {
                     haptics.tap()
@@ -137,13 +138,13 @@ private fun MealSheet(
     // A shared link goes in the link field; whatever text came with it (or plain text alone) is the name until the page says better.
     val sharedLink = shared?.let { Regex("""https?://\S+""").find(it)?.value }
     val sharedName = shared?.replace(sharedLink ?: "", "")?.trim()?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim() ?: ""
-    var name by remember(m) { mutableStateOf(m?.name ?: sharedName) }
-    var kind by remember(m) { mutableStateOf(kind0) }
-    var pro by remember(m) { mutableStateOf(m?.protein?.toString() ?: "") }
-    var cal by remember(m) { mutableStateOf(m?.calories?.toString() ?: "") }
-    var recipe by remember(m) { mutableStateOf(m?.recipe ?: "") }
-    var lines by remember(m) { mutableStateOf(m?.ingredients ?: emptyList()) }
-    var link by remember(m) { mutableStateOf(sharedLink ?: "") }
+    var name by rememberSaveable(m) { mutableStateOf(m?.name ?: sharedName) }
+    var kind by rememberSaveable(m) { mutableStateOf(kind0) }
+    var pro by rememberSaveable(m) { mutableStateOf(m?.protein?.toString() ?: "") }
+    var cal by rememberSaveable(m) { mutableStateOf(m?.calories?.toString() ?: "") }
+    var recipe by rememberSaveable(m) { mutableStateOf(m?.recipe ?: "") }
+    var lines by rememberSaveable(m, saver = linesSaver) { mutableStateOf(m?.ingredients ?: emptyList()) }
+    var link by rememberSaveable(m) { mutableStateOf(sharedLink ?: "") }
     var fetching by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<Pair<String, Boolean>?>(null) }   // text, ok
     var scanning by remember { mutableStateOf(false) }
@@ -151,40 +152,49 @@ private fun MealSheet(
     var askBarcode by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf("") }
     // The lines own the numbers while there are any; the fields stay editable for a meal typed by hand.
-    fun setLines(l: List<Ingredient>) { lines = l; if (l.isNotEmpty()) { pro = l.proteinSum().toString(); cal = l.kcalSum().toString() } }
+    fun setLines(l: List<Ingredient>) {
+        if (l.isEmpty() && lines.isNotEmpty()) { pro = ""; cal = "" }
+        lines = l
+        if (l.isNotEmpty()) { pro = l.proteinSum().toString(); cal = l.kcalSum().toString() }
+    }
     // The link is the consent: once online features are on, a usable link fetches half a second after the typing stops.
     // Lives in the effect so a changed link cancels the fetch in flight instead of racing it.
     LaunchedEffect(link, importOn) {
         if (!importOn || !RecipeImport.isUsable(link)) return@LaunchedEffect
         delay(500)
         fetching = true; note = "Reading the page" to true
-        RecipeImport.fetch(link).onSuccess { r ->
-            name = r.name; pro = r.protein?.toString() ?: ""; cal = r.calories?.toString() ?: ""
-            recipe = link.trim() + (r.servings?.let { ", 1 of $it servings." } ?: "")
-            val missing = listOfNotNull("protein".takeIf { r.protein == null }, "calories".takeIf { r.calories == null })
-            note = (if (missing.isEmpty()) "Found it. Check the numbers before you add it." else "Found the name. That page lists no ${missing.joinToString(" or ")}, type it.") to true
-        }.onFailure { note = (it.message ?: "Could not read that page.") to false }
-        fetching = false
+        try {
+            RecipeImport.fetch(link).onSuccess { r ->
+                name = r.name
+                if (r.protein != null || r.calories != null) lines = emptyList()
+                r.protein?.let { pro = it.toString() }; r.calories?.let { cal = it.toString() }
+                recipe = link.trim() + (r.servings?.let { ", 1 of $it servings." } ?: "")
+                val missing = listOfNotNull("protein".takeIf { r.protein == null }, "calories".takeIf { r.calories == null })
+                note = (if (missing.isEmpty()) "Found it. Check the numbers before you add it." else "Found the name. That page lists no ${missing.joinToString(" or ")}, type it.") to true
+            }.onFailure { note = (it.message ?: "Could not read that page.") to false }
+        } finally { fetching = false }
     }
     // A scanned code becomes one line of the meal: one serving when the label gives one, else 100 g. The grams stay editable.
     LaunchedEffect(code) {
         if (code.isBlank()) return@LaunchedEffect
         fetching = true; note = "Asking Open Food Facts" to true
-        OpenFoodFacts.fetch(code).onSuccess { r ->
+        try { OpenFoodFacts.fetch(code).onSuccess { r ->
             if (name.isBlank()) name = r.name
             setLines(lines + Ingredient(r.name, r.servingGrams ?: 100.0, r.protein100 ?: 0.0, r.kcal100 ?: 0.0))
             val missing = listOfNotNull("protein".takeIf { r.protein100 == null }, "calories".takeIf { r.kcal100 == null })
             note = (if (missing.isEmpty()) (if (r.servingGrams != null) "Found it, one serving. Change the grams if you had more." else "Found it. The label has no serving size, so this is 100 g. Change the grams.")
                 else "Found the name. Open Food Facts lists no ${missing.joinToString(" or ")} for it, type it.") to true
-        }.onFailure { note = (it.message ?: "Could not look that up.") to false }
-        fetching = false; code = ""
+        }.onFailure { note = (it.message ?: "Could not look that up.") to false } } finally { fetching = false; code = "" }
     }
     if (scanning) BarcodeScanner(onScan = { scanning = false; code = it }, onDismiss = { scanning = false })
     // A label fills the number fields straight from the camera, on the phone. The note says which lines it trusted.
     if (reading) LabelScanner(onDismiss = { reading = false }, onRead = { text ->
         reading = false
         val f = LabelRead.parse(text)
-        f.protein?.let { pro = it.toString() }; f.calories?.let { cal = it.toString() }
+        if (lines.isNotEmpty() && (f.protein != null || f.calories != null)) {
+            val grams = f.serving?.let { Regex("""(\d+(?:[.,]\d+)?)\s*g\b""", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1)?.num() } ?: 100.0
+            setLines(lines + Ingredient(if (name.isBlank()) "From the label" else "From the label, $name", grams, (f.protein ?: 0) * 100.0 / grams, (f.calories ?: 0) * 100.0 / grams))
+        } else { f.protein?.let { pro = it.toString() }; f.calories?.let { cal = it.toString() } }
         if (f.serving != null && recipe.isBlank()) recipe = "One serving, ${f.serving}, from the label."
         val missing = listOfNotNull("protein".takeIf { f.protein == null }, "calories".takeIf { f.calories == null })
         val next = if (missing.isNotEmpty()) "No ${missing.joinToString(" or ")} found, type it." else if (name.isBlank()) "Name it and add it." else "Check the numbers."
@@ -200,13 +210,14 @@ private fun MealSheet(
                 BigButton("Read a label", onClick = { note = null; reading = true }, modifier = Modifier.weight(1f), secondary = true, height = 48.dp, fontSize = 12)
             }
             if (!importOn && RecipeImport.isUsable(link)) AllowCard(
-                "This downloads the page you pasted, from that site, and reads the recipe out of it. Nothing else leaves the phone. You can switch it off under Settings, Data.",
+                "This downloads the page you pasted, from that site, and reads the recipe out of it. Nothing else leaves the phone. You can switch it off under Settings, Data, Online features.",
                 "Allow and read it", onAllow = onAllowImport, onNotNow = { link = "" },
             )
             if (askBarcode && !barcodeOn) AllowCard(
-                "This sends the digits of the barcode you scan, and nothing else, to Open Food Facts, a public food database, and reads the product's name and nutrition from the answer. You can switch it off under Settings, Data.",
+                "This sends the digits of the barcode you scan, and nothing else, to Open Food Facts, a public food database, and reads the product's name and nutrition from the answer. You can switch it off under Settings, Data, Online features.",
                 "Allow and scan", onAllow = { onAllowBarcode(); askBarcode = false; scanning = true }, onNotNow = { askBarcode = false },
             )
+            if (link.trim().startsWith("http://", ignoreCase = true)) SheetNote("Only https links can be read. Open the page in a browser and share it from there.")
             note?.let { (text, ok) -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (fetching) CircularProgressIndicator(Modifier.size(12.dp), color = c.accent, strokeWidth = 2.dp)
                 Text(text, color = if (!ok) c.accent else if (fetching) c.text2 else c.good, style = cutStyle(12, 600, 1.3f))
@@ -221,6 +232,7 @@ private fun MealSheet(
             SheetField("Calories", cal, { cal = it }, Modifier.weight(1f))
         }
         SheetField("Recipe or note", recipe, { recipe = it }, text = true, last = true, placeholder = "Optional")
+        if (name.isNotBlank() && pro.isBlank() && cal.isBlank() && lines.isEmpty()) SheetNote("No protein or calories yet. It counts as 0 until you add them.")
         SheetButtons(
             if (m == null) "Add it" else "Done", enabled = name.isNotBlank(),
             onPrimary = { onSave(LibMeal(m?.id ?: "lib_${System.currentTimeMillis()}", name.trim(), pro.int() ?: 0, cal.int() ?: 0, recipe.trim(), kind, lines)) },
@@ -250,19 +262,20 @@ private fun AllowCard(what: String, allow: String, onAllow: () -> Unit, onNotNow
 private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredient>) -> Unit, search: suspend (String) -> List<Food>) {
     val c = CutTheme.colors
     var q by remember { mutableStateOf("") }
-    var hits by remember { mutableStateOf<List<Food>>(emptyList()) }
-    LaunchedEffect(q) { hits = if (q.isBlank()) emptyList() else search(q) }
+    var hits by remember { mutableStateOf<List<Food>?>(emptyList()) }
+    LaunchedEffect(q) { hits = null; hits = if (q.isBlank()) emptyList() else search(q) }
     // With no lines yet the search field's own label is the section label; two eyebrows in a row read as a mistake.
     if (lines.isNotEmpty()) SheetLabel("Ingredients")
     lines.forEachIndexed { i, ing ->
         key(i, ing.name) {
             var g by remember { mutableStateOf(fmtGrams(ing.grams)) }
+            if ((g.num() ?: 0.0) != ing.grams) g = fmtGrams(ing.grams)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(ing.name, color = c.text, style = cutStyle(13, 700, 1.2f), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text("${fmtGrams(ing.protein)} g protein, ${Math.round(ing.kcal)} cal", color = c.text2, style = cutStyle(11, 600, 1.2f))
                 }
-                Field(g, { g = it; onLines(lines.toMutableList().also { l -> l[i] = ing.copy(grams = it.replace(',', '.').toDoubleOrNull() ?: 0.0) }) },
+                Field(g, { g = it; onLines(lines.toMutableList().also { l -> l[i] = ing.copy(grams = it.num() ?: 0.0) }) },
                     Modifier.width(64.dp), height = 40.dp, fontSize = 14, weight = 700, imeAction = ImeAction.Next, borderWidth = 1.dp, radius = 10.dp, padding = 8.dp)
                 Text("g", color = c.text2, style = cutStyle(12, 700, 1f))
                 Icon(CutIcons.Close, "Remove", Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button) { onLines(lines.filterIndexed { j, _ -> j != i }) }.padding(5.dp), tint = c.text2)
@@ -270,7 +283,7 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
         }
     }
     SheetField(if (lines.isEmpty()) "Ingredients" else "Add another", q, { q = it }, text = true, placeholder = "Search foods, like chicken breast")
-    hits.forEach { f ->
+    hits.orEmpty().forEach { f ->
         Column(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(c.ground).clickable(role = Role.Button) { onLines(lines + Ingredient(f.name, f.defaultGrams, f.protein100, f.kcal100)); q = "" }.padding(10.dp, 8.dp),
         ) {
@@ -278,8 +291,14 @@ private fun IngredientsSection(lines: List<Ingredient>, onLines: (List<Ingredien
             Text("${fmtGrams(f.protein100)} g protein, ${Math.round(f.kcal100)} cal per 100 g" + (f.portions.firstOrNull()?.let { ", ${it.label} is ${fmtGrams(it.grams)} g" } ?: ""), color = c.text2, style = cutStyle(11, 600, 1.2f))
         }
     }
-    if (q.isNotBlank() && hits.isEmpty()) SheetNote("Nothing in the USDA table matches. Try fewer words, or type the numbers.")
+    if (q.isNotBlank() && hits?.isEmpty() == true) SheetNote("Nothing in the USDA table matches. Try fewer words, or type the numbers.")
 }
+
+/** Ingredient lines kept across a configuration change or process death, as JSON. */
+private val linesSaver = Saver<androidx.compose.runtime.MutableState<List<Ingredient>>, String>(
+    save = { kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.builtins.ListSerializer(Ingredient.serializer()), it.value) },
+    restore = { androidx.compose.runtime.mutableStateOf(kotlinx.serialization.json.Json.decodeFromString(kotlinx.serialization.builtins.ListSerializer(Ingredient.serializer()), it)) },
+)
 
 private fun fmtGrams(g: Double): String = if (g == Math.rint(g)) g.toLong().toString() else "%.1f".format(g)
 
