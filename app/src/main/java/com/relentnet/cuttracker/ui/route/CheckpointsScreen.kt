@@ -85,9 +85,9 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
     val current = currentCheckpointDate(st)
     var confirmDelete by remember { mutableStateOf<LocalDate?>(null) }
     // Right-hand photo of the compare pair; the left is always the first one.
-    var compare by remember { mutableStateOf<LocalDate?>(null) }
+    var compare by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<LocalDate?>(null) }
 
-    var editing by remember { mutableStateOf<String?>(null) }
+    var editing by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     val haptics2 = LocalHaptics.current
     Box(Modifier.fillMaxSize()) {
     Screen(bottomInset = true, fab = true) {
@@ -215,10 +215,10 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
 private fun CheckpointSheet(cp: Checkpoint, onDismiss: () -> Unit, onSave: (Checkpoint) -> Unit, onRemove: () -> Unit) {
     val c = CutTheme.colors
     val context = LocalContext.current
-    var date by remember(cp.date) { mutableStateOf(cp.localDate) }
-    var target by remember(cp.date) { mutableStateOf(cp.target?.let { ProgramEngine.fmt1(it) } ?: "") }
-    var note by remember(cp.date) { mutableStateOf(cp.note) }
-    Sheet(if (cp.free) "Planned skip" else "Edit checkpoint", onDismiss) {
+    var date by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(cp.localDate) }
+    var target by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(cp.target?.let { ProgramEngine.fmt1(it) } ?: "") }
+    var note by androidx.compose.runtime.saveable.rememberSaveable(cp.date) { mutableStateOf(cp.note) }
+    Sheet(if (cp.free) "Planned skip" else "Edit checkpoint", onDismiss, dirty = date != cp.localDate || target != (cp.target?.let { ProgramEngine.fmt1(it) } ?: "") || note != cp.note) {
         if (cp.free) {
             Sub("A planned skip. Chain kept, no freeze spent, not a Send.", size = 12)
             SheetButtons("Unskip", onPrimary = onRemove, secondary = "Keep", onSecondary = onDismiss)

@@ -107,7 +107,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
     val st by vm.state.collectAsStateWithLifecycle()
     val haptics = LocalHaptics.current
     val s = st.settings
-    var pop by remember { mutableStateOf<LocalDate?>(null) }
+    var pop by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<LocalDate?>(null) }
     val current = currentCheckpointDate(st)
 
     Box(Modifier.fillMaxSize()) {
