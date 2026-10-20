@@ -149,7 +149,8 @@ class SettingsStore(context: Context) {
             customLooks = p[K.customLooks]?.let { runCatching { json.decodeFromString(ListSerializer(CustomLook.serializer()), it) }.getOrNull() } ?: d.customLooks,
             recipeImport = p[K.recipeImport] ?: d.recipeImport,
             barcodeLookup = p[K.barcodeLookup] ?: d.barcodeLookup,
-            checkpoints = p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints,
+            // A flag's date is its identity; an older build could stack two on one date, and Remove took both.
+            checkpoints = (p[K.checkpoints]?.let { runCatching { json.decodeFromString(ListSerializer(Checkpoint.serializer()), it) }.getOrNull() } ?: d.checkpoints).distinctBy { it.date },
             weighInTime = p[K.weighInTime]?.let(LocalTime::parse) ?: d.weighInTime,
             pickTime = p[K.pickTime]?.let(LocalTime::parse) ?: d.pickTime,
             resetHour = p[K.resetHour] ?: d.resetHour,

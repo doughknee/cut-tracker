@@ -21,3 +21,12 @@ Builds run without a daemon on this machine (global `~/.gradle/gradle.properties
 - Never `fallbackToDestructiveMigration`. Room migrations from v1 on.
 - XP, chain and level are derived in `ProgramEngine` from Room rows, never stored.
 - Unattended runs follow the protocol in the handoff and report in `PROGRESS.md`.
+
+## Decisions
+
+Where a job lives, so the next pass does not move it back.
+
+- 2026-10-19: Today is the day, Beta is the plan, Route is the record. Workouts this week and the next checkpoint are read on Beta (This week, the Checkpoints tile); Route shows them only on the calendar. The Checkpoints page has no 12-week rail; the calendar and the Weight chart draw the flags.
+- 2026-10-19: The route's numbers (start, goal, weeks, start date, protein, calories, workouts) are edited on Beta > Targets only. Settings keeps the app's chrome: Nudges, Appearance, Data, About.
+- 2026-10-19: A checkpoint's date is its identity. Adding on an occupied date opens that flag; the store dedupes by date on load.
+- 2026-10-19: Looks change stone and result colors only; type and layout never change with a look. Holiday decor sits on the top edge of holds and on the wall, never over the day number.
