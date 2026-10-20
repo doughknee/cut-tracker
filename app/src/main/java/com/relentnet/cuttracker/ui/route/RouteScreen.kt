@@ -329,15 +329,19 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val c = CutTheme.colors
     val r = st.results[date] ?: DayResult.FUTURE
     val cp = st.settings.checkpoints.firstOrNull { !it.free && it.localDate == date }
-    val cpLine = cp?.let {
+    // A checkpoint ahead is the whole story of that day; a checkpoint behind is a second line under the day's result.
+    val cpAhead = cp != null && r == DayResult.FUTURE
+    val cpNote = cp?.note?.takeIf { it.isNotBlank() }?.let { " $it" } ?: ""
+    val cpColor = cp?.let { if (it.localDate == currentCheckpointDate(st)) c.accent else c.text2 } ?: c.text2
+    val cpLine = cp?.takeIf { !cpAhead }?.let {
         val (state, avg) = checkpointState(st, it.localDate, it.target)
         val target = it.target?.let { t -> "${ProgramEngine.fmt1(t)} lb target" } ?: "no target"
         val how = when (state) {
             CpState.HIT -> "hit at ${ProgramEngine.fmt1(avg!!)}"
             CpState.PASSED -> if (avg != null) "was ${ProgramEngine.fmt1(avg)}" else "passed"
-            else -> when (val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, it.localDate).toInt()) { 0 -> "today"; 1 -> "tomorrow"; else -> "in $days days" }
+            else -> "today"
         }
-        "Checkpoint, $target, $how." + (if (it.note.isNotBlank()) " ${it.note}" else "") to (if (state == CpState.HIT) c.good else if (it.localDate == currentCheckpointDate(st)) c.accent else c.text2)
+        "Checkpoint, $target, $how.$cpNote" to (if (state == CpState.HIT) c.good else cpColor)
     }
     val log = st.logs.firstOrNull { it.date == date }
     val xp = st.xpEvents.filter { it.date == date }.sumOf { it.amount }
@@ -345,7 +349,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
     val done = log?.doneItemIds?.count { id -> items.any { it.id == id } } ?: 0
     val weight = st.weighIns.firstOrNull { it.date == date }?.lb
     val skipped = st.settings.checkpoints.any { it.free && it.covers(date) }
-    val (title, color) = when (r) {
+    val (title, color) = if (cpAhead) ("Checkpoint" + (cp!!.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "")) to cpColor else when (r) {
         DayResult.SEND -> "Send · +$xp xp" to c.good
         DayResult.MIN -> "Min day · +$xp xp" to c.good
         DayResult.FREEZE -> "Freeze · 0 xp" to c.text2
@@ -355,7 +359,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
         DayResult.FUTURE -> (if (skipped) "Planned skip" else "Upcoming") to (if (skipped) c.freeze else c.text2)
         else -> "Upcoming" to c.text2
     }
-    val detail = when (r) {
+    val detail = if (cpAhead) when (val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, date).toInt()) { 0 -> "Today."; 1 -> "Tomorrow."; else -> "In $days days." } + cpNote else when (r) {
         DayResult.FREEZE -> "Missed. A freeze covered it, chain kept."
         DayResult.SKIP -> "A day off you planned. Chain kept, no freeze spent."
         DayResult.MISSED -> "Nothing logged. Grey hold, that is all."

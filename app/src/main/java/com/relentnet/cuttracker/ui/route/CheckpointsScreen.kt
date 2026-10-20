@@ -186,6 +186,9 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit,
     Fab(Modifier.align(Alignment.BottomEnd)) {
         val last = s.checkpoints.filter { !it.free }.maxOfOrNull { it.localDate } ?: st.today
         val d = last.plusDays(14).let { if (it.isAfter(s.endDate.minusDays(1))) s.endDate.minusDays(1) else it }
+        // The date is a checkpoint's identity, so a day that already has a flag opens that flag instead of stacking a second one.
+        val taken = s.checkpoints.firstOrNull { !it.free && it.localDate == d }
+        if (taken != null) { editing = taken.date; return@Fab }
         val ncp = Checkpoint(d.toString(), ProgramEngine.paceWeight(ProgramEngine.dayNumber(d, s.startDate), s, ProgramEngine.paceAnchor(st.weighIns, s)).let { kotlin.math.round(it * 2) / 2 }, note = "Pace check.")
         vm.saveSettings(s.copy(checkpoints = (s.checkpoints + ncp).sortedBy { it.date }))
         editing = ncp.date
