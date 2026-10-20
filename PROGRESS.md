@@ -150,6 +150,7 @@ Unattended, at the user's request: audit everything and fix what a daily user fe
 - Restore a backup from the first onboarding screen of a fresh install (DONI-466, tested on the emulator end to end, left In Review for the phone).
 - Round 14 (fixes from the review of rounds 12 and 13) and the final whole-night review: no high-severity issues; its one edge (1.2.0 scored history with the current settings, so an upgrade could lower a day) is closed by a one-time step that keeps whatever 1.2.0 showed, at 0 xp, tested on the emulator.
 - A one-time "New in 1.3.0" note on the first open after the update (UI test: once, then never again), the Route and Checkpoints open state kept through a restart, the untick decision moved inside the write lock.
+- Back up every week to a folder picked with the system picker (no network), tested through the real picker with the clock moved eight days; the privacy policy says where the copy goes.
 - Light-mode pass of eight screens (one legend fix), and a day-one walk as a new user (no issues found).
 
 Tests added: `HistoryTest` (ledger-scored history, workouts), `InputParsingTest` (numbers and search), BackupTest covers the new settings fields.
