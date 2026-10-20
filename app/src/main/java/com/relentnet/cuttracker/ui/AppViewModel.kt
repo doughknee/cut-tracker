@@ -85,9 +85,17 @@ class AppViewModel(val repo: Repo) : ViewModel() {
 
     fun dismissToast() { toastJob?.cancel(); toast = null; queuedToasts.removeFirstOrNull()?.let(::show) }
 
-    fun showToast(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
+    /**
+     * [replace] is for a message that updates itself (a countdown): it takes the screen at once and drops anything
+     * waiting. A message already showing or already waiting is not queued twice.
+     */
+    fun showToast(text: String, action: String? = null, replace: Boolean = false, onAction: (() -> Unit)? = null) {
         val msg = ToastMsg(text, action, onAction)
-        if (action == null && toast != null) queuedToasts.addLast(msg) else show(msg)
+        when {
+            replace -> { queuedToasts.clear(); show(msg) }
+            action == null && toast != null -> if (toast?.text != text && queuedToasts.none { it.text == text }) queuedToasts.addLast(msg)
+            else -> show(msg)
+        }
     }
 
     private fun show(msg: ToastMsg) {

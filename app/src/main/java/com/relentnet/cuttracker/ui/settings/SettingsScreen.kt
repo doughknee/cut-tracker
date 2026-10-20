@@ -326,11 +326,11 @@ fun SettingsSectionScreen(vm: AppViewModel, section: String, onBack: () -> Unit,
                 // Seven taps on the version unlock developer options, the way Android's build number does.
                 var taps by remember { mutableIntStateOf(0) }
                 fun tapVersion() {
-                    if (s.devOptions) { vm.showToast("Developer options are already on, in Settings."); return }
+                    if (s.devOptions) { vm.showToast("Developer options are already on, in Settings.", replace = true); return }
                     taps++
                     when {
-                        taps >= 7 -> { haptics.tap(); vm.updateSettings { s -> s.copy(devOptions = true) }; vm.showToast("Developer options are on, in Settings.") }
-                        taps >= 3 -> vm.showToast("${7 - taps} more ${if (7 - taps == 1) "tap" else "taps"} to developer options.")
+                        taps >= 7 -> { haptics.tap(); vm.updateSettings { s -> s.copy(devOptions = true) }; vm.showToast("Developer options are on, in Settings.", replace = true) }
+                        taps >= 3 -> vm.showToast("${7 - taps} more ${if (7 - taps == 1) "tap" else "taps"} to developer options.", replace = true)
                     }
                 }
                 KindCard("Sendline", version) {

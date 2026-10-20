@@ -269,15 +269,13 @@ private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Loca
 @Composable
 private fun Legend() {
     val c = CutTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
             Key("Off") { Hold(HoldShape.JUG, c.mutedBorder, 13.dp) }
             Key(CutTheme.vocab.train) { Hold(HoldShape.CRIMP, c.mutedBorder, 13.dp) }
             Key("Rest") { Hold(HoldShape.SLOPER, c.mutedBorder, 13.dp) }
             Key("Not picked") { Hold(HoldShape.PINCH, c.mutedBorder, 13.dp) }
             Key("Checkpoint") { Icon(CutIcons.Flag, null, Modifier.size(11.dp), tint = c.mutedBorder) }
-        }
-        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
             Key(CutTheme.vocab.send) { Swatch(c.good) }
             Key("Min") { Swatch(c.goodDim) }
             Key("Freeze or skip") { Swatch(c.freeze) }
