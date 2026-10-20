@@ -21,8 +21,8 @@ android {
         minSdk = 26
         targetSdk = 36
         // Bump both for every Play upload; versionCode only ever goes up.
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     signingConfigs {
