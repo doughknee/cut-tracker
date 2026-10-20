@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -121,7 +122,6 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
                     Stat("${st.chain.count}", "Chain", c.text, icon = true)
                 }
             }
-            WorkoutsRow(st)
             HoldCalendar(st, current, onDay = { pop = it; haptics.tick() }, onCheckpoints = onCheckpoints)
             NextCheckpoint(st, current, onCheckpoints)
             Legend()
@@ -129,7 +129,7 @@ fun RouteScreen(vm: AppViewModel, onCheckpoints: () -> Unit, onEditDay: (LocalDa
         }
         pop?.let { date ->
             HoldPopover(
-                st, date, onClose = { pop = null }, onEdit = { pop = null; onEditDay(date) },
+                st, date, onClose = { pop = null }, onEdit = { pop = null; onEditDay(date) }, onCheckpoints = { pop = null; onCheckpoints() },
                 onToggleSkip = {
                     val cps = st.settings.checkpoints
                     val existing = cps.firstOrNull { it.free && it.covers(date) }
@@ -178,6 +178,7 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                 val mid = mon.plusDays(3)
                 val label = if (mid.monthValue != lastMonth) mid.format(monthFmt).uppercase() else ""
                 lastMonth = mid.monthValue
+                val week = ProgramEngine.rowWeek(mon, s.startDate, s.lengthWeeks)
                 val reached = !mon.isAfter(st.today)
                 val thisWeek = !mon.isAfter(st.today) && !mon.plusDays(6).isBefore(st.today)
                 // Rows cascade in on first open, 22ms apart; the current week is where the page lands.
@@ -205,7 +206,11 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                             Modifier.weight(1f).height(34.dp).then(if (tap != null) Modifier.clickable(onClick = tap, role = Role.Button) else Modifier),
                             contentAlignment = Alignment.Center,
                         ) {
+                            val flag = cp != null && !cp.free
+                            val hit = flag && checkpointState(st, cp!!.localDate, cp.target).first == CpState.HIT
+                            val flagColor = when { hit -> c.good; cp?.localDate == current -> c.accent; else -> c.mutedBorder }
                             Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                                if (flag && (r == null || r == DayResult.FUTURE)) Box(Modifier.size(30.dp).border(2.dp, flagColor, CircleShape))
                                 when (r) {
                                     null -> Text("${day.dayOfMonth}", color = c.dim.copy(alpha = 0.5f), style = cutStyle(11, 600, 1f, tabular = true))
                                     DayResult.FUTURE -> if (cp?.free == true) Hold(HoldShape.PINCH, Color.Transparent, 30.dp, stroke = c.freeze, strokeWidth = 2.dp) {
@@ -217,18 +222,11 @@ private fun HoldCalendar(st: AppState, current: LocalDate?, onDay: (LocalDate) -
                                         stroke = if (day == st.today) c.accent else null, strokeWidth = if (day == st.today) 2.4.dp else 0.dp,
                                     ) { Text("${day.dayOfMonth}", color = holdNumberColor(r, c), style = cutStyle(11, 900, 1f, tabular = true)) }
                                 }
-                                if (cp != null && !cp.free) Icon(
-                                    CutIcons.Flag, null, Modifier.align(Alignment.TopEnd).offset(5.dp, (-3).dp).size(11.dp),
-                                    tint = when {
-                                        cp.localDate == current -> c.accent
-                                        cp.free -> c.freeze
-                                        else -> c.mutedBorder
-                                    },
-                                )
+                                if (flag) Icon(CutIcons.Flag, null, Modifier.align(Alignment.TopEnd).offset(4.dp, (-4).dp).size(12.dp), tint = flagColor)
                             }
                         }
                     }
-                    Text("${w + 1}", Modifier.width(22.dp), color = if (reached) c.text2 else c.dim, style = cutStyle(9, 700, 1f, tabular = true), textAlign = TextAlign.End)
+                    Text(week?.toString() ?: "", Modifier.width(22.dp), color = if (reached) c.text2 else c.dim, style = cutStyle(9, 700, 1f, tabular = true), textAlign = TextAlign.End)
                 }
             }
         }
@@ -245,6 +243,7 @@ private fun NextCheckpoint(st: AppState, current: LocalDate?, onCheckpoints: () 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Icon(CutIcons.Flag, null, Modifier.size(16.dp), tint = c.accent)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                TileLabel("Next checkpoint")
                 Text(cp.localDate.format(cpFmt) + (cp.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "") + " · $whenText", color = c.text, style = cutStyle(12, 800, 1f, tabular = true))
                 if (cp.note.isNotBlank()) Sub(cp.note, size = 11)
             }
@@ -289,24 +288,6 @@ private fun Swatch(fill: Color, ring: Color? = null) {
     Box(Modifier.size(11.dp).clip(shape).background(fill).then(if (ring != null) Modifier.border(2.dp, ring, shape) else Modifier))
 }
 
-@Composable
-private fun WorkoutsRow(st: AppState) {
-    val c = CutTheme.colors
-    val target = st.settings.workoutsPerWeek
-    val w = st.workoutsThisWeek
-    Card(Modifier.fillMaxWidth(), padding = PaddingValues(14.dp, 12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                TileLabel("Workouts this week")
-                Text("$w of $target", color = if (w >= target) c.good else c.text, style = cutStyle(18, 800, 1f, tabular = true))
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (i in 0 until target.coerceAtLeast(1)) Box(Modifier.width(28.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (i < w) c.good else c.hairline))
-            }
-        }
-    }
-}
-
 private fun badgeColor(id: String, c: com.relentnet.cuttracker.ui.theme.CutColors): Color = if (id.startsWith("chain_")) c.good else c.accent
 
 private fun badgeIcon(id: String): ImageVector = if (id.startsWith("chain_")) CutIcons.Link else CutIcons.Star
@@ -344,16 +325,31 @@ fun Modifier.dashedBorder(color: Color, radius: Float = 10f) = drawBehind {
 
 /** Bottom popover naming the day, its result with XP, and one line of detail. */
 @Composable
-private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEdit: () -> Unit, onToggleSkip: () -> Unit) {
+private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEdit: () -> Unit, onCheckpoints: () -> Unit, onToggleSkip: () -> Unit) {
     val c = CutTheme.colors
     val r = st.results[date] ?: DayResult.FUTURE
+    val cp = st.settings.checkpoints.firstOrNull { !it.free && it.localDate == date }
+    // A checkpoint ahead is the whole story of that day; a checkpoint behind is a second line under the day's result.
+    val cpAhead = cp != null && r == DayResult.FUTURE
+    val cpNote = cp?.note?.takeIf { it.isNotBlank() }?.let { " $it" } ?: ""
+    val cpColor = cp?.let { if (it.localDate == currentCheckpointDate(st)) c.accent else c.text2 } ?: c.text2
+    val cpLine = cp?.takeIf { !cpAhead }?.let {
+        val (state, avg) = checkpointState(st, it.localDate, it.target)
+        val target = it.target?.let { t -> "${ProgramEngine.fmt1(t)} lb target" } ?: "no target"
+        val how = when (state) {
+            CpState.HIT -> "hit at ${ProgramEngine.fmt1(avg!!)}"
+            CpState.PASSED -> if (avg != null) "was ${ProgramEngine.fmt1(avg)}" else "passed"
+            else -> "today"
+        }
+        "Checkpoint, $target, $how.$cpNote" to (if (state == CpState.HIT) c.good else cpColor)
+    }
     val log = st.logs.firstOrNull { it.date == date }
     val xp = st.xpEvents.filter { it.date == date }.sumOf { it.amount }
     val items = ProgramEngine.script(log?.mode, st.settings, log?.picks ?: emptyMap())
     val done = log?.doneItemIds?.count { id -> items.any { it.id == id } } ?: 0
     val weight = st.weighIns.firstOrNull { it.date == date }?.lb
     val skipped = st.settings.checkpoints.any { it.free && it.covers(date) }
-    val (title, color) = when (r) {
+    val (title, color) = if (cpAhead) ("Checkpoint" + (cp!!.target?.let { " · ${ProgramEngine.fmt1(it)} lb" } ?: "")) to cpColor else when (r) {
         DayResult.SEND -> "Send · +$xp xp" to c.good
         DayResult.MIN -> "Min day · +$xp xp" to c.good
         DayResult.FREEZE -> "Freeze · 0 xp" to c.text2
@@ -363,7 +359,7 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
         DayResult.FUTURE -> (if (skipped) "Planned skip" else "Upcoming") to (if (skipped) c.freeze else c.text2)
         else -> "Upcoming" to c.text2
     }
-    val detail = when (r) {
+    val detail = if (cpAhead) when (val days = java.time.temporal.ChronoUnit.DAYS.between(st.today, date).toInt()) { 0 -> "Today."; 1 -> "Tomorrow."; else -> "In $days days." } + cpNote else when (r) {
         DayResult.FREEZE -> "Missed. A freeze covered it, chain kept."
         DayResult.SKIP -> "A day off you planned. Chain kept, no freeze spent."
         DayResult.MISSED -> "Nothing logged. Grey hold, that is all."
@@ -402,10 +398,12 @@ private fun HoldPopover(st: AppState, date: LocalDate, onClose: () -> Unit, onEd
                     Text(title, color = color, style = cutStyle(12, 800, 1f, tabular = true))
                 }
                 Sub(detail, size = 12)
+                if (cpLine != null) Sub(cpLine.first, size = 12, color = cpLine.second)
                 val editable = !date.isAfter(st.today) && !date.isBefore(st.settings.startDate)
-                val plannable = date.isAfter(st.today) && date.isBefore(st.settings.endDate)
+                val plannable = cp == null && date.isAfter(st.today) && date.isBefore(st.settings.endDate)
                 Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (editable) BigButton(if (date == st.today) "Open today" else "Edit day", onClick = onEdit, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12)
+                    if (cp != null) BigButton("Checkpoints", onClick = onCheckpoints, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12, secondary = editable)
                     if (plannable || (skipped && !editable)) BigButton(if (skipped) "Unskip" else "Plan a skip", onClick = onToggleSkip, modifier = Modifier.weight(1f), height = 40.dp, fontSize = 12)
                     BigButton("Close", onClick = onClose, modifier = Modifier.weight(1f), secondary = true, height = 40.dp, fontSize = 12)
                 }

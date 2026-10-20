@@ -215,3 +215,20 @@ class ProgramEngineTest {
         assertTrue(ProgramEngine.photoDue(listOf(start), d(15), start))
     }
 }
+
+class RowWeekTest {
+    @Test fun thursdayStartLabelsTwelveRowsNotThirteen() {
+        val start = LocalDate.of(2026, 10, 15)
+        val mondays = (0 until 13).map { LocalDate.of(2026, 10, 12).plusWeeks(it.toLong()) }
+        val labels = mondays.map { ProgramEngine.rowWeek(it, start, 12) }
+        assertEquals((1..12).toList() + listOf(null), labels)
+    }
+
+    @Test fun mondayStartLabelsEveryRowByItsOwnWeek() {
+        val start = LocalDate.of(2026, 10, 12)
+        assertEquals(1, ProgramEngine.rowWeek(start, start, 12))
+        assertEquals(12, ProgramEngine.rowWeek(start.plusWeeks(11), start, 12))
+        assertNull(ProgramEngine.rowWeek(start.plusWeeks(12), start, 12))
+        assertNull(ProgramEngine.rowWeek(start.minusWeeks(1), start, 12))
+    }
+}

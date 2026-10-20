@@ -145,7 +145,7 @@ fun App(vm: AppViewModel) {
                         OnboardingScreen(vm, onDone = { nav.navigate(Routes.TODAY) { popUpTo(Routes.ONBOARDING) { inclusive = true } } })
                     }
                     composable(Routes.TODAY) {
-                        TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) })
+                        TodayScreen(vm, onSettings = { nav.navigate(Routes.SETTINGS) }, onWeight = { nav.navigate(Routes.WEIGHT) }, onRoute = { nav.goTab(Routes.ROUTE) })
                     }
                     composable(Routes.WEIGHT) { WeightScreen(vm, onBack = { nav.popBackStack() }) }
                     composable(Routes.BETA) {
@@ -167,7 +167,7 @@ fun App(vm: AppViewModel) {
                         SettingsSectionScreen(vm, section = (entry.arguments?.getString("section") ?: "data") + (if (focus != null) "/$focus" else ""), onBack = { nav.popBackStack() })
                     }
                     composable(Routes.ROUTE) { RouteScreen(vm, onCheckpoints = { nav.navigate(Routes.CHECKPOINTS) }, onEditDay = { vm.viewDate = it; nav.goTab(Routes.TODAY) }) }
-                    composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }) }
+                    composable(Routes.CHECKPOINTS) { CheckpointsScreen(vm, onBack = { nav.popBackStack() }, onShoot = { nav.navigate(Routes.CAMERA) }, onRoute = { nav.goTab(Routes.ROUTE) }) }
                     composable(Routes.CAMERA) { CameraScreen(vm, onDone = { nav.popBackStack() }) }
                     composable(Routes.SETTINGS) {
                         SettingsScreen(vm, onBack = { nav.popBackStack() }, onSection = { nav.navigate(Routes.settingsSection(it)) })

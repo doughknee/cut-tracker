@@ -9,9 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -76,7 +74,7 @@ private val cpFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Loca
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit) {
+fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit, onRoute: () -> Unit) {
     val c = CutTheme.colors
     val st by vm.state.collectAsStateWithLifecycle()
     val s = st.settings
@@ -155,7 +153,6 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
                 }
             }
         }
-        Rail(st)
         val cps = s.checkpoints.sortedBy { it.date }
         KindCard("Flags", "${cps.count { !it.free }}") {
             for (cp in cps) {
@@ -177,11 +174,21 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
                 )
             }
         }
-        Sub("Tap one to change the date, the weight or the note. Days off are planned from the calendar on Route.", size = 12)
+        Sub("Tap one to change the date, the weight or the note.", size = 12)
+        Row(
+            Modifier.clip(RoundedCornerShape(6.dp)).pressable(haptic = false, onClick = onRoute).padding(vertical = 4.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Sub("Days off are planned from the calendar on Route.", size = 12)
+            Text("ROUTE ›", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
+        }
     }
     Fab(Modifier.align(Alignment.BottomEnd)) {
         val last = s.checkpoints.filter { !it.free }.maxOfOrNull { it.localDate } ?: st.today
         val d = last.plusDays(14).let { if (it.isAfter(s.endDate.minusDays(1))) s.endDate.minusDays(1) else it }
+        // The date is a checkpoint's identity, so a day that already has a flag opens that flag instead of stacking a second one.
+        val taken = s.checkpoints.firstOrNull { !it.free && it.localDate == d }
+        if (taken != null) { editing = taken.date; return@Fab }
         val ncp = Checkpoint(d.toString(), ProgramEngine.paceWeight(ProgramEngine.dayNumber(d, s.startDate), s, ProgramEngine.paceAnchor(st.weighIns, s)).let { kotlin.math.round(it * 2) / 2 }, note = "Pace check.")
         vm.saveSettings(s.copy(checkpoints = (s.checkpoints + ncp).sortedBy { it.date }))
         editing = ncp.date
@@ -197,40 +204,6 @@ fun CheckpointsScreen(vm: AppViewModel, onBack: () -> Unit, onShoot: () -> Unit)
         )
     }
 }
-
-/** Twelve weeks of route with the flags on it and a green mark for today. */
-@Composable
-private fun Rail(st: com.relentnet.cuttracker.data.AppState) {
-    val c = CutTheme.colors
-    val s = st.settings
-    val total = s.totalDays.coerceAtLeast(1)
-    fun frac(d: LocalDate) = (ChronoUnit.DAYS.between(s.startDate, d).toFloat() / total).coerceIn(0f, 1f)
-    Card(Modifier.fillMaxWidth(), radius = 14.dp, padding = PaddingValues(14.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("WEEK 1", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
-            Text("${s.startDate.format(cpFmt)} to ${s.endDate.format(cpFmt)}".uppercase(), color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
-            Text("WEEK ${s.lengthWeeks}", color = c.text2, style = cutStyle(10, 800, 1f, 0.08f))
-        }
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 12.dp, start = 8.dp, end = 8.dp).height(52.dp)) {
-            val w = maxWidth
-            Box(Modifier.fillMaxWidth().padding(top = 20.dp).height(2.dp).background(c.mutedBorder))
-            for (wk in 1 until s.lengthWeeks) Box(Modifier.offset(x = w * wk / s.lengthWeeks - 0.5.dp, y = 17.dp).size(1.dp, 8.dp).background(c.mutedBorder))
-            Box(Modifier.offset(x = w * frac(st.today) - 1.5.dp, y = 5.dp).size(3.dp, 32.dp).clip(RoundedCornerShape(2.dp)).background(c.good))
-            val current = currentCheckpointDate(st)
-            for (cp in s.checkpoints.filter { !it.free }) {
-                val cur = cp.localDate == current
-                val (state, _) = checkpointState(st, cp.localDate, cp.target)
-                Column(Modifier.offset(x = w * frac(cp.localDate) - 14.dp, y = 13.dp).width(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Box(Modifier.size(16.dp).clip(RoundedCornerShape(8.dp)).background(when { state == CpState.HIT -> c.good; cur -> c.accent; else -> c.surface }).border(2.dp, when { state == CpState.HIT -> c.good; cur -> c.accent; else -> c.text2 }, RoundedCornerShape(8.dp)))
-                    Text(cp.target?.let { ProgramEngine.fmt1(it) } ?: "", color = if (cur) c.text else c.text2, style = cutStyle(9, 700, 1f, tabular = true), maxLines = 1, softWrap = false)
-                }
-            }
-        }
-        Text("Six flags on the pace line. The orange one is next, the green mark is today.".replace("Six", wordCount(s.checkpoints.count { !it.free })), color = c.text2, style = cutStyle(11, 500, 1.3f), modifier = Modifier.padding(top = 8.dp))
-    }
-}
-
-private fun wordCount(n: Int) = listOf("No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten").getOrNull(n) ?: n.toString()
 
 /** Date, target, note. A skip only offers Unskip. */
 @Composable

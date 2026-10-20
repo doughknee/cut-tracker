@@ -47,7 +47,7 @@ fun WallInfoSheet(onDismiss: () -> Unit) {
             Grid(
                 listOf(
                     { ColorKey(c.good, "Send, whole script") }, { ColorKey(c.goodDim, "Min day, chain safe") },
-                    { ColorKey(c.freeze, "Freeze") }, { ColorKey(c.miss, "Missed") },
+                    { ColorKey(c.freeze, "Freeze or skip") }, { ColorKey(c.miss, "Missed") },
                     { ColorKey(Color.Transparent, "Today, still open", ring = c.accent) },
                 ),
             )
