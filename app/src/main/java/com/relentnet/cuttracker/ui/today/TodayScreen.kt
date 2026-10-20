@@ -250,7 +250,7 @@ fun TodayScreen(vm: AppViewModel, onSettings: () -> Unit, onWeight: () -> Unit, 
                     },
                     onSwipeCheck = { haptics.tap(); vm.toggleItem(it.id, date = editDate) },
                     // Rows that open something (a meal picker, the lifts) still tick in one tap on the box, like the widget.
-                    onCheck = if (it.pick || (it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past)) ({ haptics.tap(); vm.toggleItem(it.id, date = editDate) }) else null,
+                    onCheck = if (it.pick || (it.workout && it.id != ProgramSpec.ITEM_CLIMB && !past)) ({ haptics.tap(); closeInline(); vm.toggleItem(it.id, date = editDate) }) else null,
                 )
                 Unfold(it.id == ProgramSpec.ITEM_WEIGH && weighOpen) {
                     WeighInline(

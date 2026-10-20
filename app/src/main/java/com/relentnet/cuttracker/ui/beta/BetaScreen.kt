@@ -140,7 +140,13 @@ private fun EditorTile(modifier: Modifier, icon: ImageVector, title: String, row
 private fun DayTile(modifier: Modifier, mode: DayMode, st: AppState, onClick: () -> Unit) {
     val c = CutTheme.colors
     val items = ProgramEngine.script(mode, st.settings)
-    val line = when (mode) { DayMode.CLIMB -> "Session + push"; DayMode.OFF -> "Core at home"; DayMode.REST -> "Weigh in + eat" }
+    // The short form of dayWhere: it follows the plan too, so a Rest day with a lift does not say "weigh in + eat".
+    val block = ProgramEngine.exercisesFor(mode, st.settings).isNotEmpty()
+    val line = when (mode) {
+        DayMode.CLIMB -> if (block) "Session + push" else "Session only"
+        DayMode.OFF -> if (block) "Core at home" else "No block"
+        DayMode.REST -> if (block) "Weigh in + block" else "Weigh in + eat"
+    }
     TileFrame(modifier, onClick = onClick) {
         TileTop(shape = holdShape(mode))
         Text(dayTitle(mode), color = c.text, style = cutStyle(16, 800, 1f, display = true), modifier = Modifier.padding(top = 10.dp))
