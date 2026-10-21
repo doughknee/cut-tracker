@@ -4,6 +4,17 @@ What changed in Sendline, from the user's side. Newest first.
 
 ## Unreleased
 
+### A first run that teaches by showing
+
+- The first screen plays a week on the real wall: a Send, a Min day, a frozen miss, a rest day and the open day the rope runs to. Tap any hold to read it.
+- One question a screen, each filled in already: do you climb, this morning's weight, where you want to land and how long, protein and calories, the reminder, then your route on one card. A row of holds climbs as you answer; tap a green one to go back.
+- The goal step says the line back: where it lands, how fast, and whether that pace is gentle, steady, brisk or fast. Past 1% a week it offers the length that fixes it.
+- Protein comes first, with the Min day rule beside it.
+- The phone's notification ask comes at the reminder step, with the reason on screen, and never again after a no.
+- The last card shows everything picked, each line a tap back, plus the look (dark or light, shown at once) and the week's first day.
+- Starting lands on Today under "Climb on." (or "Day one." in plain words), with the first weigh-in already ticked. The wall guide no longer opens by itself over the first Today.
+- Wrong numbers say what to do: a weight in the wrong unit, a goal above the start, protein or calories out of range.
+
 ### The You tab and the tape
 
 - Settings is the You tab, the fourth one along the bottom. No more gear.

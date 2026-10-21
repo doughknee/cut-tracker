@@ -50,6 +50,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.ui.LocalHaptics
@@ -71,7 +73,7 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
 
     LaunchedEffect(t) {
         when (t) {
-            is Takeover.Send -> {
+            is Takeover.Send, is Takeover.Start -> {
                 haptics.pattern(0, 30, 40, 60)
                 if (!calm) {
                     slam.snapTo(1.4f)
@@ -106,21 +108,21 @@ fun TakeoverOverlay(t: Takeover, confettiOn: Boolean, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
         ) {
             val v = CutTheme.vocab
-            val big = if (t is Takeover.Send) v.sent else v.level(t.levelOrZero())
-            Eyebrow(if (t is Takeover.Send) v.sendTag else "Level up", color = c.accent)
+            val big = when (t) { is Takeover.Send -> v.sent; is Takeover.Start -> t.big; else -> v.level(t.levelOrZero()) }
+            Eyebrow(when (t) { is Takeover.Send -> v.sendTag; is Takeover.Start -> t.eyebrow; else -> "Level up" }, color = c.accent)
             Text(
                 big,
                 color = c.accent,
                 // The plain words are longer than Sent and V3; they come down a size so they stay on one line.
                 style = cutStyle(if (big.length > 4) 64 else if (t is Takeover.Send) 96 else 120, 900, 0.9f, -0.05f).copy(fontFamily = ArchivoTakeover),
-                textAlign = TextAlign.Center, modifier = Modifier.scale(slam.value),
+                textAlign = TextAlign.Center, modifier = Modifier.scale(slam.value).semantics { heading() },
             )
-            Eyebrow(if (t is Takeover.Send) "+${ProgramSpec.XP_SEND} xp" else v.newGrade)
+            if (t !is Takeover.Start) Eyebrow(if (t is Takeover.Send) "+${ProgramSpec.XP_SEND} xp" else v.newGrade)
             Text(
-                if (t is Takeover.Send) v.wentGreen else "The chain keeps going.",
+                when (t) { is Takeover.Send -> v.wentGreen; is Takeover.Start -> t.sub; else -> "The chain keeps going." },
                 color = c.text2, style = cutStyle(13, 500, 1.4f), textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 260.dp),
             )
-            BigButton("Nice", onClick = onDismiss, modifier = Modifier.widthIn(max = 220.dp).padding(top = 10.dp).width(220.dp))
+            BigButton((t as? Takeover.Start)?.button ?: "Nice", onClick = onDismiss, modifier = Modifier.widthIn(max = 220.dp).padding(top = 10.dp).width(220.dp))
         }
         if (confettiOn) Confetti(colors = listOf(c.accent, c.good))
     }

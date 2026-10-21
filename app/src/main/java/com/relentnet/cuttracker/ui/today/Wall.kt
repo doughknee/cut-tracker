@@ -103,7 +103,10 @@ fun Wall(
     scroll: ScrollState,
     onPickDay: (LocalDate) -> Unit,
     onWeek: (Int) -> Unit,
-    onInfo: () -> Unit,
+    /** Null drops the wall guide button (onboarding's demo wall, which explains itself). */
+    onInfo: (() -> Unit)?,
+    /** Scales the wall's height on top of the short-screen scale; onboarding draws a lower one. */
+    heightScale: Float = 1f,
 ) {
     val c = CutTheme.colors
     val v = CutTheme.vocab
@@ -115,7 +118,7 @@ fun Wall(
     val canLater = weekStart.plusDays(7) <= st.today
 
     // Short screens get a shorter wall so the date headline still lands above the fold.
-    val ys = (LocalConfiguration.current.screenHeightDp / 860f).coerceIn(0.72f, 1f)
+    val ys = (LocalConfiguration.current.screenHeightDp / 860f).coerceIn(0.72f, 1f) * heightScale
     val decor = com.relentnet.cuttracker.ui.theme.LocalDecor.current
     val p = CutTheme.prefs
     // Bigger holds (Settings, Today) grow every hold and the selected one with it; the anchors stay.
@@ -235,7 +238,7 @@ fun Wall(
             Text("${v.level(st.level).uppercase()} · WEEK ${wall.coerceAtLeast(1)}", color = c.onAccent, style = cutStyle(12, 900, 1f, 0.08f, tabular = true))
             TapeStep(CutIcons.Forward, "Later week", canLater) { onWeek(1) }
         }
-        Box(
+        if (onInfo != null) Box(
             Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 46.dp).size(44.dp).clip(androidx.compose.foundation.shape.CircleShape)
                 .clickable(onClickLabel = "How to read the wall", role = Role.Button, onClick = onInfo),
             contentAlignment = Alignment.Center,

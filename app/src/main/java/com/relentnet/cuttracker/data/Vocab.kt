@@ -44,6 +44,10 @@ data class Vocab(
     val wallInfo: String,
     val topOut: String,
     val toppedOut: String,
+    /** The big words on the first landing after onboarding. */
+    val startCall: String,
+    /** What a slow cut protects, for onboarding's pace line. */
+    val keeps: String,
     /** Look blurbs by palette id, where the climbing one would not read. */
     val looks: Map<String, String> = emptyMap(),
 ) {
@@ -75,6 +79,7 @@ data class Vocab(
             onboardHold = "Every day is a hold. Pick which kind, finish the script, and the hold goes green.",
             wallInfo = "Every hold is one day. The shape is the kind of day you picked, the color is how it went. The rope is your chain. Tap any hold to open that day; late checks still count.",
             topOut = "Last checkpoint. Top out.", toppedOut = "Topped out.",
+            startCall = "Climb on.", keeps = "your pull",
         )
 
         /** [name] is what the user calls their training: Run, Gym, Practice. */
@@ -95,6 +100,7 @@ data class Vocab(
                 onboardHold = "Every day is a shape on the wall. Pick which kind, finish the script, and it goes green.",
                 wallInfo = "Every shape is one day. The shape is the kind of day you picked, the color is how it went. The rope is your chain. Tap any one to open that day; late checks still count.",
                 topOut = "Last checkpoint. Finish line.", toppedOut = "Route complete.",
+                startCall = "Day one.", keeps = "your strength",
                 looks = mapOf(
                     "sandstone" to "Warm white on dark stone. The one the app was drawn in.",
                     "granite" to "Cold grey stone, ice blue accents. For the gym at 6 am.",

@@ -99,8 +99,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.opened()
-        if (Build.VERSION.SDK_INT >= 33 && !asked && vm.state.value.settings.onboarded &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        // Onboarding asks at its reminder step. This catches a phone that was never asked (an update, a restore), only
+        // while a reminder is on, and never after a no: that answer stands until You > Nudges.
+        val s = vm.state.value.settings
+        if (Build.VERSION.SDK_INT >= 33 && !asked && s.onboarded && (s.weighReminder || s.pickReminder) &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
         ) {
             asked = true
             askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)

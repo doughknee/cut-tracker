@@ -32,6 +32,8 @@ import java.time.LocalTime
 sealed interface Takeover {
     data object Send : Takeover
     data class LevelUp(val level: Int) : Takeover
+    /** The first landing on Today after onboarding: the start call over the day count. */
+    data class Start(val eyebrow: String, val big: String, val sub: String, val button: String) : Takeover
 }
 
 class AppViewModel(val repo: Repo) : ViewModel() {
@@ -86,6 +88,8 @@ class AppViewModel(val repo: Repo) : ViewModel() {
             while (true) { nowTime.value = LocalTime.now(); delay(15_000) }
         }
     }
+
+    fun land(t: Takeover.Start) { takeover = t }
 
     fun dismissTakeover() {
         takeover = null
