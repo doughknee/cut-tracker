@@ -89,7 +89,10 @@ class AppViewModel(val repo: Repo) : ViewModel() {
         }
     }
 
-    fun land(t: Takeover.Start) { takeover = t }
+    /** True from the start call until Today has rippled its first hold. */
+    var landed by mutableStateOf(false)
+
+    fun land(t: Takeover.Start, ripple: Boolean = true) { takeover = t; landed = ripple }
 
     fun dismissTakeover() {
         takeover = null

@@ -197,7 +197,14 @@ fun App(vm: AppViewModel) {
         }
         Splash(true)
         vm.toast?.let { t -> ToastPill(t.text, Modifier.align(Alignment.BottomCenter).padding(bottom = 92.dp).windowInsetsPadding(WindowInsets.navigationBars), t.action, onAction = { t.onAction?.invoke(); vm.dismissToast() }) }
-        vm.takeover?.let { TakeoverOverlay(it, confettiOn = !calm, onDismiss = { vm.dismissTakeover() }) }
+        // A takeover rises in on its own; leaving, it sinks and fades back to the page instead of cutting out.
+        val takeover = vm.takeover
+        var lastTakeover by remember { mutableStateOf(takeover) }
+        if (takeover != null) lastTakeover = takeover
+        androidx.compose.animation.AnimatedVisibility(
+            takeover != null, enter = EnterTransition.None,
+            exit = if (calm) fadeOut(tween(120)) else fadeOut(tween(260)) + slideOutVertically(tween(320)) { it / 10 },
+        ) { lastTakeover?.let { TakeoverOverlay(it, confettiOn = !calm, onDismiss = { vm.dismissTakeover() }) } }
     }
 }
 

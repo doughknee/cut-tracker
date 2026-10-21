@@ -69,6 +69,9 @@ class OnboardingTest {
             assertEquals(181.8, s.startWeight, 0.001)
             assertEquals(171.0, s.targetWeight, 0.001)
             assertEquals(155, s.protein)
+            // The meals step put its starters in the library and kept every slot on for this target.
+            assertTrue(s.library.size > com.relentnet.cuttracker.data.ProgramSpec.library.size)
+            assertEquals(4, s.plans.getValue(com.relentnet.cuttracker.data.DayMode.OFF).slots.size)
             compose.waitUntil(5_000) { runBlocking { app.repo.db.weighIns().all().any { it.date == app.repo.today() } } }
         }
     }

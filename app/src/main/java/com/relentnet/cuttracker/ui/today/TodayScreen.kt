@@ -202,7 +202,10 @@ fun TodayScreen(vm: AppViewModel, onWeight: () -> Unit, onRoute: () -> Unit) {
             onPickDay = { haptics.tick(); view(it) },
             onWeek = { view(date.plusWeeks(it.toLong())) },
             onInfo = { infoOpen = true },
+            // The first Today of a new route: once the start call clears, today's hold ripples out twice.
+            pulse = vm.landed && vm.takeover == null && date == st.today,
         )
+        LaunchedEffect(vm.landed, vm.takeover) { if (vm.landed && vm.takeover == null) { kotlinx.coroutines.delay(2000); vm.landed = false } }
         Column(
             Modifier
                 .fillMaxWidth()

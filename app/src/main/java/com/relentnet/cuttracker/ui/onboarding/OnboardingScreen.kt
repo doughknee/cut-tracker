@@ -13,6 +13,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -60,12 +61,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -74,6 +77,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -86,6 +90,10 @@ import com.relentnet.cuttracker.data.DayMode
 import com.relentnet.cuttracker.data.Dates
 import com.relentnet.cuttracker.data.ProgramSpec
 import com.relentnet.cuttracker.data.Settings
+import com.relentnet.cuttracker.data.Starters
+import com.relentnet.cuttracker.ui.components.Chip
+import com.relentnet.cuttracker.ui.components.count
+import androidx.compose.foundation.horizontalScroll
 import com.relentnet.cuttracker.data.Units
 import com.relentnet.cuttracker.data.Vocab
 import com.relentnet.cuttracker.data.restoreFrom
@@ -124,7 +132,7 @@ import java.util.Locale
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
-private enum class Step { HELLO, WORDS, START, GOAL, PROTEIN, NUDGE, READY }
+private enum class Step { HELLO, WORDS, START, GOAL, PROTEIN, MEALS, LIFTS, NUDGE, READY }
 
 /**
  * The first run, one question a screen, every answer filled with a default so Next is one tap. The steps climb a row
@@ -141,7 +149,8 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
     val keyboard = LocalSoftwareKeyboardController.current
     // Starting the next route keeps every log, badge and XP; only the program changes.
     val again = !preview && (st.logs.isNotEmpty() || st.weighIns.isNotEmpty())
-    val steps = remember(again) { if (again) Step.entries - Step.WORDS else Step.entries.toList() }
+    // A next route keeps its words and its plan; only the numbers are asked again.
+    val steps = remember(again) { if (again) Step.entries - setOf(Step.WORDS, Step.MEALS, Step.LIFTS) else Step.entries.toList() }
     var at by rememberSaveable { mutableIntStateOf(0) }
     val step = steps[at.coerceIn(steps.indices)]
     var forward by remember { mutableStateOf(true) }
@@ -165,6 +174,12 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
     var theme by rememberSaveable { mutableStateOf(s.theme) }
     var sunday by rememberSaveable { mutableStateOf(s.prefs.weekStartsSunday) }
     var denied by rememberSaveable { mutableStateOf(false) }
+    // The plan: which slots are eaten, the starter each logs by default ("b=lib_b;l=..."), vegetarian, where the lifts happen.
+    var mealsOn by rememberSaveable { mutableStateOf(s.meals.joinToString(",") { it.id }) }
+    var pickText by rememberSaveable { mutableStateOf("") }
+    var veg by rememberSaveable { mutableStateOf(false) }
+    var mealsSeen by rememberSaveable { mutableStateOf(false) }
+    var gear by rememberSaveable { mutableStateOf(Starters.gear[0].id) }
     // The one problem on screen: which field, and what to do about it.
     var err by remember { mutableStateOf<Pair<String, String>?>(null) }
     var starting by rememberSaveable { mutableStateOf(false) }
@@ -175,6 +190,11 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
     val startDate = runCatching { LocalDate.parse(start) }.getOrDefault(LocalDate.now())
     val today = ProgramEngine.programDay(LocalDateTime.now(), s.resetHour)
     val reminderTime = runCatching { LocalTime.parse(time) }.getOrDefault(s.weighInTime)
+    val on = mealsOn.split(',').filter { it.isNotBlank() }
+    val picks = pickText.split(';').mapNotNull { e -> e.split('=').takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap().filterKeys { it in on }
+    fun refit() { pickText = Starters.fit(on, veg, pro.int() ?: s.protein, cal.int() ?: s.caloriesP1).entries.joinToString(";") { "${it.key}=${it.value}" } }
+    val dayProtein = picks.values.sumOf { Starters.meal(it)?.protein ?: 0 }
+    val dayCalories = picks.values.sumOf { Starters.meal(it)?.calories ?: 0 }
     val needsAsk = Build.VERSION.SDK_INT >= 33 &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
 
@@ -209,12 +229,20 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
             lb(tw.num())?.let { pro = Onboard.proteinFor(it).toString() }
             lb(a)?.let { cal = Onboard.caloriesFor(it).toString() }
         }
+        // The starter day is fitted to the targets as the meals step opens, until it has been seen.
+        if ((to == Step.MEALS || to == Step.READY) && !mealsSeen && !again) {
+            val p = pro.int() ?: s.protein; val c = cal.int() ?: s.caloriesP1
+            val slots = Starters.startingSlots(s.meals.map { it.id }, veg, p, c)
+            mealsOn = slots.joinToString(",")
+            pickText = Starters.fit(slots, veg, p, c).entries.joinToString(";") { "${it.key}=${it.value}" }
+        }
     }
 
     fun go(to: Int) {
         val target = steps[to.coerceIn(steps.indices)]
         if (step == Step.GOAL && to > at) twSeen = true
         if (step == Step.PROTEIN && to > at) targetsSeen = true
+        if (step == Step.MEALS && to > at) mealsSeen = true
         prefill(target)
         forward = to > at; err = null; at = to.coerceIn(steps.indices)
         if (target != Step.START) keyboard?.hide()
@@ -236,7 +264,7 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
         val future = startDate.isAfter(today)
         val dayN = ChronoUnit.DAYS.between(startDate, today) + 1
         if (preview) {
-            vm.land(Takeover.Start("Preview · nothing saved", v.startCall, "This is where a new route lands on Today. Nothing you typed was kept.", "Back"))
+            vm.land(Takeover.Start("Preview · nothing saved", v.startCall, "This is where a new route lands on Today. Nothing you typed was kept.", "Back"), ripple = false)
             onDone(); return
         }
         if (starting) return   // a second tap while the first save runs does nothing
@@ -270,7 +298,7 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
             theme = if (again) s.theme else theme,
             prefs = if (again) s.prefs else s.prefs.copy(weekStartsSunday = sunday),
             seenVersion = if (again) s.seenVersion else version ?: s.seenVersion,
-        ) }
+        ).let { n -> if (again) n else Starters.apply(n, on, picks, veg, gear) } }
     }
 
     fun next() {
@@ -314,7 +342,7 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
     // The look picked on the last step shows at once; it is only saved when the route starts.
     val palette = remember(s.palette, s.paletteByCalendar, s.customLooks) { Palettes.of(s, LocalDate.now()) }
     CutTheme(ThemeMode.of(theme), palette, LocalTime.now(), highContrast = s.prefs.highContrast) {
-    CompositionLocalProvider(LocalVocab provides v) {
+    CompositionLocalProvider(LocalVocab provides v, LocalForward provides forward) {
     val c = CutTheme.colors
     Column(Modifier.fillMaxSize().background(c.ground).windowInsetsPadding(WindowInsets.navigationBars).imePadding()) {
         if (step != Step.HELLO) Column(
@@ -327,9 +355,10 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
         AnimatedContent(
             step, Modifier.weight(1f), label = "step",
             transitionSpec = {
+                // Forward climbs: the next step comes up from below on a spring while the last lifts away; back lowers.
                 if (calm) fadeIn(tween(120)) togetherWith fadeOut(tween(120))
-                else (slideInHorizontally(tween(260)) { if (forward) it / 4 else -it / 4 } + fadeIn(tween(200))) togetherWith
-                    (slideOutHorizontally(tween(220)) { if (forward) -it / 4 else it / 4 } + fadeOut(tween(160)))
+                else (androidx.compose.animation.slideInVertically(spring(dampingRatio = 0.86f, stiffness = 320f)) { if (forward) it / 6 else -it / 6 } + fadeIn(tween(220, delayMillis = 40))) togetherWith
+                    (androidx.compose.animation.slideOutVertically(tween(200)) { if (forward) -it / 10 else it / 10 } + fadeOut(tween(140)))
             },
         ) { shown ->
             if (shown == Step.HELLO) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -420,6 +449,58 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
                             alert = err != null,
                         )
                     }
+                    Step.MEALS -> {
+                        Big("A day of food.")
+                        val target = pro.int() ?: s.protein
+                        ProteinLine(dayProtein, target, dayCalories, on.size)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Pill("Vegetarian", on = veg, onClick = { veg = !veg; mealsSeen = true; refit() })
+                        }
+                        for (m in s.meals) {
+                            val isOn = m.id in on
+                            Card(Modifier.fillMaxWidth()) {
+                                SwitchRow(m.name, if (isOn) "around ${m.time}" else "skipped", isOn) {
+                                    mealsSeen = true
+                                    mealsOn = s.meals.map { it.id }.filter { if (it == m.id) !isOn else it in on }.joinToString(",")
+                                    refit()
+                                }
+                                if (isOn) {
+                                    val options = Starters.options(m.id, veg)
+                                    val chosen = options.indexOfFirst { it.id == picks[m.id] }
+                                    val row = androidx.compose.foundation.lazy.rememberLazyListState()
+                                    // A pick the fit made off to the right slides into view, so every slot shows what it logs.
+                                    LaunchedEffect(chosen) {
+                                        if (chosen >= 0 && row.layoutInfo.visibleItemsInfo.none { it.index == chosen && it.offset >= 0 && it.offset + it.size <= row.layoutInfo.viewportEndOffset }) {
+                                            if (calm) row.scrollToItem(chosen) else row.animateScrollToItem(chosen)
+                                        }
+                                    }
+                                    androidx.compose.foundation.lazy.LazyRow(
+                                        Modifier.fillMaxWidth().padding(bottom = 14.dp), state = row,
+                                        contentPadding = PaddingValues(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        items(options.size) { k ->
+                                            val o = options[k]
+                                            Chip("${o.name} · ${o.protein} g", on = k == chosen, Modifier.semantics { selected = k == chosen }) {
+                                                mealsSeen = true
+                                                pickText = (picks + (m.id to o.id)).entries.joinToString(";") { "${it.key}=${it.value}" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Hint("Picked to land near your protein; tap another to swap. Numbers are typical portions, rounded. Every one of them, and anything you add, lives on ${v.beta}, under Meals.")
+                    }
+                    Step.LIFTS -> {
+                        Big("Where do you lift?")
+                        Body("The block after a ${v.trainDay.lowercase()}'s session, and the short one on an off day. Rest days never lift.")
+                        for ((g, shape) in Starters.gear.zip(listOf(HoldShape.CRIMP, HoldShape.JUG, HoldShape.SLOPER, HoldShape.PINCH))) {
+                            // Mid-sentence, a name drops its capital unless it is an initialism: "push-ups", "DB floor press".
+                            fun names(ids: List<String>) = ids.mapNotNull { Starters.lift(it)?.name?.let { n -> if (n.length > 1 && n[1].isUpperCase()) n else n.replaceFirstChar(Char::lowercase) } }.joinToString(", ")
+                            Choice(gear == g.id, shape, g.label, if (g.train.isEmpty() && g.off.isEmpty()) "Just the script: weigh in, eat, and the ${v.session.lowercase()}." else "${v.trainDay}: ${names(g.train)}. Off day: ${names(g.off)}.") { gear = g.id }
+                        }
+                        Hint("Sets, reps and weights for each lift live on ${v.beta}, under Lifts.")
+                    }
                     Step.NUDGE -> {
                         Big("One nudge a day.")
                         Card(Modifier.fillMaxWidth()) {
@@ -446,6 +527,10 @@ fun OnboardingScreen(vm: AppViewModel, preview: Boolean = false, onDone: () -> U
                             Recap("Start", "${a?.let { Units.fmt1(it) } ?: "?"} $unitWord, ${if (startDate == today) "today" else Dates.wmd(startDate)}") { toReady = true; go(steps.indexOf(Step.START)) }
                             Recap("Goal", "${b?.let { Units.fmt1(it) } ?: "?"} $unitWord by ${Dates.wmd(end)}, $weeks ${if (weeks == 1) "week" else "weeks"}") { toReady = true; go(steps.indexOf(Step.GOAL)) }
                             Recap("Every day", "${pro.int() ?: "?"} g protein, ${cal.int()?.let { "%,d".format(Locale.US, it) } ?: "?"} calories") { toReady = true; go(steps.indexOf(Step.PROTEIN)) }
+                            if (!again) {
+                                Recap("Meals", "${count(on.size, "meal")} a day, $dayProtein of ${pro.int() ?: "?"} g protein") { toReady = true; go(steps.indexOf(Step.MEALS)) }
+                                Recap("Lifts", Starters.gear.first { it.id == gear }.label.lowercase()) { toReady = true; go(steps.indexOf(Step.LIFTS)) }
+                            }
                             Recap("Nudge", if (!remind) "off" else "weigh-in at ${Clock.text(context, reminderTime)}" + if (denied) ", phone says no" else "", last = again) { toReady = true; go(steps.indexOf(Step.NUDGE)) }
                             if (!again) Recap("Words", if (climbs) "climbing" else "plain, ${v.session}", last = true) { toReady = true; go(steps.indexOf(Step.WORDS)) }
                         }
@@ -588,12 +673,24 @@ private fun Climb(n: Int, at: Int, onJump: (Int) -> Unit) {
         val gap = (maxWidth - hold) / (n - 1)
         fun x(i: Int) = gap * i
         fun y(i: Int) = rise * (1f - i / (n - 1f)) + 6.dp
+        // The rope follows on a spring: a step answered clips that hold green, then the rope (and a chalk dot at its
+        // end, the climber) travels up to the next one. Back lowers it the same way.
+        val rope by androidx.compose.animation.core.animateFloatAsState(
+            at.toFloat(), if (calm) snap() else spring(dampingRatio = 0.82f, stiffness = 170f), label = "climbRope",
+        )
         Canvas(Modifier.fillMaxSize()) {
-            for (i in 1..at) drawLine(
-                c.accent.copy(alpha = 0.95f),
-                Offset((x(i - 1) + hold / 2).toPx(), (y(i - 1) + hold / 2).toPx()), Offset((x(i) + hold / 2).toPx(), (y(i) + hold / 2).toPx()),
-                3.dp.toPx(), StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.dp.toPx(), 7.dp.toPx())),
-            )
+            fun center(i: Int) = Offset((x(i) + hold / 2).toPx(), (y(i) + hold / 2).toPx())
+            for (i in 1 until n) {
+                val t = (rope - (i - 1)).coerceIn(0f, 1f)
+                if (t <= 0f) break
+                drawLine(
+                    c.accent.copy(alpha = 0.95f), center(i - 1), center(i - 1) + (center(i) - center(i - 1)) * t,
+                    3.dp.toPx(), StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.dp.toPx(), 7.dp.toPx())),
+                )
+            }
+            val k = rope.toInt().coerceIn(0, n - 1)
+            val tip = if (k >= n - 1) center(n - 1) else center(k) + (center(k + 1) - center(k)) * (rope - k)
+            drawCircle(c.accent, 4.dp.toPx(), tip)
         }
         for (i in 0 until n) {
             val fill by animateColorAsState(when { i < at -> c.good; i == at -> c.surface; else -> c.hairline }, tween(if (calm) 0 else 300), label = "climbHold")
@@ -624,7 +721,21 @@ private fun DemoWall(s: Settings) {
     val story = listOf(DayMode.CLIMB to DayResult.SEND, DayMode.OFF to DayResult.MIN, null to DayResult.FREEZE, DayMode.REST to DayResult.SEND, null to DayResult.TODAY)
     var beat by rememberSaveable { mutableIntStateOf(if (calm) story.size else 0) }
     var picked by rememberSaveable { mutableStateOf<Int?>(null) }
-    LaunchedEffect(calm) { if (calm) beat = story.size else while (beat < story.size && picked == null) { delay(if (beat == 0) 900 else 1500); beat++ } }
+    val haptics = LocalHaptics.current
+    // Each beat is one move up the wall: the rope reaches out (the newest segment draws in) as the hold lands and
+    // pops, a light tick under the thumb, then a pause to read the line before the next move.
+    val reach = remember { Animatable(1f) }
+    LaunchedEffect(calm) {
+        if (calm) { beat = story.size; return@LaunchedEffect }
+        delay(650)
+        while (beat < story.size && picked == null) {
+            reach.snapTo(0f)
+            beat++
+            haptics.tick()
+            reach.animateTo(1f, tween(460, easing = androidx.compose.animation.core.EaseOutCubic))
+            delay(1250)
+        }
+    }
     val shownBeat = if (picked != null) story.size else beat
     val results = buildMap {
         for (i in 0 until shownBeat.coerceAtMost(4)) put(days[i], story[i].second)
@@ -634,28 +745,73 @@ private fun DemoWall(s: Settings) {
     val logs = (0 until shownBeat.coerceAtMost(4)).mapNotNull { i -> story[i].first?.let { DayLog(days[i], mode = it) } }
     val st = AppState(settings = s.copy(startDate = mon), today = days[4], results = results, logs = logs, loaded = true)
     val focus = picked ?: if (beat in 1..story.size) beat - 1 else null
-    Wall(st, days[focus ?: 4], rememberScrollState(), onPickDay = { d -> days.indexOf(d).takeIf { it in story.indices }?.let { picked = it } }, onWeek = {}, onInfo = null, heightScale = 0.72f)
-    val line = when (focus) {
-        null -> v.onboardHold
-        0 -> "Every item ticked: a ${v.send}. The ${v.hold} goes green."
-        1 -> "Weighed in and hit protein, nothing else: a Min day. Still on the chain."
-        2 -> "Missed. A freeze covers it, two a month, so the chain holds."
-        3 -> "A rest day, script done: another ${v.send}."
-        else -> "Still open. The rope is your chain, and it never resets."
-    }
+    // Before the first move the chalk waits on Monday, where the climb starts; after the story it rests on the open day.
+    Wall(
+        st, days[focus ?: if (shownBeat >= story.size) 4 else 0], rememberScrollState(), onPickDay = { d -> days.indexOf(d).takeIf { it in story.indices }?.let { picked = it; haptics.tick() } },
+        onWeek = {}, onInfo = null, heightScale = 0.72f, ropeDraw = if (picked == null) reach.value else 1f,
+        popOn = setOf(DayResult.SEND, DayResult.MIN, DayResult.FREEZE, DayResult.TODAY),
+    )
     Column(
         Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(start = 20.dp, end = 20.dp, top = 14.dp)
             .semantics(mergeDescendants = true) { if (picked != null) liveRegion = LiveRegionMode.Polite },
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (focus != null) {
-            val (mode, r) = story[focus]
-            val d = days[focus]
-            val parts = listOfNotNull("${d.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.US)} ${d.dayOfMonth}", mode?.let { v.day(it) }, resultName(r, v))
-            Eyebrow(parts.joinToString(" · "), color = if (r == DayResult.TODAY) c.accent else c.text2)
+        // The line climbs in from below with each move and the old one lifts away.
+        AnimatedContent(
+            focus, label = "demoLine",
+            transitionSpec = {
+                if (calm) fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+                else (androidx.compose.animation.slideInVertically(spring(dampingRatio = 0.8f, stiffness = 420f)) { it / 2 } + fadeIn(tween(220))) togetherWith
+                    (androidx.compose.animation.slideOutVertically(tween(180)) { -it / 3 } + fadeOut(tween(140)))
+            },
+        ) { f ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (f != null) {
+                    val (mode, r) = story[f]
+                    val d = days[f]
+                    val parts = listOfNotNull("${d.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.US)} ${d.dayOfMonth}", mode?.let { v.day(it) }, resultName(r, v))
+                    Eyebrow(parts.joinToString(" · "), color = if (r == DayResult.TODAY) c.accent else c.text2)
+                }
+                Text(
+                    when (f) {
+                        null -> v.onboardHold
+                        0 -> "Every item ticked: a ${v.send}. The ${v.hold} goes green."
+                        1 -> "Weighed in and hit protein, nothing else: a Min day. Still on the chain."
+                        2 -> "Missed. A freeze covers it, two a month, so the chain holds."
+                        3 -> "A rest day, script done: another ${v.send}."
+                        else -> "Still open. The rope is your chain, and it never resets."
+                    },
+                    color = c.text, style = cutStyle(14, 600, 1.35f),
+                )
+            }
         }
-        Text(line, color = c.text, style = cutStyle(14, 600, 1.35f))
-        if (shownBeat >= story.size) Text("Tap a hold to read it.", color = c.text2, style = cutStyle(12, 500, 1.3f))
+        androidx.compose.animation.AnimatedVisibility(shownBeat >= story.size, enter = fadeIn(tween(if (calm) 0 else 400, delayMillis = if (calm) 0 else 300))) {
+            Text("Tap a hold to read it.", color = c.text2, style = cutStyle(12, 500, 1.3f))
+        }
+    }
+}
+
+/** The day's protein against the target: a bar that turns green near it, and a line on how close. */
+@Composable
+private fun ProteinLine(protein: Int, target: Int, calories: Int, meals: Int) {
+    val c = CutTheme.colors
+    val off = protein - target
+    val near = kotlin.math.abs(off) <= (target * 0.04).roundToInt().coerceAtLeast(5)
+    val fill by androidx.compose.animation.core.animateFloatAsState((protein.toFloat() / target.coerceAtLeast(1)).coerceIn(0f, 1f), tween(if (CutTheme.calm) 0 else 420), label = "dayProtein")
+    Column(Modifier.semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("$protein of $target g protein · ${"%,d".format(Locale.US, calories)} cal", color = c.text, style = cutStyle(17, 800, 1.1f, tabular = true))
+        Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(c.hairline)) {
+            Box(Modifier.fillMaxWidth(fill).height(6.dp).clip(RoundedCornerShape(3.dp)).background(if (near) c.good else c.accent))
+        }
+        Text(
+            when {
+                meals == 0 -> "No meals on. Protein is still the target; log what you eat as you go."
+                near -> "Right on your target."
+                off > 0 -> "$off g over your target. Skip a meal or swap a lighter one if that's too much."
+                else -> "${-off} g under. A shake or a bigger portion covers it."
+            },
+            color = if (near) c.good else c.text2, style = cutStyle(12, 600, 1.3f),
+        )
     }
 }
 
@@ -665,7 +821,7 @@ private fun Choice(on: Boolean, shape: HoldShape, title: String, sub: String, on
     val c = CutTheme.colors
     val r = RoundedCornerShape(12.dp)
     Row(
-        Modifier.fillMaxWidth().clip(r).background(c.surface).border(2.dp, if (on) c.accent else c.hairline, r)
+        Modifier.rise(110).fillMaxWidth().clip(r).background(c.surface).border(2.dp, if (on) c.accent else c.hairline, r)
             .selectable(selected = on, role = Role.RadioButton, onClick = onClick).padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -695,7 +851,22 @@ private fun Recap(label: String, value: String, last: Boolean = false, onClick: 
 private fun PreviewTag() = Text("PREVIEW · NOTHING IS SAVED", color = CutTheme.colors.accent, style = cutStyle(10, 800, 1f, 0.1f))
 
 @Composable
-private fun Big(text: String) = Text(text, color = CutTheme.colors.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.semantics { heading() })
+private fun Big(text: String) = Text(text, color = CutTheme.colors.text, style = cutStyle(40, 800, 1f, -0.02f, display = true), modifier = Modifier.rise(0).semantics { heading() })
+
+/** Which way the last step change went; the pieces of a step rise into place from that side. */
+private val LocalForward = androidx.compose.runtime.staticCompositionLocalOf { true }
+
+/**
+ * A piece of a step settling into place a beat after the headline: [delayMs] staggers the headline, the words, the
+ * fields and the hints so a step lands top to bottom like weight coming onto a hold. Calm motion shows it at once.
+ */
+private fun Modifier.rise(delayMs: Int): Modifier = composed {
+    if (CutTheme.calm) return@composed this
+    val up = LocalForward.current
+    val a = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { delay(delayMs.toLong()); a.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 260f)) }
+    this.graphicsLayer { alpha = a.value.coerceIn(0f, 1f); translationY = (1f - a.value) * (if (up) 22.dp else (-22).dp).toPx() }
+}
 
 /** The big number field: 64dp, 32sp, the border turns accent when it is the problem. */
 @Composable
@@ -708,17 +879,17 @@ private fun Big(
 }
 
 @Composable
-private fun Body(text: String) = Text(text, color = CutTheme.colors.text2, style = cutStyle(15, 500, 1.45f), modifier = Modifier.widthIn(max = 340.dp))
+private fun Body(text: String) = Text(text, color = CutTheme.colors.text2, style = cutStyle(15, 500, 1.45f), modifier = Modifier.rise(60).widthIn(max = 340.dp))
 
 @Composable
 private fun Hint(text: String, alert: Boolean = false) = Text(
     text, color = if (alert) CutTheme.colors.accent else CutTheme.colors.text2, style = cutStyle(12, 500, 1.35f, tabular = true),
-    modifier = if (alert) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier,
+    modifier = Modifier.rise(180).then(if (alert) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier),
 )
 
 @Composable
 private fun Fld(label: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.rise(110), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label.uppercase(), color = CutTheme.colors.text2, style = cutStyle(11, 700, 1f, 0.12f))
         content()
     }

@@ -14,6 +14,9 @@ What changed in Sendline, from the user's side. Newest first.
 - The last card shows everything picked, each line a tap back, plus the look (dark or light, shown at once) and the week's first day.
 - Starting lands on Today under "Climb on." (or "Day one." in plain words), with the first weigh-in already ticked. The wall guide no longer opens by itself over the first Today.
 - Wrong numbers say what to do: a weight in the wrong unit, a goal above the start, protein or calories out of range.
+- A day of food: setup now asks which meals you eat and offers a few common high-protein ones for each (vegetarian ones too), picked to land near your protein. A small target starts without the snack. The bar says how close the day gets. Your picks, and the rest of the starters, wait in Beta under Meals.
+- Where do you lift: gym with dumbbells at home, home with dumbbells, bodyweight only, or no lifting. Each one picks the block for a training day and an off day. A next route keeps the plan it has.
+- Motion: the first screen climbs its week one move at a time, with the rope reaching each hold as it lands, a light tick, and the chalk gliding along. The steps rise from below like a climb, and the row of holds pulls its rope up with a chalk dot at the end. The start call sinks away when you tap it, and two rings ripple out of today's hold. Calm motion shows all of it at once.
 
 ### The You tab and the tape
 

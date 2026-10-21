@@ -28,6 +28,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -107,6 +108,12 @@ fun Wall(
     onInfo: (() -> Unit)?,
     /** Scales the wall's height on top of the short-screen scale; onboarding draws a lower one. */
     heightScale: Float = 1f,
+    /** How far the rope's newest segment is drawn, 0 to 1; onboarding's demo reaches each hold with it. */
+    ropeDraw: Float = 1f,
+    /** Results that pop when a hold takes them; Today pops a fresh Send, the demo every landing. */
+    popOn: Set<DayResult> = setOf(DayResult.SEND),
+    /** Rings ripple out of the selected hold once: the first landing on a new route. */
+    pulse: Boolean = false,
 ) {
     val c = CutTheme.colors
     val v = CutTheme.vocab
@@ -139,6 +146,13 @@ fun Wall(
         fun ax(i: Int): Dp = ANCHORS[i].first.dp * xs
         fun ay(i: Int): Dp = ANCHORS[i].second.dp * ys + statusTop
         val sel = days.indexOf(selected)
+        // The chalk glides from hold to hold rather than jumping, so the eye follows the climb.
+        val calm = CutTheme.calm
+        val glide = spring<Dp>(dampingRatio = 0.75f, stiffness = Spring.StiffnessLow)
+        val chalkX by animateDpAsState(if (sel >= 0) ax(sel) else 0.dp, if (calm) snap() else glide, label = "chalkX")
+        val chalkY by animateDpAsState(if (sel >= 0) ay(sel) else 0.dp, if (calm) snap() else glide, label = "chalkY")
+        val ripple = remember { Animatable(0f) }
+        LaunchedEffect(pulse) { if (pulse && !calm) { repeat(2) { ripple.snapTo(0f); ripple.animateTo(1f, tween(900, easing = androidx.compose.animation.core.EaseOutCubic)) } ; ripple.snapTo(0f) } }
 
         // Back layer: panel texture and seams, slowest.
         Box(
@@ -173,17 +187,27 @@ fun Wall(
         Box(
             Modifier.fillMaxSize().graphicsLayer { translationY = scroll.value * 0.2f }.drawBehind {
                 if (sel >= 0 && !p.plainWall) {
-                    val cx = (ax(sel) + hold / 2).toPx()
-                    val cy = (ay(sel) + hold / 2).toPx()
+                    val cx = (chalkX + hold / 2).toPx()
+                    val cy = (chalkY + hold / 2).toPx()
                     drawCircle(Brush.radialGradient(listOf(c.text.copy(alpha = 0.18f), Color.Transparent), Offset(cx, cy), 58.dp.toPx()), 58.dp.toPx(), Offset(cx, cy))
+                }
+                if (sel >= 0 && ripple.value > 0f) {
+                    val center = Offset((ax(sel) + hold / 2).toPx(), (ay(sel) + hold / 2).toPx())
+                    val r = (holdSel / 2).toPx() * (1f + ripple.value * 1.6f)
+                    drawCircle(c.accent.copy(alpha = (1f - ripple.value) * 0.8f), r, center, style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()))
                 }
                 val onRope = if (!st.settings.prefs.showRope) emptyList() else days.indices.filter { (st.results[days[it]] ?: DayResult.FUTURE) in ROPE }
                 for (k in 1 until onRope.size) {
                     val a = onRope[k - 1]; val b = onRope[k]
+                    val from = Offset((ax(a) + hold / 2).toPx(), (ay(a) + hold / 2).toPx())
+                    val to = Offset((ax(b) + hold / 2).toPx(), (ay(b) + hold / 2).toPx())
+                    // The newest segment can be part-drawn, so the rope reaches the hold before it lands.
+                    val t = if (k == onRope.size - 1) ropeDraw.coerceIn(0f, 1f) else 1f
+                    if (t <= 0f) continue
                     drawLine(
                         c.accent.copy(alpha = 0.95f),
-                        Offset((ax(a) + hold / 2).toPx(), (ay(a) + hold / 2).toPx()),
-                        Offset((ax(b) + hold / 2).toPx(), (ay(b) + hold / 2).toPx()),
+                        from,
+                        from + (to - from) * t,
                         3.5.dp.toPx(), StrokeCap.Round,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(1.dp.toPx(), 8.dp.toPx())),
                     )
@@ -197,8 +221,8 @@ fun Wall(
                 val size by animateDpAsState(if (isSel) holdSel else hold, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow), label = "holdSize")
                 val fill by animateColorAsState(holdFill(r, c), tween(350), label = "holdFill")
                 val pop = remember { Animatable(1f) }
-                LaunchedEffect(r == DayResult.SEND) {
-                    if (r == DayResult.SEND) { pop.snapTo(0.55f); pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium)) }
+                LaunchedEffect(r in popOn) {
+                    if (r in popOn && !calm) { pop.snapTo(0.55f); pop.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium)) }
                 }
                 val x = ax(i) - (size - hold) / 2
                 val y = ay(i) - (size - hold) / 2
